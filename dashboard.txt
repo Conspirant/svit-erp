@@ -1,0 +1,482 @@
+
+
+
+
+
+
+
+<html lang="en">
+	 <head>
+   <title>Contineo - Bringing Happiness to work and study places!</title>
+     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <meta name="robots" content="index, follow" />
+  <meta name="keywords" content="contineo, Contineo" />
+  <meta name="description" content="contineo" />
+  <meta name="generator" content="contineo" />
+  <title>Contineo For College</title>
+  <script type="text/javascript" src="/includes/js/joomla.javascript.js"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+   <!-- <link rel="shortcut icon" href="templates/contineoReg/img/logo.png" type="image/x-icon"/> -->
+    <link rel="stylesheet" href="templates/contineoReg/assets/src/scss/css/uikit.css" />
+    <link rel="shortcut icon" href="images/logo.png" type="image/x-icon"/>
+     <link rel="stylesheet" href="templates/contineoReg/assets/src/scss/css/uikit.min.css" />
+    <link rel="stylesheet" href="templates/contineoReg/assets/src/scss/css/style.css" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="templates/contineoReg/assets/js/uikit.min.js"></script>
+    <script src="templates/contineoReg/assets/js/uikit-icons.min.js"></script>
+      
+    <link rel="stylesheet" href="templates/contineoReg/assets/src/scss/css/billboard.css" />
+    <link rel="stylesheet" href="templates/contineoReg/assets/src/scss/css/billboard.min.css" />
+    <link rel="stylesheet" href="templates/contineoReg/assets/src/scss/css/insight.min.css" />
+    <link rel="stylesheet" href="templates/contineoReg/assets/src/scss/css/insight.css" />
+    <script src="templates/contineoReg/assets/js/billboard.js"></script>
+    <script src="templates/contineoReg/assets/js/billboard.pkgd.js"></script>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <link href = "https://code.jquery.com/ui/1.10.4/themes/ui-lightness/jquery-ui.css"
+      rel = "stylesheet">
+    
+	</head>
+<body id="">
+<form action="index.php" method="POST" name="log">
+
+<input type="hidden" name="option" value="com_user">
+
+<input type="hidden" name="task" value="logout">
+
+<input type="hidden" name="return" value="�w^Ƙi">
+
+</form>
+<div class="uk-container">
+    <div class="cn-box-layout">
+      <div class="uk-section cn-btm-border" >
+		<style>
+.top-bar{
+    background-color: #252525;
+    padding: 7px 10px;
+    text-align:right;
+}
+.top-bar .cn-switch{
+    color:#fff;
+}
+  </style>
+<!-- <div class="top-bar">
+<a class="uk-text-right cn-switch" href="/sims/sowmya/global/parents/index.php?option=com_studentdashboard&controller=studentdashboard&task=dashboard">Click Here For OLD Design</a>
+</div> -->
+ <div class="uk-section cn-header-blde cn-pad-zero cn-header-menu">
+          <div class="" uk-grid>
+            <div class="uk-width-1-3@m uk-width-1-3@l ">
+              <div class="cn-logo">
+                <a href="#!" rel="home">
+                  <div class="cn-logo-image">
+                <img src="images/logo.png" alt="logo" width=60px;>
+                </a>
+                </div>
+                <div class="cn-logo-text">
+                  <a class="cn-heading" href="#!" rel="home" uk-tooltip="title: SAI VIDYA INSTITUTE OF TECHNOLOGY, RAJANUKUNTE, BENGALURU 560 064, KARNATAKA; pos: right">SAI VIDYA INSTITUTE OF TECHNOLOGY </a> 
+                </div>
+                </a>
+              </div>
+            </div>
+            
+      
+            <div class="uk-width-2-3@m uk-width-2-3@l uk-margin-remove-top" >
+              <nav class="uk-navbar-container uk-flex-column uk-flex-top cn-menu-list" data-uk-navbar data-uk-toggle="media: @s; cls: uk-flex-row uk-flex-top; mode: media">
+                <button type="button" data-uk-toggle="target: .navbar-collapse; cls: hidden-up-to-s" class="uk-navbar-toggle uk-hidden@s" data-uk-navbar-toggle-icon></button>
+                <div class="navbar-collapse hidden-up-to-s">
+                  <div class="uk-navbar-left uk-float-right">
+                    <ul data-uk-toggle="media: @s; cls: uk-navbar-nav uk-padding-remove; mode: media" class="uk-nav uk-nav-primary uk-padding-small cn-nav-bar-list">
+                                           <li ><a  href="index.php?option=com_studentdashboard&controller=studentdashboard&task=dashboard">Home</a></li>
+                                                                  <!-- <li><a href="index.php?option=com_studentdashboard&controller=feedback&task=feedback">Feedback</a></li> -->
+                                                                                            <!-- Commented on MID 0228990 -->
+                      <li><a title="Payment History" href="index.php?option=com_fee&controller=fee&task=studFee" >Fee</a></li>
+                       
+                                                     <!-- <li><a title="Payment History" href="index.php?option=com_bvbsims&controller=backlogreg&task=coursereg&usn=1VA25CD092" >Exam Form </a></li> -->
+
+                                                                      <li><a href="index.php?option=com_bvbsims&controller=academiccal&task=calenderdisplay&yearId=">Events</a></li>
+                                                                   <li><a  href="index.php?option=com_studentdashboard&controller=studentdashboard&task=timetable">Time Table</a></li>
+                                                                   
+                       <!-- <li><a  href="index.php?option=com_history&task=getResult&usn=1VA25CD092">Exam History</a></li>  -->
+                                                                                            <li><a  href="index.php?option=com_feedback&controller=feedbackentry&task=feedbacktypes">Feedback</a></li>
+                         <!-- <li><a  href="index.php?option=com_coursefeedback&controller=feedbackentry&task=feedback">Course Feedback</a></li> -->
+
+                      <li><a href="javascript:document.log.submit()">Logout</a></li>
+                     
+                    </ul>
+                  </div>
+                </div>
+              </nav>
+            </div>
+          </div>
+        </div>
+        
+
+       
+         <div class="uk-section cn-finance-sec">
+          <div class="">
+            <div class="cn-mg-left uk-grid" uk-grid="">
+              <div class="uk-width-1-3@l uk-width-1-3@m uk-width-1-1@s cn-student-header cn-red-bg uk-first-column">
+                <div class="uk-card uk-card-body cn-stu-data cn-stu-data1">
+                  <h3>RISHAB P Y</h3>
+                  <img class="uk-preserve-width uk-border" src="images/male.jpg" alt="Student">
+                </div>
+              </div>
+              <div class="uk-width-2-3@l uk-width-2-3@m uk-width-1-1@s cn-student-header cn-grey-bg cn-mg-top uk-margin-remove">
+                <div class="uk-card uk-card-body cn-stu-data">
+                  <h2>1VA25CD092</h2>
+          
+                  <p>B.E-CD,  SEM 02,  SEC F </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="uk-flex">
+        <button onclick="toggleTheme()" style="" class="cn-swith-theme">Switch Theme</button>
+        <p class="uk-text-right cn-last-update" style="margin-left:auto;">Last Updated On: 25/04/2026</p>
+</div>
+     
+        <script>
+      function toggleTheme(){
+      window.theme = typeof(window.theme)==='string' ? window.theme : 'light';
+      var switchToTheme = window.theme === 'light' ? 'dark' : 'light';
+      window.theme = switchToTheme;
+      document.querySelector('body').setAttribute('data-theme',switchToTheme);
+      }
+    </script>		
+		
+		
+		 
+
+<style>
+	.cn-label{
+		background-color: #b82226 !important;
+		border: 1px solid #b82226;
+	}
+
+	.cn-label:hover{
+		color: #b82226 !important;
+		background-color: #fff !important;
+		border: 1px solid #b82226;
+		box-shadow: 0 10px 20px -10px #b82226;
+	}
+</style>
+<!-- 
+<div style="text-align: right; padding-right:10px; position: relative;">
+<a href="index.php?option=com_fee&controller=examfee&task=getSubjects" class="uk-label cn-label" style="position: absolute; left: 44%;bottom: 3px;}">Revaluation</a>
+</div> -->
+        
+        
+        
+		      
+<style>
+  @media(max-width:767px){
+.cn-pay-table caption{
+  display:block;
+}
+  }
+  .cn-pay-table th{
+    padding:10px 6px !important;
+  }
+  </style>
+
+     
+      <div class="uk-grid-match" uk-grid>
+                <div class="uk-width-1-2@l uk-width-1-2@m uk-width-1-1@s cn-cie-grid">
+                  <div class="uk-card uk-card-default uk-card-body cn-cie-stat">
+
+                <h3 class="uk-card-title">
+                  CIE
+                </h3>
+                  <div id="barPadding"></div>
+              <script>
+                
+                var chart = bb.generate({
+  data: {
+    columns: [["1BPHYS202",0],["1BCEDS203",0],["1BEIT205",0],["1BSKS206",0],["1BPOPL207",0],["1BKSK209",0],["1BMATS201_PHYCYCLE",0],["1BESCK204A",0],["1BESCK204B",0], ],
+    type: "bar"
+  },
+  
+  bar: {
+    radius: {
+      ratio: 0.5
+    },
+    padding: 25
+  },
+  
+  bindto: "#barPadding"
+});
+              </script>
+            </div>
+          </div>
+                     <div class="uk-width-1-2@l uk-width-1-2@m uk-width-1-1@s cn-cie-grid">
+            <div class="uk-card uk-card-default uk-card-body cn-cie-stat cn-att-stat">
+              <div class="uk-flex uk-flex-middle">
+              <h3 class="uk-card-title">
+               Attendance
+              </h3>
+              <div class="cn-legend cn-att-legend">
+                <span class="uk-label cn-attend cn-color-red">4 below 80%</span>
+              </div>
+            </div>
+             
+              <div id="gaugeTypeMulti">  </div>
+              
+              <script>
+                var chart = bb.generate({
+                data: {
+                columns: [["1BPHYS202",100],["1BCEDS203",100],["1BEIT205",100],["1BSKS206",100],["1BPOPL207",0],["1BKSK209",0],["1BMATS201_PHYCYCLE",83],["1BESCK204A",0],["1BESCK204B",70],                ],
+                type: "gauge"
+                },
+                gauge: {
+                type: "multi",
+                max: 100,
+                min: -0,
+                arcs: {
+                minWidth: 5
+                }
+                },
+                size: {
+                height: 300
+                },
+                bindto: "#gaugeTypeMulti"
+                });
+                
+                setTimeout(function() {
+                chart.load({
+                 });
+                }, 2000);
+              </script>
+            </div>
+          </div>
+          
+          <!-- Commented on MID :0228990: -->
+            <!-- <div class="uk-width-1-2@l uk-width-1-2@m uk-width-1-1@s">
+               <div class="uk-card uk-card-default uk-card-body cn-zero-pad cn-att-stat cn-mg-btm30">
+                 <div class="uk-card-header" style="padding:10px 0px">
+                   <div class="uk-flex uk-flex-middle">
+                   <h3 class="uk-card-title">
+                   Credits </h3> -->
+                     <!-- <div class="cn-legend">
+                        <span class="uk-label cn-attend cn-color-green"> Credits Earned</span>
+                        &nbsp<span class="uk-label cn-attend cn-color-yellow">0 Credits to go</span>
+                      </div> -->
+                   <!-- </div>
+                 </div>
+                                  <div class="uk-card-body cn-stu-progress"> -->
+                   <!-- <div class="sc-progress sc-progress-small uk-margin-remove sc-progress-group"> -->
+                     <!-- <div> -->
+                     <!-- <div title="" class="sc-progress-bar md-bg-green-400" style="width:%" title="" aria-expanded="false"></div>
+                     <div title="0" class="sc-progress-bar md-bg-yellow-400" style="width:100%" aria-expanded="false"></div> -->
+                     <!-- <p class="uk-text-center uk-margin-remove">----------Coming Soon---------- </p> -->
+                    <!-- </div> -->
+                 <!-- </div>
+               </div>
+              
+             </div> -->
+                             <!-- Commented on MID :0228990 -->
+                <!-- <div class="uk-width-1-2@l uk-width-1-2@m uk-width-1-1@s">
+                        
+                        <div class="uk-card uk-card-default uk-card-body cn-zero-pad cn-att-stat">
+                          <div class="uk-card-header">
+                            <div class="uk-flex uk-flex-middle">
+                              <h3 class="uk-card-title">
+                                Fees status
+                              </h3>
+                              <div class="cn-legend">
+                              <span class="uk-label cn-attend cn-color-green">not paid</span>
+                                                              <span class="uk-label cn-attend cn-color-red">No pending</span>
+                                
+                              </div>
+                            </div>
+                          </div>
+                          <div class="uk-card-body cn-stu-progress">
+                            <div class="sc-progress sc-progress-small uk-margin-remove sc-progress-group">
+                              <div title="" class="sc-progress-bar md-bg-green-400" style="width:0%" title="" aria-expanded="false"></div>
+
+                                                            <div title="" class="sc-progress-bar md-bg-red-400" style="width:100%" aria-expanded="false"></div>
+                                                        </div>
+                        </div>
+                      </div>
+                       </div> -->
+                       </div>
+                  </div>
+<h3 class="page-head-line">
+  <table width="100%">
+
+  
+
+ 
+
+  </table>
+  </h3>
+
+          <div class="cn-payment-optionn cn-att-cie">
+          <div class="uk-grid uk-grid-stack" uk-grid="">
+            <div class="uk-width-1-1 uk-first-column">
+              <div class="uk-card uk-card-body cn-pad-20 cn-fee-head">
+                <table width="100%" cellspacing="0" cellpadding="0" valign="top" class="dash_od_row uk-table uk-table-striped uk-table-hover cn-pay-table uk-table-middle uk-table-responsive">
+                  <caption>Course registration - CIE and attendance status</caption>
+                <thead>
+                  <tr>
+                    <th class="">Course code</th>
+                    <th class="">Course Name</th>
+                    <th class="">Notes</th>
+                    <!-- <th class="">Lesson Plan</th> -->
+                    <!-- <th class="">Course Materials</th> -->
+                    <th class="">Attendance</th>
+                    <th class="">CIE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                                      <tr>
+                   
+                      <td>1BPHYS202</td>
+                      <td>QUANTUM PHYSICS AND APPLICATIONS</td>
+                      <td>
+                        
+                      <a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&semId=92&secId=19&courseId=58&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Notes</button></a></td>
+
+                      <!-- <td><a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&courseId=58&secId=19&semId=92&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Lesson Plan</button></a></td> -->
+                       <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=attendencelist&courseId=58&secId=19&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-attendanceclr">Attendance</button></a></td>
+                      <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=ciedetails&courseId=58&secId=58&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-cieclr">CIE</button></a></td>
+                    </tr>
+                                        <tr>
+                   
+                      <td>1BCEDS203</td>
+                      <td>COMPUTER-AIDED ENGINEERING DRAWING FOR CSE STREAM</td>
+                      <td>
+                        
+                      <a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&semId=92&secId=19&courseId=59&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Notes</button></a></td>
+
+                      <!-- <td><a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&courseId=59&secId=19&semId=92&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Lesson Plan</button></a></td> -->
+                       <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=attendencelist&courseId=59&secId=19&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-attendanceclr">Attendance</button></a></td>
+                      <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=ciedetails&courseId=59&secId=59&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-cieclr">CIE</button></a></td>
+                    </tr>
+                                        <tr>
+                   
+                      <td>1BEIT205</td>
+                      <td>PROGRAMMING IN C</td>
+                      <td>
+                        
+                      <a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&semId=92&secId=19&courseId=71&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Notes</button></a></td>
+
+                      <!-- <td><a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&courseId=71&secId=19&semId=92&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Lesson Plan</button></a></td> -->
+                       <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=attendencelist&courseId=71&secId=19&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-attendanceclr">Attendance</button></a></td>
+                      <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=ciedetails&courseId=71&secId=71&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-cieclr">CIE</button></a></td>
+                    </tr>
+                                        <tr>
+                   
+                      <td>1BSKS206</td>
+                      <td>SOFT SKILLS</td>
+                      <td>
+                        
+                      <a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&semId=92&secId=19&courseId=77&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Notes</button></a></td>
+
+                      <!-- <td><a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&courseId=77&secId=19&semId=92&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Lesson Plan</button></a></td> -->
+                       <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=attendencelist&courseId=77&secId=19&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-attendanceclr">Attendance</button></a></td>
+                      <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=ciedetails&courseId=77&secId=77&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-cieclr">CIE</button></a></td>
+                    </tr>
+                                        <tr>
+                   
+                      <td>1BPOPL207</td>
+                      <td>C PROGRAMMING LAB</td>
+                      <td>
+                        
+                      <a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&semId=92&secId=19&courseId=79&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Notes</button></a></td>
+
+                      <!-- <td><a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&courseId=79&secId=19&semId=92&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Lesson Plan</button></a></td> -->
+                       <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=attendencelist&courseId=79&secId=19&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-attendanceclr">Attendance</button></a></td>
+                      <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=ciedetails&courseId=79&secId=79&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-cieclr">CIE</button></a></td>
+                    </tr>
+                                        <tr>
+                   
+                      <td>1BKSK209</td>
+                      <td>SAMSKRUTIKA KANNADA</td>
+                      <td>
+                        
+                      <a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&semId=92&secId=19&courseId=90&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Notes</button></a></td>
+
+                      <!-- <td><a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&courseId=90&secId=19&semId=92&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Lesson Plan</button></a></td> -->
+                       <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=attendencelist&courseId=90&secId=19&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-attendanceclr">Attendance</button></a></td>
+                      <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=ciedetails&courseId=90&secId=90&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-cieclr">CIE</button></a></td>
+                    </tr>
+                                        <tr>
+                   
+                      <td>1BMATS201_PHYCYCLE</td>
+                      <td>NMERICAL METHODS</td>
+                      <td>
+                        
+                      <a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&semId=92&secId=19&courseId=201&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Notes</button></a></td>
+
+                      <!-- <td><a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&courseId=201&secId=19&semId=92&deptId=2&streamId=1"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Lesson Plan</button></a></td> -->
+                       <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=attendencelist&courseId=201&secId=19&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-attendanceclr">Attendance</button></a></td>
+                      <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=ciedetails&courseId=201&secId=201&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-cieclr">CIE</button></a></td>
+                    </tr>
+                                        <tr>
+                   
+                      <td>1BESCK204A</td>
+                      <td>BUILDING SCIENCES AND MECHANICS</td>
+                      <td>
+                        
+                      <a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&semId=92&secId=14&courseId=62&deptId=&streamId="><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Notes</button></a></td>
+
+                      <!-- <td><a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&courseId=62&secId=14&semId=92&deptId=&streamId="><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Lesson Plan</button></a></td> -->
+                       <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=attendencelist&courseId=62&secId=14&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-attendanceclr">Attendance</button></a></td>
+                      <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=ciedetails&courseId=62&secId=62&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-cieclr">CIE</button></a></td>
+                    </tr>
+                                        <tr>
+                   
+                      <td>1BESCK204B</td>
+                      <td>INTRODUCTION TO ELECTRICAL ENGINEERING</td>
+                      <td>
+                        
+                      <a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&semId=92&secId=14&courseId=67&deptId=&streamId="><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Notes</button></a></td>
+
+                      <!-- <td><a href="index.php?option=com_bvbsims&controller=uploadlession&task=getuploadlession&courseId=67&secId=14&semId=92&deptId=&streamId="><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-lesson-plan">Lesson Plan</button></a></td> -->
+                       <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=attendencelist&courseId=67&secId=14&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-attendanceclr">Attendance</button></a></td>
+                      <td><a href="index.php?option=com_studentdashboard&controller=studentdashboard&task=ciedetails&courseId=67&secId=67&semId=92"><button class="uk-button uk-button-primary uk-width-1-1 cn-receipt1 cn-cieclr">CIE</button></a></td>
+                    </tr>
+                    
+        </tbody>
+              
+        </table>
+                        </div>
+                        </div>
+                        </div>
+                        </div>
+        
+
+     
+
+
+
+<!-- Below code is added By Nischita MID:0058925 -->
+
+        <footer>
+          <div class="uk-clearfix cn-footer-text">
+            <div class="uk-float-left">
+              <p class="uk-text-left">
+                Copyright © Powered By <a href="http://www.contineo.in/" target="_blanks">Contineo</a>
+              </p>
+            </div>
+            <div class="uk-float-right">
+              <p class="uk-text-right terms"><a href="#!">Terms of Service</a> | <a href="#!">Privacy Policy</a></p>
+            </div>
+          </div>
+        </footer>
+
+
+		</div>
+		</div>
+		</div>
+		
+</body>
+      
+
+
+</html>
+
+  

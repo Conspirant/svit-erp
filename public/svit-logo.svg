@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">SVIT logo</title>
+  <desc id="desc">Sai Vidya Institute of Technology crest</desc>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="70%">
+      <stop offset="0%" stop-color="#4a4a46"/>
+      <stop offset="65%" stop-color="#232321"/>
+      <stop offset="100%" stop-color="#111"/>
+    </radialGradient>
+    <linearGradient id="sun" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#ffb328"/>
+      <stop offset="100%" stop-color="#f07e00"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="34" fill="url(#bg)"/>
+  <circle cx="256" cy="238" r="164" fill="#3c3f3e" stroke="#101010" stroke-width="3"/>
+  <circle cx="256" cy="238" r="139" fill="#fff" stroke="#ef2631" stroke-width="11"/>
+  <path d="M124 230a132 132 0 0 1 264 0H124z" fill="url(#sun)"/>
+  <g stroke="#ec8a00" stroke-width="2">
+    <path d="M256 229V104"/><path d="M244 229l-23-122"/><path d="M268 229l23-122"/>
+    <path d="M232 229l-45-116"/><path d="M280 229l45-116"/>
+    <path d="M220 229l-66-105"/><path d="M292 229l66-105"/>
+    <path d="M208 229l-84-90"/><path d="M304 229l84-90"/>
+    <path d="M196 229l-99-72"/><path d="M316 229l99-72"/>
+    <path d="M184 229l-111-50"/><path d="M328 229l111-50"/>
+    <path d="M172 229L56 202"/><path d="M340 229l116-27"/>
+  </g>
+  <rect x="119" y="229" width="274" height="11" fill="#fff"/>
+  <path d="M205 247h102l29 83-44 45h-77l-43-45 33-83z" fill="#333"/>
+  <path d="M222 269l-23 59 27 28h25l-10-79-19-8z" fill="#fff"/>
+  <path d="M290 269l22 59-27 28h-25l10-79 20-8z" fill="#fff"/>
+  <path d="M256 367c30-55-52-82 17-145-22 54 44 80-17 145z" fill="#ef2631"/>
+  <path d="M257 342c-13-42 32-68 31-112 40 55-1 76-31 112z" fill="#ff3e43"/>
+  <path d="M118 161c35-56 86-84 138-84s103 28 138 84" fill="none"/>
+  <text x="256" y="142" text-anchor="middle" fill="#fff" font-size="25" font-family="Georgia, serif" font-weight="700" letter-spacing="2">SAI VIDYA INSTITUTE OF TECHNOLOGY</text>
+  <path d="M93 396h92v31h142v-31h92l-28 33 28 33H93l28-33-28-33z" fill="#30302e" stroke="#111" stroke-width="2"/>
+  <text x="256" y="431" text-anchor="middle" fill="#fff" font-size="46" font-family="Georgia, serif" font-weight="700">SVIT</text>
+  <text x="256" y="459" text-anchor="middle" fill="#fff" font-size="20" font-family="Georgia, serif" font-style="italic">Learn to Lead</text>
+</svg>
