@@ -79,7 +79,7 @@ export default function Home() {
     <main className="auth-shell">
       <section className="auth-visual">
         <div>
-          <Image className="auth-logo" src="/svit-logo.jpg" alt="SVIT logo" width={220} height={220} priority />
+          <Image className="auth-logo" src="/svit-logo.png" alt="SVIT logo" width={220} height={220} priority />
           <p className="eyebrow" style={{ color: "rgba(255,255,255,0.72)" }}>
             SVIT student ERP
           </p>
