@@ -100,7 +100,7 @@ button {
   aspect-ratio: 1/1;
   object-fit: cover;
   display: block;
-  margin-bottom: 32px;
+  margin-bottom: 8px;
   border-radius: 50%;
 }
 
