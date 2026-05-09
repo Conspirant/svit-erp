@@ -96,10 +96,12 @@ button {
 }
 
 .auth-logo {
-  width: clamp(140px, 22vw, 240px);
-  height: auto;
+  width: clamp(140px, 22vw, 220px);
+  aspect-ratio: 1/1;
+  object-fit: cover;
   display: block;
   margin-bottom: 32px;
+  border-radius: 50%;
 }
 
 .auth-panel {
@@ -2562,3 +2564,24 @@ th {
     width: 12px;
   }
 }
+
+@media (max-width: 900px) {
+  .auth-shell {
+    grid-template-columns: 1fr;
+  }
+  .auth-visual {
+    padding: 60px 24px;
+    text-align: center;
+    align-items: center;
+    min-height: auto;
+  }
+  .auth-visual div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .auth-visual p, .auth-visual h1 {
+    margin-inline: auto;
+  }
+}
+
