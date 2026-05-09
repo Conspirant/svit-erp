@@ -78,15 +78,32 @@ export default function Home() {
   return (
     <main className="auth-shell">
       <section className="auth-visual">
-        <div>
-          <Image className="auth-logo" src="/svit-logo.png" alt="SVIT logo" width={220} height={220} priority />
-          <p className="eyebrow" style={{ color: "rgba(255,255,255,0.72)" }}>
-            SVIT student ERP
-          </p>
+        <div className="fade-in">
+          <Image className="auth-logo" src="/svit-logo-v3.png" alt="SVIT logo" width={320} height={320} priority />
+          <div style={{ marginTop: 12, marginBottom: 28 }}>
+            <h2 style={{ 
+              fontSize: '1.5rem', 
+              fontWeight: 900, 
+              letterSpacing: '0.02em', 
+              color: '#fff',
+              lineHeight: 1.1,
+              marginBottom: 10
+            }}>
+              SAI VIDYA INSTITUTE OF TECHNOLOGY
+            </h2>
+            <div style={{ width: 40, height: 2, background: 'var(--accent)', marginBottom: 12, borderRadius: 2 }} />
+            <p className="eyebrow" style={{ color: "rgba(255,255,255,0.72)", fontSize: '0.78rem' }}>
+              svit student erp
+            </p>
+          </div>
           <h1>SVIT ERP Proxy</h1>
           <p style={{ fontSize: "1.1rem", lineHeight: 1.7, marginTop: 18, fontWeight: 500 }}>
             A user-friendly SVIT ERP proxy designed to simplify your academic life with a bunk calculator and a student marketplace to help you earn while you learn.
           </p>
+        </div>
+        <div className="scroll-hint fade-in" style={{ animationDelay: '400ms' }}>
+          <p>Scroll down to login</p>
+          <div className="scroll-line" />
         </div>
       </section>
 

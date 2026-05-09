@@ -96,12 +96,34 @@ button {
 }
 
 .auth-logo {
-  width: clamp(140px, 22vw, 220px);
-  aspect-ratio: 1/1;
-  object-fit: cover;
+  width: clamp(180px, 28vw, 320px);
+  height: auto;
+  object-fit: contain;
   display: block;
   margin-bottom: 8px;
-  border-radius: 50%;
+}
+
+.scroll-hint {
+  display: none;
+  margin-top: auto;
+  padding-top: 48px;
+  text-align: center;
+  opacity: 0.5;
+}
+
+.scroll-hint p {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #fff;
+}
+
+.scroll-line {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.4);
+  margin: 10px auto 0;
 }
 
 .auth-panel {
@@ -784,6 +806,10 @@ th {
   .auth-visual {
     min-height: 280px;
     padding: 28px;
+  }
+
+  .scroll-hint {
+    display: block;
   }
 
   .auth-panel {
