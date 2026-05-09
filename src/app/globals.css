@@ -96,10 +96,10 @@ button {
 }
 
 .auth-logo {
-  width: clamp(92px, 16vw, 150px);
+  width: clamp(140px, 22vw, 240px);
   height: auto;
   display: block;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .auth-panel {

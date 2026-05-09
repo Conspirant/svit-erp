@@ -79,13 +79,13 @@ export default function Home() {
     <main className="auth-shell">
       <section className="auth-visual">
         <div>
-          <Image className="auth-logo" src="/svit-logo.png" alt="SVIT logo" width={150} height={150} priority />
+          <Image className="auth-logo" src="/svit-logo.png" alt="SVIT logo" width={220} height={220} priority />
           <p className="eyebrow" style={{ color: "rgba(255,255,255,0.72)" }}>
             SVIT student ERP
           </p>
           <h1>SVIT ERP Proxy</h1>
           <p style={{ fontSize: "1.1rem", lineHeight: 1.7, marginTop: 18, fontWeight: 500 }}>
-            An ERP proxy which we tried to make a bit user friendly along with bunk calculator and marketplace stuff.
+            A user-friendly SVIT ERP proxy designed to simplify your academic life with a bunk calculator and a student marketplace to help you earn while you learn.
           </p>
         </div>
       </section>
