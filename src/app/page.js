@@ -34,6 +34,10 @@ export default function Home() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotStatus, setForgotStatus] = useState(null); // 'success' | 'error'
   const [forgotErrorMessage, setForgotErrorMessage] = useState("");
+  const [forgotFirstSixDigit, setForgotFirstSixDigit] = useState("");
+  const [forgotErpUsername, setForgotErpUsername] = useState("");
+  const [forgotCookies, setForgotCookies] = useState("");
+  const [forgotHiddenFields, setForgotHiddenFields] = useState(null);
   const router = useRouter();
 
   // Clear cached data from previous session
@@ -85,7 +89,9 @@ export default function Home() {
       const data = await res.json();
       
       if (res.ok) {
-        setForgotMaskedPhone(data.maskedPhone || "XXXXXXXXXX");
+        setForgotMaskedPhone(data.maskedPhone || "");
+        setForgotFirstSixDigit(data.firstSixDigit || "");
+        setForgotErpUsername(data.erpUsername || "");
         setForgotStep(2);
       } else {
         setForgotErrorMessage(data.error || "The entered email ID is invalid.");
@@ -109,7 +115,13 @@ export default function Home() {
       const res = await fetch("/api/auth/forgot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail, mode: 2, phone: forgotPhoneDigits }),
+        body: JSON.stringify({ 
+          email: forgotEmail, 
+          mode: 2, 
+          phone: forgotPhoneDigits,
+          firstSixDigit: forgotFirstSixDigit,
+          erpUsername: forgotErpUsername
+        }),
       });
       const data = await res.json();
       
@@ -296,9 +308,9 @@ export default function Home() {
                     <div style={{ position: 'relative' }}>
                       <Mail size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
                       <input 
-                        type="email" 
+                        type="text" 
                         className="app-login-input" 
-                        placeholder="e.g. student@svit.in" 
+                        placeholder="Email-Id" 
                         style={{ paddingLeft: 44 }}
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
@@ -316,15 +328,27 @@ export default function Home() {
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8, color: '#fff' }}>Mobile verification</h3>
                   
                   <div className="app-login-field" style={{ marginBottom: 16 }}>
-                    <label className="app-login-label" style={{ color: 'rgba(255,255,255,0.4)' }}>Enter your Email ID</label>
-                    <div className="app-login-input" style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', display: 'flex', alignItems: 'center', gap: 10 }}>
-                       <Mail size={16} color="rgba(255,255,255,0.3)" /> {forgotEmail}
+                    <label className="app-login-label">Enter your Email ID</label>
+                    <div style={{ position: 'relative' }}>
+                      <Mail size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                      <input 
+                        type="text" 
+                        className="app-login-input" 
+                        style={{ paddingLeft: 44 }}
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        required
+                      />
                     </div>
                   </div>
 
                   <div className="app-login-field" style={{ marginBottom: 24 }}>
                     <label className="app-login-label">Enter last four digit of your mobile number</label>
-                    <p style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, color: '#fff', letterSpacing: '0.15em' }}>{forgotMaskedPhone}</p>
+                    {forgotMaskedPhone && forgotMaskedPhone !== 'XXXXXXXXXX' && (
+                      <p style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, color: '#fff', letterSpacing: '0.15em' }}>
+                        {forgotMaskedPhone}
+                      </p>
+                    )}
                     <input 
                       type="tel" 
                       className="app-login-input" 
@@ -340,7 +364,7 @@ export default function Home() {
                   <button type="submit" className="app-login-btn" disabled={forgotLoading} style={{ background: '#fff', color: '#000' }}>
                     {forgotLoading ? <span className="app-login-spinner" style={{ borderTopColor: '#000' }} /> : "Verify & Send"}
                   </button>
-                  <button type="button" className="app-login-btn" style={{ marginTop: 12, background: 'rgba(255,255,255,0.05)', color: '#fff' }} onClick={() => setForgotStep(1)}>
+                  <button type="button" className="app-login-btn" style={{ marginTop: 12, background: 'rgba(255,255,255,0.05)', color: '#fff' }} onClick={() => { setForgotStep(1); setForgotStatus(null); }}>
                     Back
                   </button>
                 </form>

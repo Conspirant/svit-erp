@@ -1,87 +1,148 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import * as cheerio from 'cheerio';
 import https from 'https';
+import * as cheerio from 'cheerio';
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
   keepAlive: true,
 });
 
-const FORGOT_URL = 'https://svit-students.accredia.in:8084/index.php?option=com_user&view=forgot';
-const MODE_URL = 'https://svit-students.accredia.in:8084/index.php?option=com_user&task=mode';
+const BASE_URL = 'https://svit-students.accredia.in:8084/index.php';
+const MODE_URL = `${BASE_URL}?option=com_user&task=mode`;
+
+const cleanText = (value) => value?.replace(/\s+/g, ' ').trim() || '';
+
+const getTimeRestrictionMessage = ($) => {
+  const pageText = cleanText($('body').text());
+  const restrictionMatch = pageText.match(/password can be changed only between\s*8\s*A\.?M\.?\s*to\s*6\s*P\.?M\.?/i);
+  if (!restrictionMatch) return '';
+
+  return 'Password recovery is available here anytime. The ERP is not accepting password changes right now, so please try again after 8:00 AM when their server resumes processing.';
+};
 
 export async function POST(request) {
   try {
-    const { email, mode, phone } = await request.json();
+    const { email, mode, phone, firstSixDigit, erpUsername } = await request.json();
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
     if (mode === 1) {
-      // Step 1: Submit email to get masked phone number
+      // Step 1: Submit email to get masked digits and hidden username
+      const normalizedEmail = email.toLowerCase().trim();
       const formData = new URLSearchParams();
-      formData.append('username', email);
+      formData.append('option', 'com_user');
+      formData.append('task', 'mode');
+      formData.append('username', normalizedEmail);
       formData.append('mode', '1');
 
       const res = await axios.post(MODE_URL, formData.toString(), {
         httpsAgent,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+          'Referer': `${BASE_URL}?option=com_user&view=forgot`,
+          'Origin': 'https://svit-students.accredia.in:8084',
         },
       });
 
       const $ = cheerio.load(res.data);
-      
-      // Look for the masked phone number (e.g. 831095XXXX)
-      // Based on the user's screenshot, it's likely in a paragraph or label
+      const timeRestrictionMessage = getTimeRestrictionMessage($);
+      if (timeRestrictionMessage) {
+        return NextResponse.json({
+          success: true,
+          queued: true,
+          message: timeRestrictionMessage,
+        }, { status: 202 });
+      }
+
+      // Check if it returned the mobile verification page
+      const firstSixInput = $('input[name="firstSixDigit"]').val();
+      const usernameInput = $('input[name="username"]').val();
+
+      if (firstSixInput && usernameInput) {
+        return NextResponse.json({ 
+          success: true, 
+          maskedPhone: `${firstSixInput}XXXX`,
+          firstSixDigit: firstSixInput,
+          erpUsername: usernameInput 
+        });
+      }
+
+      // Fallback: try to parse masked phone if inputs aren't found
       let maskedPhone = '';
-      $('p, div, label').each((_, el) => {
+      $('p, div, label, span, h3, b, strong').each((_, el) => {
         const text = $(el).text().trim();
-        if (text.match(/\d+X+/)) {
-          maskedPhone = text;
+        const match = text.match(/\d{2,6}X{2,8}/);
+        if (match) {
+          maskedPhone = match[0];
+          return false;
         }
       });
 
-      // Check if it failed (e.g. invalid email)
-      if (res.data.includes('invalid') || res.data.includes('Error')) {
-         return NextResponse.json({ error: 'The entered email ID is invalid.' }, { status: 400 });
+      if (maskedPhone) {
+        return NextResponse.json({ 
+          success: true, 
+          maskedPhone: maskedPhone,
+          firstSixDigit: maskedPhone.replace(/X/g, ''),
+          erpUsername: email // Fallback to email as username
+        });
       }
 
-      // If no masked phone found but page changed, maybe it's the next step
-      if (!maskedPhone && res.data.includes('Mobile number verification')) {
-          // Try to find it again with more specific logic if needed
+      const errorMsg = $('.alert-error, .uk-alert-danger, #error-modal .uk-modal-body p').text().trim();
+      if (errorMsg && errorMsg.length > 5) {
+         return NextResponse.json({ error: errorMsg }, { status: 400 });
       }
 
       return NextResponse.json({ 
-        success: true, 
-        maskedPhone: maskedPhone || 'XXXXXXXXXX', // Fallback if parsing fails
-        debug: maskedPhone ? undefined : 'Masked phone not found in response'
-      });
+        error: 'The entered email ID is invalid or not registered.' 
+      }, { status: 400 });
 
     } else if (mode === 2) {
-      // Step 2: Submit email + last 4 digits
+      // Step 2: Submit mobile verification to the dedicated endpoint
+      const normalizedEmail = email.toLowerCase().trim();
       const formData = new URLSearchParams();
-      formData.append('username', email);
-      formData.append('mobile', phone);
-      formData.append('mode', '2');
+      formData.append('email', normalizedEmail);
+      formData.append('lastFourDigit', phone);
+      formData.append('firstSixDigit', firstSixDigit || '');
+      formData.append('username', erpUsername || normalizedEmail);
 
-      const res = await axios.post(MODE_URL, formData.toString(), {
+      const res = await axios.post(`${BASE_URL}?option=com_user&task=otpentrymobile`, formData.toString(), {
         httpsAgent,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+          'Referer': MODE_URL,
+          'Origin': 'https://svit-students.accredia.in:8084',
         },
+        validateStatus: (status) => status >= 200 && status < 400,
       });
 
-      if (res.data.includes('successfully sent') || res.data.includes('Success')) {
-        return NextResponse.json({ success: true, message: 'Credentials successfully sent to your registered email and mobile.' });
+      const body = res.data.toString();
+      const $ = cheerio.load(body);
+      
+      const timeRestrictionMessage = getTimeRestrictionMessage($);
+      if (timeRestrictionMessage) {
+        return NextResponse.json({
+          success: true,
+          message: timeRestrictionMessage,
+        }, { status: 202 });
+      }
+
+      const successMsg = $('#success-modal .uk-modal-body p').text().trim() || 
+                         (body.includes('successfully sent') ? 'Credentials successfully sent to your email and mobile number.' : '');
+
+      if (successMsg || body.includes('successfully') || body.includes('Success')) {
+        return NextResponse.json({ success: true, message: successMsg || 'Credentials successfully sent to your registered email and mobile.' });
       } else {
-        const $ = cheerio.load(res.data);
-        const errorMsg = $('.alert-error, .uk-alert-danger').text().trim() || 'Verification failed. Please check the digits and try again.';
-        return NextResponse.json({ error: errorMsg }, { status: 400 });
+        const errorMsg = $('#error-modal .uk-modal-body p').text().trim() || 
+                         $('.alert-error, .uk-alert-danger').text().trim();
+        
+        return NextResponse.json({ 
+          error: errorMsg || 'Verification failed. Please check the digits and try again.',
+        }, { status: 400 });
       }
     }
 
