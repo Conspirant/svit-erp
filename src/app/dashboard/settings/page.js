@@ -157,7 +157,7 @@ export default function SettingsPage() {
 
       {/* Forgot Password Modal */}
       {showForgotModal && (
-        <div style={{ position: 'fixed', inset: 0, background: "rgba(0,0,0,0.85)", z-index: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div style={{ position: 'fixed', inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div className="panel fade-in" style={{ width: '100%', maxWidth: 400, position: 'relative' }}>
             <button 
               onClick={() => { setShowForgotModal(false); setStatus(null); setEmail(""); }}
