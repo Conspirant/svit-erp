@@ -11,6 +11,8 @@ export default function SettingsPage() {
   const [darkMode, setDarkMode] = useState(true);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [email, setEmail] = useState("");
+  const [phoneDigits, setPhoneDigits] = useState("");
+  const [step, setStep] = useState(1); // 1: email, 2: mobile
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null); // 'success' | 'error'
 
@@ -26,18 +28,23 @@ export default function SettingsPage() {
     window.location.reload();
   };
 
-  const handleForgotSubmit = async (e) => {
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    // Simulate fetching the masked phone number
+    await new Promise(r => setTimeout(r, 800));
+    setLoading(false);
+    setStep(2);
+  };
+
+  const handleFinalSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setStatus(null);
     
-    // Mimicking the server behavior from the old version
-    // Usually this would be a POST to /api/auth/forgot
     try {
-      // In a real app, we'd hit the API here. 
-      // For now, we simulate success if email looks like a student email or is filled.
       await new Promise(r => setTimeout(r, 1500));
-      if (email.includes("@")) {
+      if (phoneDigits.length === 4) {
         setStatus("success");
       } else {
         setStatus("error");
@@ -98,7 +105,7 @@ export default function SettingsPage() {
             <h2 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Security</h2>
           </div>
 
-          <div className="settings-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: "16px 20px", borderBottom: "1px solid var(--line)", cursor: 'pointer' }} onClick={() => setShowForgotModal(true)}>
+          <div className="settings-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: "16px 20px", borderBottom: "1px solid var(--line)", cursor: 'pointer' }} onClick={() => { setShowForgotModal(true); setStep(1); }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ padding: 8, background: "rgba(255,255,255,0.05)", borderRadius: 10 }}>
                 <Lock size={20} color="var(--ink)" />
@@ -160,37 +167,72 @@ export default function SettingsPage() {
         <div style={{ position: 'fixed', inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div className="panel fade-in" style={{ width: '100%', maxWidth: 400, position: 'relative' }}>
             <button 
-              onClick={() => { setShowForgotModal(false); setStatus(null); setEmail(""); }}
+              onClick={() => { setShowForgotModal(false); setStatus(null); setEmail(""); setPhoneDigits(""); setStep(1); }}
               style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', color: 'var(--muted)' }}
             >
               <X size={24} />
             </button>
 
             {!status ? (
-              <form onSubmit={handleForgotSubmit}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8 }}>Forgot Credentials?</h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--muted)', marginBottom: 24 }}>Enter the Email-Id for which you want to recover the password.</p>
-                
-                <div className="field" style={{ marginBottom: 24 }}>
-                  <label style={{ display: 'block', marginBottom: 8, fontSize: '0.85rem', fontWeight: 700 }}>Email Address</label>
-                  <div style={{ position: 'relative' }}>
-                    <Mail size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+              step === 1 ? (
+                <form onSubmit={handleEmailSubmit}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8 }}>Forgot Credentials?</h3>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--muted)', marginBottom: 24 }}>Enter the Email-Id for which you want to recover the password.</p>
+                  
+                  <div className="field" style={{ marginBottom: 24 }}>
+                    <label style={{ display: 'block', marginBottom: 8, fontSize: '0.85rem', fontWeight: 700 }}>Email Address</label>
+                    <div style={{ position: 'relative' }}>
+                      <Mail size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+                      <input 
+                        type="email" 
+                        className="input" 
+                        placeholder="e.g. student@svit.in" 
+                        style={{ paddingLeft: 44 }}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" className="button full" disabled={loading}>
+                    {loading ? "Checking..." : "Next"}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleFinalSubmit}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8 }}>Mobile verification</h3>
+                  
+                  <div className="field" style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', marginBottom: 8, fontSize: '0.85rem', fontWeight: 700, color: 'var(--muted)' }}>Enter your Email ID</label>
+                    <div className="input" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                       <Mail size={16} color="var(--muted)" /> {email}
+                    </div>
+                  </div>
+
+                  <div className="field" style={{ marginBottom: 24 }}>
+                    <label style={{ display: 'block', marginBottom: 8, fontSize: '0.85rem', fontWeight: 700 }}>Enter last four digit of your mobile number</label>
+                    <p style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12, letterSpacing: '0.1em' }}>831095XXXX</p>
                     <input 
-                      type="email" 
+                      type="tel" 
                       className="input" 
-                      placeholder="e.g. student@svit.in" 
-                      style={{ paddingLeft: 44 }}
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="e.g. 1234" 
+                      maxLength={4}
+                      value={phoneDigits}
+                      onChange={(e) => setPhoneDigits(e.target.value.replace(/\D/g, ""))}
                       required
+                      autoFocus
                     />
                   </div>
-                </div>
 
-                <button type="submit" className="button full" disabled={loading}>
-                  {loading ? "Processing..." : "Next"}
-                </button>
-              </form>
+                  <button type="submit" className="button full" disabled={loading}>
+                    {loading ? "Verifying..." : "Verify & Send"}
+                  </button>
+                  <button type="button" className="button full" style={{ marginTop: 12, background: 'transparent', border: '1px solid var(--line)' }} onClick={() => setStep(1)}>
+                    Back
+                  </button>
+                </form>
+              )
             ) : status === "success" ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
                 <CheckCircle2 size={56} color="var(--success)" style={{ marginBottom: 16 }} />

@@ -28,6 +28,8 @@ export default function Home() {
   const [error, setError] = useState("");
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotPhoneDigits, setForgotPhoneDigits] = useState("");
+  const [forgotStep, setForgotStep] = useState(1); // 1: email, 2: mobile
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotStatus, setForgotStatus] = useState(null); // 'success' | 'error'
   const router = useRouter();
@@ -67,14 +69,22 @@ export default function Home() {
     }
   };
 
-  const handleForgotSubmit = async (e) => {
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    await new Promise(r => setTimeout(r, 800));
+    setForgotLoading(false);
+    setForgotStep(2);
+  };
+
+  const handleFinalSubmit = async (e) => {
     e.preventDefault();
     setForgotLoading(true);
     setForgotStatus(null);
     
     try {
       await new Promise(r => setTimeout(r, 1500));
-      if (forgotEmail.includes("@")) {
+      if (forgotPhoneDigits.length === 4) {
         setForgotStatus("success");
       } else {
         setForgotStatus("error");
@@ -221,7 +231,7 @@ export default function Home() {
           <div style={{ textAlign: 'center', marginTop: '16px' }}>
             <button 
               type="button"
-              onClick={() => setShowForgotModal(true)}
+              onClick={() => { setShowForgotModal(true); setForgotStep(1); }}
               style={{ background: 'transparent', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'underline' }}
             >
               Forgot Password?
@@ -238,37 +248,72 @@ export default function Home() {
         <div style={{ position: 'fixed', inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div className="app-login-card fade-in" style={{ width: '100%', maxWidth: 400, position: 'relative', background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}>
             <button 
-              onClick={() => { setShowForgotModal(false); setForgotStatus(null); setForgotEmail(""); }}
+              onClick={() => { setShowForgotModal(false); setForgotStatus(null); setForgotEmail(""); setForgotPhoneDigits(""); setForgotStep(1); }}
               style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', color: 'rgba(255,255,255,0.4)' }}
             >
               <X size={24} />
             </button>
 
             {!forgotStatus ? (
-              <form onSubmit={handleForgotSubmit}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8, color: '#fff' }}>Forgot Credentials?</h3>
-                <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)', marginBottom: 24 }}>Enter the Email-Id for which you want to recover the password.</p>
-                
-                <div className="app-login-field" style={{ marginBottom: 24 }}>
-                  <label className="app-login-label">Email Address</label>
-                  <div style={{ position: 'relative' }}>
-                    <Mail size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+              forgotStep === 1 ? (
+                <form onSubmit={handleEmailSubmit}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8, color: '#fff' }}>Forgot Credentials?</h3>
+                  <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)', marginBottom: 24 }}>Enter the Email-Id for which you want to recover the password.</p>
+                  
+                  <div className="app-login-field" style={{ marginBottom: 24 }}>
+                    <label className="app-login-label">Email Address</label>
+                    <div style={{ position: 'relative' }}>
+                      <Mail size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                      <input 
+                        type="email" 
+                        className="app-login-input" 
+                        placeholder="e.g. student@svit.in" 
+                        style={{ paddingLeft: 44 }}
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" className="app-login-btn" disabled={forgotLoading} style={{ background: '#fff', color: '#000' }}>
+                    {forgotLoading ? <span className="app-login-spinner" style={{ borderTopColor: '#000' }} /> : "Next"}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleFinalSubmit}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8, color: '#fff' }}>Mobile verification</h3>
+                  
+                  <div className="app-login-field" style={{ marginBottom: 16 }}>
+                    <label className="app-login-label" style={{ color: 'rgba(255,255,255,0.4)' }}>Enter your Email ID</label>
+                    <div className="app-login-input" style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', display: 'flex', alignItems: 'center', gap: 10 }}>
+                       <Mail size={16} color="rgba(255,255,255,0.3)" /> {forgotEmail}
+                    </div>
+                  </div>
+
+                  <div className="app-login-field" style={{ marginBottom: 24 }}>
+                    <label className="app-login-label">Enter last four digit of your mobile number</label>
+                    <p style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, color: '#fff', letterSpacing: '0.15em' }}>831095XXXX</p>
                     <input 
-                      type="email" 
+                      type="tel" 
                       className="app-login-input" 
-                      placeholder="e.g. student@svit.in" 
-                      style={{ paddingLeft: 44 }}
-                      value={forgotEmail}
-                      onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="e.g. 1234" 
+                      maxLength={4}
+                      value={forgotPhoneDigits}
+                      onChange={(e) => setForgotPhoneDigits(e.target.value.replace(/\D/g, ""))}
                       required
+                      autoFocus
                     />
                   </div>
-                </div>
 
-                <button type="submit" className="app-login-btn" disabled={forgotLoading} style={{ background: '#fff', color: '#000' }}>
-                  {forgotLoading ? <span className="app-login-spinner" style={{ borderTopColor: '#000' }} /> : "Next"}
-                </button>
-              </form>
+                  <button type="submit" className="app-login-btn" disabled={forgotLoading} style={{ background: '#fff', color: '#000' }}>
+                    {forgotLoading ? <span className="app-login-spinner" style={{ borderTopColor: '#000' }} /> : "Verify & Send"}
+                  </button>
+                  <button type="button" className="app-login-btn" style={{ marginTop: 12, background: 'rgba(255,255,255,0.05)', color: '#fff' }} onClick={() => setForgotStep(1)}>
+                    Back
+                  </button>
+                </form>
+              )
             ) : forgotStatus === "success" ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
                 <CheckCircle2 size={56} color="#10b981" style={{ marginBottom: 16 }} />
