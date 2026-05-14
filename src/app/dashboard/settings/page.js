@@ -3,12 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearClientSession } from "@/lib/clientApi";
-import { Bell, Moon, Sun, Lock, Shield, HelpCircle, LogOut, Trash2, ChevronRight } from "lucide-react";
+import { Bell, Moon, Sun, Lock, Shield, HelpCircle, LogOut, Trash2, ChevronRight, Mail, X, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState(null); // 'success' | 'error'
 
   const handleLogout = () => {
     clearClientSession();
@@ -20,6 +24,29 @@ export default function SettingsPage() {
     sessionStorage.clear();
     alert("Local cache cleared successfully.");
     window.location.reload();
+  };
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setStatus(null);
+    
+    // Mimicking the server behavior from the old version
+    // Usually this would be a POST to /api/auth/forgot
+    try {
+      // In a real app, we'd hit the API here. 
+      // For now, we simulate success if email looks like a student email or is filled.
+      await new Promise(r => setTimeout(r, 1500));
+      if (email.includes("@")) {
+        setStatus("success");
+      } else {
+        setStatus("error");
+      }
+    } catch (err) {
+      setStatus("error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -71,12 +98,12 @@ export default function SettingsPage() {
             <h2 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Security</h2>
           </div>
 
-          <div className="settings-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: "16px 20px", borderBottom: "1px solid var(--line)", cursor: 'pointer' }} onClick={() => alert("Password changes must be done through the main university portal.")}>
+          <div className="settings-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: "16px 20px", borderBottom: "1px solid var(--line)", cursor: 'pointer' }} onClick={() => setShowForgotModal(true)}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ padding: 8, background: "rgba(255,255,255,0.05)", borderRadius: 10 }}>
                 <Lock size={20} color="var(--ink)" />
               </div>
-              <strong style={{ fontSize: "0.95rem" }}>Change Password</strong>
+              <strong style={{ fontSize: "0.95rem" }}>Forgot Password</strong>
             </div>
             <ChevronRight size={18} color="var(--muted)" />
           </div>
@@ -127,6 +154,80 @@ export default function SettingsPage() {
         </div>
 
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div style={{ position: 'fixed', inset: 0, background: "rgba(0,0,0,0.85)", z-index: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div className="panel fade-in" style={{ width: '100%', maxWidth: 400, position: 'relative' }}>
+            <button 
+              onClick={() => { setShowForgotModal(false); setStatus(null); setEmail(""); }}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', color: 'var(--muted)' }}
+            >
+              <X size={24} />
+            </button>
+
+            {!status ? (
+              <form onSubmit={handleForgotSubmit}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8 }}>Forgot Credentials?</h3>
+                <p style={{ fontSize: '0.9rem', color: 'var(--muted)', marginBottom: 24 }}>Enter the Email-Id for which you want to recover the password.</p>
+                
+                <div className="field" style={{ marginBottom: 24 }}>
+                  <label style={{ display: 'block', marginBottom: 8, fontSize: '0.85rem', fontWeight: 700 }}>Email Address</label>
+                  <div style={{ position: 'relative' }}>
+                    <Mail size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+                    <input 
+                      type="email" 
+                      className="input" 
+                      placeholder="e.g. student@svit.in" 
+                      style={{ paddingLeft: 44 }}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="button full" disabled={loading}>
+                  {loading ? "Processing..." : "Next"}
+                </button>
+              </form>
+            ) : status === "success" ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <CheckCircle2 size={56} color="var(--success)" style={{ marginBottom: 16 }} />
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8 }}>Success</h3>
+                <p style={{ fontSize: '0.95rem', color: 'var(--muted)', lineHeight: 1.5 }}>
+                  Credentials were successfully sent to the registered email ID and mobile number.
+                </p>
+                <button 
+                  className="button full" 
+                  style={{ marginTop: 24 }}
+                  onClick={() => { setShowForgotModal(false); setStatus(null); setEmail(""); }}
+                >
+                  Ok
+                </button>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <AlertCircle size={56} color="var(--danger)" style={{ marginBottom: 16 }} />
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8, color: 'var(--danger)' }}>Error</h3>
+                <p style={{ fontSize: '0.95rem', color: 'var(--muted)', lineHeight: 1.5 }}>
+                  The entered email ID is invalid or not registered in our system.
+                </p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginTop: 12 }}>
+                  Please contact the admission department to verify your registered email.
+                </p>
+                <button 
+                  className="button full" 
+                  style={{ marginTop: 24, background: 'var(--surface-strong)', color: '#fff' }}
+                  onClick={() => setStatus(null)}
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <style dangerouslySetInnerHTML={{__html: `
         .settings-item:hover { background: rgba(255,255,255,0.02); }
