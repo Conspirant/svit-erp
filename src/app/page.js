@@ -29,9 +29,11 @@ export default function Home() {
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotPhoneDigits, setForgotPhoneDigits] = useState("");
+  const [forgotMaskedPhone, setForgotMaskedPhone] = useState("XXXXXXXXXX");
   const [forgotStep, setForgotStep] = useState(1); // 1: email, 2: mobile
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotStatus, setForgotStatus] = useState(null); // 'success' | 'error'
+  const [forgotErrorMessage, setForgotErrorMessage] = useState("");
   const router = useRouter();
 
   // Clear cached data from previous session
@@ -72,24 +74,53 @@ export default function Home() {
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setForgotLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-    setForgotLoading(false);
-    setForgotStep(2);
+    setForgotErrorMessage("");
+    
+    try {
+      const res = await fetch("/api/auth/forgot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail, mode: 1 }),
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        setForgotMaskedPhone(data.maskedPhone || "XXXXXXXXXX");
+        setForgotStep(2);
+      } else {
+        setForgotErrorMessage(data.error || "The entered email ID is invalid.");
+        setForgotStatus("error");
+      }
+    } catch (err) {
+      setForgotErrorMessage("Connection error. Please try again.");
+      setForgotStatus("error");
+    } finally {
+      setForgotLoading(false);
+    }
   };
 
   const handleFinalSubmit = async (e) => {
     e.preventDefault();
     setForgotLoading(true);
     setForgotStatus(null);
+    setForgotErrorMessage("");
     
     try {
-      await new Promise(r => setTimeout(r, 1500));
-      if (forgotPhoneDigits.length === 4) {
+      const res = await fetch("/api/auth/forgot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail, mode: 2, phone: forgotPhoneDigits }),
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
         setForgotStatus("success");
       } else {
+        setForgotErrorMessage(data.error || "Verification failed. Please check the digits.");
         setForgotStatus("error");
       }
     } catch (err) {
+      setForgotErrorMessage("Connection error. Please try again.");
       setForgotStatus("error");
     } finally {
       setForgotLoading(false);
@@ -293,7 +324,7 @@ export default function Home() {
 
                   <div className="app-login-field" style={{ marginBottom: 24 }}>
                     <label className="app-login-label">Enter last four digit of your mobile number</label>
-                    <p style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, color: '#fff', letterSpacing: '0.15em' }}>831095XXXX</p>
+                    <p style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, color: '#fff', letterSpacing: '0.15em' }}>{forgotMaskedPhone}</p>
                     <input 
                       type="tel" 
                       className="app-login-input" 
@@ -334,12 +365,12 @@ export default function Home() {
                 <AlertCircle size={56} color="#ef4444" style={{ marginBottom: 16 }} />
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8, color: '#ef4444' }}>Error</h3>
                 <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
-                  The entered email ID is invalid or not registered in our system.
+                  {forgotErrorMessage || "The entered email ID is invalid or not registered in our system."}
                 </p>
                 <button 
                   className="app-login-btn" 
                   style={{ marginTop: 24, background: 'rgba(255,255,255,0.05)', color: '#fff' }}
-                  onClick={() => setForgotStatus(null)}
+                  onClick={() => { setForgotStatus(null); if (forgotStep === 2) setForgotStep(2); }}
                 >
                   Try Again
                 </button>

@@ -12,9 +12,11 @@ export default function SettingsPage() {
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [email, setEmail] = useState("");
   const [phoneDigits, setPhoneDigits] = useState("");
+  const [maskedPhone, setMaskedPhone] = useState("XXXXXXXXXX");
   const [step, setStep] = useState(1); // 1: email, 2: mobile
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null); // 'success' | 'error'
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleLogout = () => {
     clearClientSession();
@@ -31,25 +33,53 @@ export default function SettingsPage() {
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate fetching the masked phone number
-    await new Promise(r => setTimeout(r, 800));
-    setLoading(false);
-    setStep(2);
+    setErrorMessage("");
+    
+    try {
+      const res = await fetch("/api/auth/forgot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, mode: 1 }),
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        setMaskedPhone(data.maskedPhone || "XXXXXXXXXX");
+        setStep(2);
+      } else {
+        setErrorMessage(data.error || "The entered email ID is invalid.");
+        setStatus("error");
+      }
+    } catch (err) {
+      setErrorMessage("Connection error. Please try again.");
+      setStatus("error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFinalSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setStatus(null);
+    setErrorMessage("");
     
     try {
-      await new Promise(r => setTimeout(r, 1500));
-      if (phoneDigits.length === 4) {
+      const res = await fetch("/api/auth/forgot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, mode: 2, phone: phoneDigits }),
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
         setStatus("success");
       } else {
+        setErrorMessage(data.error || "Verification failed. Please check the digits.");
         setStatus("error");
       }
     } catch (err) {
+      setErrorMessage("Connection error. Please try again.");
       setStatus("error");
     } finally {
       setLoading(false);
@@ -212,7 +242,7 @@ export default function SettingsPage() {
 
                   <div className="field" style={{ marginBottom: 24 }}>
                     <label style={{ display: 'block', marginBottom: 8, fontSize: '0.85rem', fontWeight: 700 }}>Enter last four digit of your mobile number</label>
-                    <p style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12, letterSpacing: '0.1em' }}>831095XXXX</p>
+                    <p style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12, letterSpacing: '0.1em' }}>{maskedPhone}</p>
                     <input 
                       type="tel" 
                       className="input" 
@@ -253,15 +283,17 @@ export default function SettingsPage() {
                 <AlertCircle size={56} color="var(--danger)" style={{ marginBottom: 16 }} />
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8, color: 'var(--danger)' }}>Error</h3>
                 <p style={{ fontSize: '0.95rem', color: 'var(--muted)', lineHeight: 1.5 }}>
-                  The entered email ID is invalid or not registered in our system.
+                  {errorMessage || "The entered email ID is invalid or not registered in our system."}
                 </p>
-                <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginTop: 12 }}>
-                  Please contact the admission department to verify your registered email.
-                </p>
+                {step === 1 && (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginTop: 12 }}>
+                    Please contact the admission department to verify your registered email.
+                  </p>
+                )}
                 <button 
                   className="button full" 
                   style={{ marginTop: 24, background: 'var(--surface-strong)', color: '#fff' }}
-                  onClick={() => setStatus(null)}
+                  onClick={() => { setStatus(null); if (step === 2) setStep(2); }}
                 >
                   Try Again
                 </button>
