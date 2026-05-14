@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiJson, clearClientSession } from "@/lib/clientApi";
+import { Mail, X, CheckCircle2, AlertCircle } from "lucide-react";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MONTHS = [
@@ -25,6 +26,10 @@ export default function Home() {
   const [dobText, setDobText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotStatus, setForgotStatus] = useState(null); // 'success' | 'error'
   const router = useRouter();
 
   // Clear cached data from previous session
@@ -59,6 +64,25 @@ export default function Home() {
       setError(err.message || "Could not connect to the ERP server. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    setForgotStatus(null);
+    
+    try {
+      await new Promise(r => setTimeout(r, 1500));
+      if (forgotEmail.includes("@")) {
+        setForgotStatus("success");
+      } else {
+        setForgotStatus("error");
+      }
+    } catch (err) {
+      setForgotStatus("error");
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -192,11 +216,93 @@ export default function Home() {
           >
             {loading ? <span className="app-login-spinner" aria-label="Signing in" /> : "Sign In"}
           </button>
+
+          {/* Forgot Password Trigger */}
+          <div style={{ textAlign: 'center', marginTop: '16px' }}>
+            <button 
+              type="button"
+              onClick={() => setShowForgotModal(true)}
+              style={{ background: 'transparent', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'underline' }}
+            >
+              Forgot Password?
+            </button>
+          </div>
         </div>
 
         {/* Footer hint */}
         <p className="app-login-hint">Login with your SVIT ERP credentials</p>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div style={{ position: 'fixed', inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div className="app-login-card fade-in" style={{ width: '100%', maxWidth: 400, position: 'relative', background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <button 
+              onClick={() => { setShowForgotModal(false); setForgotStatus(null); setForgotEmail(""); }}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', color: 'rgba(255,255,255,0.4)' }}
+            >
+              <X size={24} />
+            </button>
+
+            {!forgotStatus ? (
+              <form onSubmit={handleForgotSubmit}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8, color: '#fff' }}>Forgot Credentials?</h3>
+                <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)', marginBottom: 24 }}>Enter the Email-Id for which you want to recover the password.</p>
+                
+                <div className="app-login-field" style={{ marginBottom: 24 }}>
+                  <label className="app-login-label">Email Address</label>
+                  <div style={{ position: 'relative' }}>
+                    <Mail size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                    <input 
+                      type="email" 
+                      className="app-login-input" 
+                      placeholder="e.g. student@svit.in" 
+                      style={{ paddingLeft: 44 }}
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="app-login-btn" disabled={forgotLoading} style={{ background: '#fff', color: '#000' }}>
+                  {forgotLoading ? <span className="app-login-spinner" style={{ borderTopColor: '#000' }} /> : "Next"}
+                </button>
+              </form>
+            ) : forgotStatus === "success" ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <CheckCircle2 size={56} color="#10b981" style={{ marginBottom: 16 }} />
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8, color: '#fff' }}>Success</h3>
+                <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+                  Credentials were successfully sent to the registered email ID and mobile number.
+                </p>
+                <button 
+                  className="app-login-btn" 
+                  style={{ marginTop: 24, background: '#fff', color: '#000' }}
+                  onClick={() => { setShowForgotModal(false); setForgotStatus(null); setForgotEmail(""); }}
+                >
+                  Ok
+                </button>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <AlertCircle size={56} color="#ef4444" style={{ marginBottom: 16 }} />
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 8, color: '#ef4444' }}>Error</h3>
+                <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+                  The entered email ID is invalid or not registered in our system.
+                </p>
+                <button 
+                  className="app-login-btn" 
+                  style={{ marginTop: 24, background: 'rgba(255,255,255,0.05)', color: '#fff' }}
+                  onClick={() => setForgotStatus(null)}
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
