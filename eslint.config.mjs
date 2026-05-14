@@ -9,6 +9,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "svit-erp-main/**",
     "next-env.d.ts",
   ]),
 ]);

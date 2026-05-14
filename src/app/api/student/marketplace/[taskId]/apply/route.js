@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
 import { MAX_ACTIVE_ACCEPTS } from '@/lib/marketplaceUtils';
-
-const supabase = createClient(
-  'https://ogzskvecqoekztoarnao.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nenNrdmVjcW9la3p0b2FybmFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNDY5MTAsImV4cCI6MjA5MzcyMjkxMH0.EM4FrLrLQm4Q-oeADBlRcfWdLdb-V2zmKWzXuOa1D5Q'
-);
+import { supabase } from '@/lib/supabase';
+import { getSessionUsn, hasErpSession } from '@/lib/authSession';
 
 function cleanProfileField(value) {
   return String(value || '').trim().slice(0, 80);
@@ -42,10 +38,9 @@ async function insertApplicationWithProfile(insertData, profileData) {
 
 export async function POST(request, { params }) {
   const cookieStore = await cookies();
-  const hasSession = cookieStore.getAll().some(c => !['dashboard_url'].includes(c.name));
-  if (!hasSession) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!hasErpSession(cookieStore)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const callerUsn = request.headers.get('x-caller-usn')?.toUpperCase();
+  const callerUsn = getSessionUsn(cookieStore);
   if (!callerUsn) return NextResponse.json({ error: 'USN required' }, { status: 400 });
 
   const { taskId } = await params;

@@ -74,7 +74,7 @@ function ConnectContent() {
           setProfile(currentProfile);
           setLoading(false);
         }
-      } catch {}
+      } catch { }
     });
 
     const fetchProfile = async () => {
@@ -88,7 +88,7 @@ function ConnectContent() {
         if (json.success) {
           currentProfile = getDevMarketplaceProfile() || json.data;
           setProfile(currentProfile);
-          try { sessionStorage.setItem("profile_data", JSON.stringify(json.data)); } catch {}
+          try { sessionStorage.setItem("profile_data", JSON.stringify(json.data)); } catch { }
           setLoading(false);
         }
       } catch {
@@ -117,7 +117,8 @@ function ConnectContent() {
       setPrivateChatError("");
       try {
         const res = await fetch(`/api/student/marketplace/${taskChatId}`, {
-          headers: { "Content-Type": "application/json", "x-caller-usn": profile.usn },
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
         });
         const json = await res.json();
         if (!res.ok || !json.success) {
@@ -152,10 +153,10 @@ function ConnectContent() {
 
     const loadPrivateTasks = async () => {
       try {
-        const headers = { "Content-Type": "application/json", "x-caller-usn": profile.usn };
+        const headers = { "Content-Type": "application/json" };
         const [mineRes, acceptedRes] = await Promise.all([
-          fetch("/api/student/marketplace?mine=1", { headers }),
-          fetch("/api/student/marketplace?accepted=1", { headers }),
+          fetch("/api/student/marketplace?mine=1", { credentials: "same-origin", headers }),
+          fetch("/api/student/marketplace?accepted=1", { credentials: "same-origin", headers }),
         ]);
         const [mineJson, acceptedJson] = await Promise.all([mineRes.json(), acceptedRes.json()]);
         const merged = [...(mineJson.data || []), ...(acceptedJson.data || [])]

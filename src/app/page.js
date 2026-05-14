@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { apiJson, clearClientSession } from "@/lib/clientApi";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MONTHS = [
@@ -30,10 +30,8 @@ export default function Home() {
   // Clear cached data from previous session
   useEffect(() => {
     try {
-      sessionStorage.removeItem('dashboard_data');
-      sessionStorage.removeItem('events_data');
-      sessionStorage.removeItem('profile_data');
-    } catch {}
+      clearClientSession();
+    } catch { }
   }, []);
 
   const getDob = useCallback(() => {
@@ -55,170 +53,150 @@ export default function Home() {
     setError("");
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: usn, dob }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        router.push("/dashboard");
-      } else {
-        setError(data.error || "Login failed. Please check your credentials.");
-      }
+      await apiJson("/api/auth/login", { username: usn, dob }, { retries: 0, redirectOnUnauthorized: false });
+      router.push("/dashboard");
     } catch (err) {
-      setError("Could not connect to the ERP server. Please try again.");
+      setError(err.message || "Could not connect to the ERP server. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="auth-shell">
-      <section className="auth-visual">
-        <div className="fade-in">
-          <Image className="auth-logo" src="/svit-logo-v3.png" alt="SVIT logo" width={320} height={320} priority />
-          <div style={{ marginTop: 12, marginBottom: 28 }}>
-            <h2 style={{ 
-              fontSize: '1.5rem', 
-              fontWeight: 900, 
-              letterSpacing: '0.02em', 
-              color: '#fff',
-              lineHeight: 1.1,
-              marginBottom: 10
-            }}>
-              SAI VIDYA INSTITUTE OF TECHNOLOGY
-            </h2>
-            <div style={{ width: 40, height: 2, background: 'var(--accent)', marginBottom: 12, borderRadius: 2 }} />
-            <p className="eyebrow" style={{ color: "rgba(255,255,255,0.72)", fontSize: '0.78rem' }}>
-              svit student erp
-            </p>
+    <main className="app-login-screen">
+      <div className="app-login-container fade-in">
+        {/* Logo & Branding */}
+        <div className="app-login-brand">
+          <Image
+            className="app-login-logo"
+            src="/svit-logo-v3.png"
+            alt="SVIT logo"
+            width={120}
+            height={120}
+            priority
+          />
+          <h1 className="app-login-title" style={{ fontSize: "1.35rem", textAlign: "center", lineHeight: "1.2" }}>
+            SAI VIDYA INSTITUTE OF TECHNOLOGY
+          </h1>
+          <div className="app-login-divider" />
+          <p className="app-login-subtitle">Student ERP</p>
+        </div>
+
+        {/* Login Form Card */}
+        <div className="app-login-card">
+          {/* USN Field */}
+          <div className="app-login-field">
+            <label className="app-login-label" htmlFor="login-usn">USN</label>
+            <input
+              id="login-usn"
+              type="text"
+              className="app-login-input"
+              placeholder="e.g. 1VA25CS001"
+              autoComplete="username"
+              autoCapitalize="characters"
+              value={usn}
+              onChange={(e) => setUsn(e.target.value.toUpperCase())}
+              required
+            />
           </div>
-          <h1>SVIT ERP Proxy</h1>
-          <p style={{ fontSize: "1.1rem", lineHeight: 1.7, marginTop: 18, fontWeight: 500 }}>
-            A user-friendly SVIT ERP proxy designed to simplify your academic life with a bunk calculator and a student marketplace to help you earn while you learn.
-          </p>
-        </div>
-        <div className="scroll-hint fade-in" style={{ animationDelay: '400ms' }}>
-          <p>Scroll down to login</p>
-          <div className="scroll-line" />
-        </div>
-      </section>
 
-      <section className="auth-panel">
-        <div className="auth-card fade-in">
-          <p className="eyebrow">Welcome back</p>
-          <h2 className="title">Sign in</h2>
-          <p className="subtle" style={{ marginTop: 10 }}>
-            Enter your USN and date of birth to log in.
-          </p>
+          {/* Password (DOB) Field */}
+          <div className="app-login-field">
+            <label className="app-login-label">Password (Date of Birth)</label>
 
-          {error && <div className="notice error">{error}</div>}
-
-          <form onSubmit={handleLogin} className="form-stack">
-            <div className="field">
-              <label htmlFor="usn">USN</label>
-              <input
-                id="usn"
-                type="text"
-                className="input"
-                placeholder="e.g. 1VA25CS001"
-                autoComplete="username"
-                value={usn}
-                onChange={(e) => setUsn(e.target.value.toUpperCase())}
-                required
-              />
+            {/* Mode Toggle */}
+            <div className="app-login-dob-toggle">
+              <button
+                type="button"
+                className={`app-login-toggle-btn ${mode === "dropdown" ? "active" : ""}`}
+                onClick={() => setMode("dropdown")}
+              >
+                Dropdown
+              </button>
+              <button
+                type="button"
+                className={`app-login-toggle-btn ${mode === "type" ? "active" : ""}`}
+                onClick={() => setMode("type")}
+              >
+                Type it
+              </button>
             </div>
 
-            <div className="field">
-              <label>Password (Date of birth)</label>
-              <div className="dob-mode-toggle">
-                <button
-                  type="button"
-                  className={`dob-toggle-btn ${mode === "dropdown" ? "active" : ""}`}
-                  onClick={() => setMode("dropdown")}
+            {mode === "dropdown" ? (
+              <div className="app-login-dob-row">
+                <select
+                  id="login-dd"
+                  className="app-login-input app-login-select"
+                  value={dd}
+                  onChange={(e) => setDd(e.target.value)}
+                  required={mode === "dropdown"}
                 >
-                  Dropdown
-                </button>
-                <button
-                  type="button"
-                  className={`dob-toggle-btn ${mode === "type" ? "active" : ""}`}
-                  onClick={() => setMode("type")}
+                  <option value="" disabled>Day</option>
+                  {DAYS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                <select
+                  id="login-mm"
+                  className="app-login-input app-login-select"
+                  value={mm}
+                  onChange={(e) => setMm(e.target.value)}
+                  required={mode === "dropdown"}
                 >
-                  Type it
-                </button>
+                  <option value="" disabled>Month</option>
+                  {MONTHS.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+                <select
+                  id="login-yyyy"
+                  className="app-login-input app-login-select"
+                  value={yyyy}
+                  onChange={(e) => setYyyy(e.target.value)}
+                  required={mode === "dropdown"}
+                >
+                  <option value="" disabled>Year</option>
+                  {YEARS.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
               </div>
-
-              {mode === "dropdown" ? (
-                <div className="dob-dropdowns">
-                  <select
-                    id="dob-dd"
-                    className="input dob-select"
-                    value={dd}
-                    onChange={(e) => setDd(e.target.value)}
-                    required={mode === "dropdown"}
-                  >
-                    <option value="" disabled>Day</option>
-                    {DAYS.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                  <select
-                    id="dob-mm"
-                    className="input dob-select"
-                    value={mm}
-                    onChange={(e) => setMm(e.target.value)}
-                    required={mode === "dropdown"}
-                  >
-                    <option value="" disabled>Month</option>
-                    {MONTHS.map((m) => (
-                      <option key={m.value} value={m.value}>{m.label}</option>
-                    ))}
-                  </select>
-                  <select
-                    id="dob-yyyy"
-                    className="input dob-select"
-                    value={yyyy}
-                    onChange={(e) => setYyyy(e.target.value)}
-                    required={mode === "dropdown"}
-                  >
-                    <option value="" disabled>Year</option>
-                    {YEARS.map((y) => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <input
-                  id="dob"
-                  type="password"
-                  className="input"
-                  autoComplete="current-password"
-                  placeholder="YYYY-MM-DD or DD-MM-YYYY"
-                  value={dobText}
-                  onChange={(e) => setDobText(e.target.value)}
-                  required={mode === "type"}
-                />
-              )}
-            </div>
-
-            <button type="submit" className="button full" disabled={loading}>
-              {loading ? <span className="loader" aria-label="Signing in" /> : "Sign in"}
-            </button>
-          </form>
-
-          <div className="auth-footer">
-            <Link href="/forgot-password" style={{ color: "var(--primary)", fontWeight: 800 }}>
-              Forgot password?
-            </Link>
-            <span className="subtle" style={{ fontSize: "0.82rem" }}>
-              Secure session · this browser only
-            </span>
+            ) : (
+              <input
+                id="login-dob"
+                type="password"
+                className="app-login-input"
+                autoComplete="current-password"
+                placeholder="YYYY-MM-DD or DD-MM-YYYY"
+                value={dobText}
+                onChange={(e) => setDobText(e.target.value)}
+                required={mode === "type"}
+              />
+            )}
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="app-login-error">
+              <span>⚠</span>
+              <p>{error}</p>
+            </div>
+          )}
+
+          {/* Sign In Button */}
+          <button
+            type="button"
+            className="app-login-btn"
+            disabled={loading}
+            onClick={handleLogin}
+          >
+            {loading ? <span className="app-login-spinner" aria-label="Signing in" /> : "Sign In"}
+          </button>
         </div>
-      </section>
+
+        {/* Footer hint */}
+        <p className="app-login-hint">Login with your SVIT ERP credentials</p>
+      </div>
     </main>
   );
 }

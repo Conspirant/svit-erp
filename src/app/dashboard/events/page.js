@@ -1,8 +1,55 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CalendarDays } from "lucide-react";
+import { apiFetch } from "@/lib/clientApi";
+
+const WEEKDAYS = [
+  { short: "Mon", long: "Monday" },
+  { short: "Tue", long: "Tuesday" },
+  { short: "Wed", long: "Wednesday" },
+  { short: "Thu", long: "Thursday" },
+  { short: "Fri", long: "Friday" },
+  { short: "Sat", long: "Saturday" },
+  { short: "Sun", long: "Sunday" },
+];
+
+const TYPE_LABELS = {
+  holiday: "Holiday",
+  exam: "Exam",
+  normal: "Class day",
+  empty: "No date",
+};
+
+function normalizeWeekday(value, fallback) {
+  if (!value) return fallback;
+
+  const source = typeof value === "string" ? { short: value, long: value } : value;
+  const short = source.short || source.weekday || source.label || fallback.short;
+  const long = source.long || source.weekdayFull || source.full || fallback.long;
+  const match = WEEKDAYS.find((day) => day.short.toLowerCase() === String(short).slice(0, 3).toLowerCase());
+
+  return {
+    short: match?.short || String(short).slice(0, 3),
+    long: match?.long || long || fallback.long,
+  };
+}
+
+function getWeekdays(monthData) {
+  const headers = Array.isArray(monthData?.weekdays) && monthData.weekdays.length > 0 ? monthData.weekdays : WEEKDAYS;
+  return WEEKDAYS.map((fallback, index) => normalizeWeekday(headers[index], fallback));
+}
+
+function getDayWeekday(day, weekdays) {
+  const column = Number.isInteger(day?.column) ? day.column : 0;
+  const fallback = weekdays[column] || WEEKDAYS[column] || WEEKDAYS[0];
+  return normalizeWeekday({ short: day?.weekday, long: day?.weekdayFull }, fallback);
+}
+
+function getMonthChip(month) {
+  return String(month || "Month").split("-")[0].slice(0, 3);
+}
 
 export default function Events() {
   const [data, setData] = useState(null);
@@ -11,67 +58,77 @@ export default function Events() {
   const router = useRouter();
 
   useEffect(() => {
+    let alive = true;
+
     queueMicrotask(() => {
+      if (!alive) return;
       try {
-        const cached = sessionStorage.getItem('events_data');
-        if (cached) { setData(JSON.parse(cached)); setLoading(false); }
-      } catch {}
+        const cached = sessionStorage.getItem("events_data");
+        if (cached) {
+          setData(JSON.parse(cached));
+          setLoading(false);
+        }
+      } catch { }
     });
 
-    const fetchEvents = async () => {
-      try {
-        const res = await fetch("/api/student/events");
-        if (res.status === 401) {
-          router.push("/");
-          return;
-        }
-
-        const json = await res.json();
+    apiFetch("/api/student/events")
+      .then((json) => {
+        if (!alive) return;
         if (json.success) {
           setData(json.data);
-          try { sessionStorage.setItem('events_data', JSON.stringify(json.data)); } catch {}
+          try { sessionStorage.setItem("events_data", JSON.stringify(json.data)); } catch { }
         } else {
           setError(json.error || "Failed to load academic calendar.");
         }
-      } catch (err) {
-        setError("Could not connect to the ERP server.");
-      } finally {
-        setLoading(false);
-      }
-    };
+      })
+      .catch((err) => alive && setError(err.message || "Could not connect to the ERP server."))
+      .finally(() => alive && setLoading(false));
 
-    fetchEvents();
-  }, [router]);
+    return () => { alive = false; };
+  }, []);
 
-  const totals = useMemo(() => {
-    const months = data || [];
-    return months.reduce(
-      (acc, month) => {
-        acc.holidays += month.days?.filter((day) => day.type === "holiday").length || 0;
-        acc.exams += month.days?.filter((day) => day.type === "exam").length || 0;
-        acc.events += month.events?.length || 0;
-        return acc;
-      },
-      { holidays: 0, exams: 0, events: 0 }
+  const calendar = useMemo(() => {
+    const summaries = (data || []).map((monthData, index) => {
+      const days = monthData.days || [];
+      const events = monthData.events || [];
+      const holidays = days.filter((day) => day.type === "holiday").length;
+      const exams = days.filter((day) => day.type === "exam").length;
+      return { index, monthData, days, events, holidays, exams };
+    });
+
+    const totals = summaries.reduce(
+      (acc, month) => ({
+        months: acc.months + 1,
+        holidays: acc.holidays + month.holidays,
+        exams: acc.exams + month.exams,
+        events: acc.events + month.events.length,
+      }),
+      { months: 0, holidays: 0, exams: 0, events: 0 }
     );
+
+    const featured = summaries.find((month) => month.events.length > 0);
+
+    return { summaries, totals, featured };
   }, [data]);
 
   if (loading) {
     return (
-      <div className="center-state">
-        <div className="loader" />
-      </div>
+      <main className="page-shell fade-in native-screen calendar-screen">
+        <section className="calendar-loading-card">
+          <div className="loader" />
+        </section>
+      </main>
     );
   }
 
   if (error) {
     return (
       <div className="center-state">
-        <div className="auth-card" style={{ maxWidth: 460, textAlign: "center" }}>
+        <div className="auth-card calendar-error-card">
           <p className="eyebrow">Calendar unavailable</p>
           <h1 className="title">Could not load events</h1>
-          <p className="subtle" style={{ marginTop: 12 }}>{error}</p>
-          <button onClick={() => router.push("/")} className="button" style={{ marginTop: 22 }}>
+          <p className="subtle">{error}</p>
+          <button onClick={() => router.push("/")} className="button">
             Back to sign in
           </button>
         </div>
@@ -80,96 +137,133 @@ export default function Events() {
   }
 
   return (
-    <main className="page-shell fade-in">
-      <header className="app-header">
+    <main className="page-shell fade-in native-screen calendar-screen">
+      <section className="native-page-head calendar-page-head">
         <div>
-          <p className="eyebrow">Academic calendar</p>
-          <h1 className="title">Semester schedule</h1>
-          <p className="subtle" style={{ marginTop: 8 }}>
-            Holidays, exam days, and month-wise events from the ERP calendar.
-          </p>
+          <h1>Calendar</h1>
+          <p>{calendar.totals.months || 0} months - Monday to Sunday</p>
         </div>
-        <button onClick={() => router.push("/")} className="button secondary">
-          Logout
-        </button>
-      </header>
-
-      <nav className="tabs" aria-label="Dashboard sections">
-        <Link className="tab" href="/dashboard">Overview</Link>
-        <Link className="tab" href="/dashboard/marketplace">Marketplace</Link>
-        <Link className="tab active" href="/dashboard/events">Calendar</Link>
-        <Link className="tab" href="/dashboard/timetable">Timetable</Link>
-        <Link className="tab" href="/dashboard/info">Profile</Link>
-        <Link className="tab" href="/dashboard/bunk">Bunk Calc</Link>
-        <Link className="tab" href="/dashboard/connect">Connect</Link>
-      </nav>
-
-      <section className="grid overview-grid" style={{ marginBottom: 16 }}>
-        <div className="metric-card span-4">
-          <p className="eyebrow">Months loaded</p>
-          <div className="metric-value">{data?.length || 0}</div>
-          <p className="subtle">Calendar sections available</p>
-        </div>
-        <div className="metric-card span-4">
-          <p className="eyebrow">Holidays</p>
-          <div className="metric-value" style={{ color: "var(--danger)" }}>{totals.holidays}</div>
-          <p className="subtle">Marked non-working days</p>
-        </div>
-        <div className="metric-card span-4">
-          <p className="eyebrow">Exam markers</p>
-          <div className="metric-value" style={{ color: "var(--primary)" }}>{totals.exams}</div>
-          <p className="subtle">Minor exam entries</p>
+        <div className="calendar-head-badge" aria-label="Academic calendar">
+          <CalendarDays size={22} />
         </div>
       </section>
 
-      <section className="grid">
-        {data && data.length > 0 ? (
-          data.map((monthData, index) => (
-            <article className="panel" key={`${monthData.month}-${index}`}>
-              <div className="panel-head">
-                <div>
-                  <h2 className="panel-title">{monthData.month}</h2>
-                  <p className="subtle">
-                    {monthData.events?.length || 0} event{monthData.events?.length === 1 ? "" : "s"} listed
-                  </p>
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                  <span className="badge danger">Holiday</span>
-                  <span className="badge success">Exam</span>
-                </div>
-              </div>
+      <section className="calendar-stats" aria-label="Calendar summary">
+        <article className="calendar-stat-card">
+          <span>Months</span>
+          <strong>{calendar.totals.months}</strong>
+        </article>
+        <article className="calendar-stat-card danger">
+          <span>Holidays</span>
+          <strong>{calendar.totals.holidays}</strong>
+        </article>
+        <article className="calendar-stat-card success">
+          <span>Exams</span>
+          <strong>{calendar.totals.exams}</strong>
+        </article>
+      </section>
 
-              <div className="grid calendar-layout">
-                <div>
-                  <div className="calendar-grid">
-                    {monthData.days.map((day, dayIndex) => (
-                      <div className={`day ${day.type}`} key={`${day.day}-${dayIndex}`} title={day.type}>
-                        {day.day}
-                      </div>
-                    ))}
+      {calendar.featured && (
+        <section className="calendar-feature-card">
+          <span>{calendar.featured.monthData.month}</span>
+          <strong>{calendar.featured.events[0]}</strong>
+        </section>
+      )}
+
+      {calendar.summaries.length > 0 && (
+        <nav className="calendar-month-rail" aria-label="Calendar months">
+          {calendar.summaries.map(({ monthData, index }) => (
+            <a href={`#calendar-month-${index}`} key={`${monthData.month}-chip`}>
+              {getMonthChip(monthData.month)}
+            </a>
+          ))}
+        </nav>
+      )}
+
+      <section className="calendar-month-list">
+        {calendar.summaries.length > 0 ? (
+          calendar.summaries.map((summary) => {
+            const weekdays = getWeekdays(summary.monthData);
+            return (
+              <article
+                className="calendar-month-card"
+                id={`calendar-month-${summary.index}`}
+                key={`${summary.monthData.month}-${summary.index}`}
+              >
+                <div className="calendar-month-head">
+                  <div>
+                    <span>Month {summary.index + 1}</span>
+                    <h2>{summary.monthData.month}</h2>
+                  </div>
+                  <div className="calendar-month-counts">
+                    <span className="danger">{summary.holidays} H</span>
+                    <span className="success">{summary.exams} E</span>
                   </div>
                 </div>
 
-                <div className="list">
-                  {monthData.events?.length > 0 ? (
-                    monthData.events.map((event, eventIndex) => (
-                      <div className="event-item" key={`${event}-${eventIndex}`}>
-                        {event}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="soft-box">
-                      <p className="subtle">No major events listed for this month.</p>
+                <div className="calendar-month-body">
+                  <div className="calendar-board">
+                    <div className="calendar-weekdays" role="row">
+                      {weekdays.map((weekday) => (
+                        <span aria-label={weekday.long} key={`${summary.monthData.month}-${weekday.short}`}>
+                          <span className="weekday-full">{weekday.long}</span>
+                          <span className="weekday-short">{weekday.short}</span>
+                        </span>
+                      ))}
                     </div>
-                  )}
+
+                    <div className="calendar-grid calendar-premium-grid">
+                      {summary.days.map((day, dayIndex) => {
+                        const weekday = getDayWeekday(day, weekdays);
+                        const label = day.day
+                          ? `${weekday.long}, ${day.day} ${summary.monthData.month}. ${TYPE_LABELS[day.type] || TYPE_LABELS.normal}`
+                          : `Empty ${weekday.long} cell`;
+
+                        return (
+                          <div
+                            className={`day calendar-day ${day.type}`}
+                            key={`${day.day || "empty"}-${dayIndex}`}
+                            title={label}
+                            aria-label={label}
+                          >
+                            {day.day && (
+                              <>
+                                <span className="calendar-day-number">{day.day}</span>
+                                <span className="calendar-day-name">{weekday.short}</span>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="calendar-events-panel">
+                    <div className="calendar-events-head">
+                      <span>Events</span>
+                      <strong>{summary.events.length}</strong>
+                    </div>
+                    <div className="calendar-event-stack">
+                      {summary.events.length > 0 ? (
+                        summary.events.map((event, eventIndex) => (
+                          <article className="calendar-event-card" key={`${event}-${eventIndex}`}>
+                            <span aria-hidden="true" />
+                            <p>{event}</p>
+                          </article>
+                        ))
+                      ) : (
+                        <p className="calendar-empty-copy">No listed events</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))
+              </article>
+            );
+          })
         ) : (
-          <div className="panel">
-            <p className="subtle">No calendar data available for this semester.</p>
-          </div>
+          <section className="calendar-empty-state">
+            <p>No calendar data available for this semester.</p>
+          </section>
         )}
       </section>
     </main>

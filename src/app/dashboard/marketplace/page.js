@@ -92,7 +92,7 @@ function getHiddenBrowseTasks() {
 }
 
 function saveHiddenBrowseTasks(ids) {
-  try { localStorage.setItem(HIDDEN_BROWSE_TASKS_KEY, JSON.stringify(ids)); } catch {}
+  try { localStorage.setItem(HIDDEN_BROWSE_TASKS_KEY, JSON.stringify(ids)); } catch { }
 }
 
 function getCompletedDeleteText(task) {
@@ -103,10 +103,10 @@ function getCompletedDeleteText(task) {
 }
 
 function api(path, opts = {}) {
-  const usn = getProfile()?.usn || "";
   return fetch(path, {
     ...opts,
-    headers: { "Content-Type": "application/json", "x-caller-usn": usn, ...(opts.headers || {}) },
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
   });
 }
 
@@ -114,7 +114,7 @@ function StarRating({ value, onChange, size = 24 }) {
   const [hover, setHover] = useState(0);
   return (
     <div style={{ display: "flex", gap: 4 }}>
-      {[1,2,3,4,5].map(i => (
+      {[1, 2, 3, 4, 5].map(i => (
         <button key={i} type="button"
           style={{ background: "none", border: "none", cursor: onChange ? "pointer" : "default", fontSize: size, color: i <= (hover || value) ? "#f59e0b" : "var(--line)", padding: 0, lineHeight: 1 }}
           onMouseEnter={() => onChange && setHover(i)}
@@ -420,11 +420,11 @@ function TaskDetailModal({ taskId, profile, onClose, onUpdate }) {
   const canCancel = data.status === "open" && (isPoster || isAdmin);
   const canSubmit = data.status === "accepted" && isDoer;
   const canComplete = data.status === "submitted" && isPoster;
-  const canDispute = ["accepted","submitted"].includes(data.status) && (isPoster || isDoer);
+  const canDispute = ["accepted", "submitted"].includes(data.status) && (isPoster || isDoer);
   const canReview = data.status === "completed" && (isPoster || isDoer);
   const canResolve = data.status === "disputed" && isAdmin;
-  const canSeeContact = ["accepted","submitted","completed","disputed"].includes(data.status) && (isPoster || isDoer || isAdmin);
-  const canOpenPrivateChat = ["accepted","submitted","disputed"].includes(data.status) && (isPoster || isDoer);
+  const canSeeContact = ["accepted", "submitted", "completed", "disputed"].includes(data.status) && (isPoster || isDoer || isAdmin);
+  const canOpenPrivateChat = ["accepted", "submitted", "disputed"].includes(data.status) && (isPoster || isDoer);
   const posterLine = getTaskPosterLine(data, profile);
 
   // State machine — compact labels for mobile
@@ -458,7 +458,7 @@ function TaskDetailModal({ taskId, profile, onClose, onUpdate }) {
           </div>
 
           {/* ── State machine bar — wraps on mobile ── */}
-          {["open","accepted","submitted","completed"].includes(data.status) && (
+          {["open", "accepted", "submitted", "completed"].includes(data.status) && (
             <div className="mk-state-bar">
               {steps.map((s, i) => (
                 <div key={s.key} className={`mk-state-step${i <= stepIdx ? " done" : ""}${i === stepIdx ? " active" : ""}`}>
@@ -637,7 +637,7 @@ export default function Marketplace() {
         setProfile(devProfile || j.data);
         setDevProfileActive(!!devProfile);
         setLoading(false);
-        try { sessionStorage.setItem("profile_data", JSON.stringify(j.data)); } catch {}
+        try { sessionStorage.setItem("profile_data", JSON.stringify(j.data)); } catch { }
       }
     }).catch(() => setLoading(false));
   }, [router]);
@@ -744,7 +744,7 @@ export default function Marketplace() {
       {/* View tabs + filters */}
       <div className="mk-toolbar">
         <div className="mk-view-tabs">
-          {[["browse","Browse"],["mine","My Posts"],["accepted","I'm Doing"]].map(([v,l]) => (
+          {[["browse", "Browse"], ["mine", "My Posts"], ["accepted", "I'm Doing"]].map(([v, l]) => (
             <button key={v} className={`mk-view-btn${view === v ? " active" : ""}`} onClick={() => setView(v)}>{l}</button>
           ))}
         </div>

@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# SVIT ERP Mobile App
+
+Mobile-first SVIT student ERP built with Next.js route handlers and a Capacitor native wrapper. The native apps load the deployed HTTPS Next.js app because login, ERP scraping, Supabase, and marketplace APIs all require the server runtime.
 
 ## Getting Started
 
@@ -16,9 +18,21 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Native Wrapper
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Set the deployed app URL before syncing Capacitor:
+
+```bash
+set CAPACITOR_SERVER_URL=https://your-deployed-next-app.example.com
+npm run cap:sync
+npm run cap:android
+```
+
+On macOS with Xcode, `npm run cap:ios` opens the iOS project.
+
+The app intentionally opens to `/` for login first. After login, the dashboard runs inside the shared mobile shell with bottom navigation.
+
+Environment values are documented in `.env.example`. Supabase values use `NEXT_PUBLIC_` because the realtime client runs in the browser.
 
 ## Learn More
 

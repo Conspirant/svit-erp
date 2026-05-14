@@ -11,6 +11,25 @@ const httpsAgent = new https.Agent({
 const BASE_URL = 'https://svit-students.accredia.in:8084/index.php';
 
 const cleanText = (value) => value?.replace(/\s+/g, ' ').trim() || '';
+const WEEKDAY_FALLBACK = [
+  { short: 'Mon', long: 'Monday' },
+  { short: 'Tue', long: 'Tuesday' },
+  { short: 'Wed', long: 'Wednesday' },
+  { short: 'Thu', long: 'Thursday' },
+  { short: 'Fri', long: 'Friday' },
+  { short: 'Sat', long: 'Saturday' },
+  { short: 'Sun', long: 'Sunday' },
+];
+
+const normalizeWeekday = (value, index) => {
+  const fallback = WEEKDAY_FALLBACK[index] || { short: cleanText(value), long: cleanText(value) };
+  const label = cleanText(value) || fallback.short;
+  const match = WEEKDAY_FALLBACK.find((day) => day.short.toLowerCase() === label.slice(0, 3).toLowerCase());
+  return {
+    short: match?.short || label.slice(0, 3),
+    long: match?.long || label,
+  };
+};
 
 export async function GET() {
   try {
@@ -52,6 +71,11 @@ export async function GET() {
       const monthTitle = cleanText(table.find('caption span').text() || table.find('caption').text());
       if (!monthTitle) return;
 
+      const weekdays = table.find('thead th')
+        .map((j, th) => normalizeWeekday($(th).text(), j))
+        .get();
+      const weekdayLabels = weekdays.length > 0 ? weekdays : WEEKDAY_FALLBACK;
+
       const monthGrid = table.closest('.uk-grid, [uk-grid]');
       const eventScope = monthGrid.length > 0 ? monthGrid : table.parent().parent();
       const events = eventScope
@@ -64,8 +88,9 @@ export async function GET() {
       table.find('tbody tr').each((rowIndex, row) => {
         $(row).find('td').each((columnIndex, td) => {
           const text = cleanText($(td).text());
+          const weekday = weekdayLabels[columnIndex] || WEEKDAY_FALLBACK[columnIndex] || { short: '', long: '' };
           if (!text) {
-            days.push({ day: '', type: 'empty', column: columnIndex });
+            days.push({ day: '', type: 'empty', column: columnIndex, weekday: weekday.short, weekdayFull: weekday.long });
             return;
           }
 
@@ -73,13 +98,14 @@ export async function GET() {
           if ($(td).find('.cn-holiday').length > 0) type = 'holiday';
           else if ($(td).find('.cn-minor-exam').length > 0) type = 'exam';
 
-          days.push({ day: text, type, column: columnIndex });
+          days.push({ day: text, type, column: columnIndex, weekday: weekday.short, weekdayFull: weekday.long });
         });
       });
 
       eventsData.push({
         month: monthTitle,
         events,
+        weekdays: weekdayLabels,
         days
       });
     });

@@ -5,15 +5,33 @@ import { Analytics } from '@vercel/analytics/next'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'SVIT ERP Proxy',
-  description: 'A user-friendly student ERP proxy with bunk calculator and marketplace.',
+  title: {
+    default: 'SVIT ERP',
+    template: '%s · SVIT ERP',
+  },
+  description: 'A mobile-first SVIT student ERP app with attendance, timetable, marketplace, and campus connect.',
+  applicationName: 'SVIT ERP',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SVIT ERP',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: '/svit-logo-v3.png',
+    apple: '/svit-logo-v3.png',
+  },
+  manifest: '/manifest.webmanifest',
 }
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#236654',
+  viewportFit: 'cover',
+  themeColor: '#0f766e',
 }
 
 export default function RootLayout({ children }) {

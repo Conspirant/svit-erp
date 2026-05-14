@@ -4,12 +4,8 @@
  * then resolves USN from our Supabase users table (populated at connect time).
  */
 import { cookies } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  'https://ogzskvecqoekztoarnao.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nenNrdmVjcW9la3p0b2FybmFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNDY5MTAsImV4cCI6MjA5MzcyMjkxMH0.EM4FrLrLQm4Q-oeADBlRcfWdLdb-V2zmKWzXuOa1D5Q'
-);
+import { supabase } from '@/lib/supabase';
+import { getSessionUsn, hasErpSession } from '@/lib/authSession';
 
 /**
  * Returns { usn, name } for the current request, or null if not authenticated.
@@ -19,11 +15,10 @@ const supabase = createClient(
  */
 export async function getMarketplaceSession() {
   const cookieStore = await cookies();
-  const allCookies = cookieStore.getAll();
+  if (!hasErpSession(cookieStore)) return null;
 
-  // Must have at least one real ERP cookie (not just our helpers)
-  const hasErpCookie = allCookies.some(c => !['dashboard_url'].includes(c.name));
-  if (!hasErpCookie) return null;
+  const usn = getSessionUsn(cookieStore);
+  if (usn) return { usn, name: cookieStore.get('erp_name')?.value || 'Student' };
 
   // Try to find the most recently seen user from Supabase
   // This works because the Connect page upserts the user with last_seen

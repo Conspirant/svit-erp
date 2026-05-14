@@ -67,7 +67,7 @@ export default function Timetable() {
                 const ps = (pj.data || []).sort((a, b) => (DAY_ORDER.indexOf(a.day) ?? 99) - (DAY_ORDER.indexOf(b.day) ?? 99));
                 cache.current[prevKey] = { data: ps, nav: pj.navigation || {} };
               }
-            }).catch(() => {});
+            }).catch(() => { });
           }
         }
         if (json.navigation?.nextWeek) {
@@ -80,7 +80,7 @@ export default function Timetable() {
                 const ns = (nj.data || []).sort((a, b) => (DAY_ORDER.indexOf(a.day) ?? 99) - (DAY_ORDER.indexOf(b.day) ?? 99));
                 cache.current[nextKey] = { data: ns, nav: nj.navigation || {} };
               }
-            }).catch(() => {});
+            }).catch(() => { });
           }
         }
       } else {
@@ -203,11 +203,11 @@ export default function Timetable() {
       <section className="grid" style={{ opacity: switching ? 0.5 : 1 }}>
         {data && data.length > 0 ? (
           data.map((dayData, index) => (
-            <article 
-              className="panel span-12" 
+            <article
+              className="panel span-12"
               key={`${dayData.day}-${dayData.date}-${index}`}
               id={`day-${dayData.date}`}
-              style={{ 
+              style={{
                 border: dayData.date === todayDate ? "1px solid var(--primary)" : undefined,
                 boxShadow: dayData.date === todayDate ? "0 0 0 1px var(--primary)" : undefined
               }}

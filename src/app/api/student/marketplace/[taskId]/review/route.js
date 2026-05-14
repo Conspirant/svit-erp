@@ -1,18 +1,13 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  'https://ogzskvecqoekztoarnao.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nenNrdmVjcW9la3p0b2FybmFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNDY5MTAsImV4cCI6MjA5MzcyMjkxMH0.EM4FrLrLQm4Q-oeADBlRcfWdLdb-V2zmKWzXuOa1D5Q'
-);
+import { supabase } from '@/lib/supabase';
+import { getSessionUsn, hasErpSession } from '@/lib/authSession';
 
 export async function POST(request, { params }) {
   const cookieStore = await cookies();
-  const hasSession = cookieStore.getAll().some(c => !['dashboard_url'].includes(c.name));
-  if (!hasSession) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!hasErpSession(cookieStore)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const callerUsn = request.headers.get('x-caller-usn')?.toUpperCase();
+  const callerUsn = getSessionUsn(cookieStore);
   if (!callerUsn) return NextResponse.json({ error: 'USN required' }, { status: 400 });
 
   const { taskId } = await params;
@@ -31,7 +26,7 @@ export async function POST(request, { params }) {
   if (target === callerUsn) return NextResponse.json({ error: 'You cannot review yourself.' }, { status: 400 });
 
   const ratingNum = parseInt(rating);
-  if (!ratingNum || ratingNum < 1 || ratingNum > 5) return NextResponse.json({ error: 'Rating must be 1–5.' }, { status: 400 });
+  if (!ratingNum || ratingNum < 1 || ratingNum > 5) return NextResponse.json({ error: 'Rating must be 1-5.' }, { status: 400 });
 
   const { data, error } = await supabase.from('marketplace_reviews').insert({
     task_id: taskId, reviewer_usn: callerUsn, reviewed_usn: target, rating: ratingNum, comment: comment?.trim() || ''

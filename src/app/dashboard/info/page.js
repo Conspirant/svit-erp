@@ -15,7 +15,7 @@ export default function StudentInfo() {
       try {
         const cached = sessionStorage.getItem('profile_data');
         if (cached) { setData(JSON.parse(cached)); setLoading(false); }
-      } catch {}
+      } catch { }
     });
 
     const fetchInfo = async () => {
@@ -29,7 +29,7 @@ export default function StudentInfo() {
         const json = await res.json();
         if (json.success) {
           setData(json.data);
-          try { sessionStorage.setItem('profile_data', JSON.stringify(json.data)); } catch {}
+          try { sessionStorage.setItem('profile_data', JSON.stringify(json.data)); } catch { }
         } else {
           setError(json.error || "Failed to load profile data.");
         }
@@ -102,7 +102,7 @@ export default function StudentInfo() {
               {data?.name ? data.name.charAt(0).toUpperCase() : "?"}
             </div>
           </div>
-          
+
           <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "16px", marginTop: "16px" }}>
             <div className="soft-box">
               <p className="eyebrow">Name</p>
@@ -131,7 +131,7 @@ export default function StudentInfo() {
                 {data?.semester ? `Semester ${data.semester}` : "Unknown"}
               </strong>
             </div>
-            
+
             <div className="soft-box">
               <p className="eyebrow">Quota</p>
               <strong style={{ display: "block", fontSize: "1.1rem", marginTop: 4 }}>

@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import https from 'https';
+import { setSessionIdentity } from '@/lib/authSession';
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
@@ -245,7 +246,9 @@ export async function GET() {
         stats.metrics.push($(el).text().replace(/\s+/g, ' ').trim());
     });
 
-    return NextResponse.json({ success: true, data: stats, rawHtmlLength: res.data.length });
+    const response = NextResponse.json({ success: true, data: stats, rawHtmlLength: res.data.length });
+    setSessionIdentity(response, { usn: stats.usn, name: stats.profileName });
+    return response;
 
   } catch (error) {
     console.error('Dashboard Scraper Error:', error.message);

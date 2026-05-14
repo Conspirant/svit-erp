@@ -3,6 +3,7 @@ import axios from 'axios';
 import https from 'https';
 import * as cheerio from 'cheerio';
 import { cookies } from 'next/headers';
+import { setSessionIdentity } from '@/lib/authSession';
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
@@ -105,7 +106,9 @@ export async function GET() {
       } catch {}
     }
 
-    return NextResponse.json({ success: true, data: profileData });
+    const response = NextResponse.json({ success: true, data: profileData });
+    setSessionIdentity(response, { usn: profileData.usn, name: profileData.name });
+    return response;
 
   } catch (error) {
     console.error('Profile Scraper Error:', error.message);

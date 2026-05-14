@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import https from 'https';
+import { setSessionIdentity } from '@/lib/authSession';
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
@@ -126,7 +126,7 @@ export async function POST(request) {
     }
 
     // Set the cookie in Next.js response so the user's browser holds the ERP session
-    const cookieStore = await cookies();
+    const response = NextResponse.json({ success: true, message: 'Logged in successfully' });
     
     // Store the redirect location if provided
     if (redirectLocation) {
@@ -135,10 +135,12 @@ export async function POST(request) {
         ? redirectLocation 
         : `https://svit-students.accredia.in:8084/${redirectLocation.replace(/^\//, '')}`;
         
-      cookieStore.set({
+      response.cookies.set({
          name: 'dashboard_url',
          value: fullRedirectUrl,
          httpOnly: true,
+         sameSite: 'lax',
+         secure: process.env.NODE_ENV === 'production',
          path: '/',
          maxAge: 60 * 60 * 24,
       });
@@ -150,10 +152,12 @@ export async function POST(request) {
       cookieParts.forEach(part => {
         const [name, ...rest] = part.split('=');
         if (name && rest.length > 0) {
-           cookieStore.set({
+           response.cookies.set({
              name: name.trim(),
              value: rest.join('=').trim(),
              httpOnly: true,
+             sameSite: 'lax',
+             secure: process.env.NODE_ENV === 'production',
              path: '/',
              maxAge: 60 * 60 * 24, // 1 day
            });
@@ -161,7 +165,8 @@ export async function POST(request) {
       });
     }
 
-    return NextResponse.json({ success: true, message: 'Logged in successfully' });
+    setSessionIdentity(response, { usn: username });
+    return response;
 
   } catch (error) {
     console.error('Login Proxy Error:', error.message);

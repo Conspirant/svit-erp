@@ -1,22 +1,12 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
 import { filterProfanity, containsProfanity, containsContactInfo } from '@/lib/profanityFilter';
 import { REWARD_MIN, REWARD_MAX, MAX_ACTIVE_POSTS, ADMIN_USNS } from '@/lib/marketplaceUtils';
+import { supabase } from '@/lib/supabase';
+import { getSessionUsn, hasErpSession } from '@/lib/authSession';
 
-const supabase = createClient(
-  'https://ogzskvecqoekztoarnao.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nenNrdmVjcW9la3p0b2FybmFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNDY5MTAsImV4cCI6MjA5MzcyMjkxMH0.EM4FrLrLQm4Q-oeADBlRcfWdLdb-V2zmKWzXuOa1D5Q'
-);
-
-function hasErpSession(cookieStore) {
-  return cookieStore.getAll().some(c => !['dashboard_url'].includes(c.name));
-}
-
-function getCallerUsn(request, cookieStore) {
-  // USN passed by client via header (trusted because ERP session cookie is validated)
-  const headerUsn = request.headers.get('x-caller-usn')?.toUpperCase();
-  return headerUsn || null;
+function getCallerUsn(cookieStore) {
+  return getSessionUsn(cookieStore);
 }
 
 function cleanProfileField(value) {
@@ -85,7 +75,7 @@ export async function GET(request) {
   const cookieStore = await cookies();
   if (!hasErpSession(cookieStore)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const callerUsn = getCallerUsn(request, cookieStore);
+  const callerUsn = getCallerUsn(cookieStore);
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
   const sort = searchParams.get('sort') || 'newest';
@@ -122,7 +112,7 @@ export async function POST(request) {
   const cookieStore = await cookies();
   if (!hasErpSession(cookieStore)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const callerUsn = getCallerUsn(request, cookieStore);
+  const callerUsn = getCallerUsn(cookieStore);
   if (!callerUsn) return NextResponse.json({ error: 'USN not found. Please visit your profile first.' }, { status: 400 });
 
   const body = await request.json();
