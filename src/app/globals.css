@@ -3187,11 +3187,11 @@ body {
   width: min(1180px, 100%);
   margin: 0 auto 12px;
   padding: 10px 10px 10px 14px;
-  background: rgba(8, 9, 12, 0.84);
-  border: 1px solid rgba(42, 44, 52, 0.86);
+  background: rgba(10, 11, 14, 0.98);
+  border: 1px solid rgba(42, 44, 52, 1);
   border-radius: 18px;
-  box-shadow: none;
-  backdrop-filter: blur(18px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateZ(0); /* Hardware Acceleration */
 }
 
 .mobile-title-block {
@@ -3258,6 +3258,15 @@ body {
   cursor: pointer;
 }
 
+.mobile-app-content {
+  flex: 1;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  will-change: transform;
+}
+
 .mobile-bottom-nav {
   position: fixed;
   left: 50%;
@@ -3269,12 +3278,11 @@ body {
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 4px;
   padding: 7px;
-  background: rgba(10, 11, 14, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 11, 14, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 22px;
-  box-shadow: 0 20px 60px rgba(16, 25, 35, 0.3);
-  backdrop-filter: blur(20px);
-  transform: translateX(-50%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  transform: translateX(-50%) translateZ(0); /* Hardware Acceleration */
 }
 
 .mobile-nav-item {
@@ -4141,13 +4149,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(18, 18, 18, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 24px;
   padding: 32px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  transform: translateZ(0); /* Force Hardware Acceleration */
 }
 
 .app-login-field {

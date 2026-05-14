@@ -23,7 +23,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 Set the deployed app URL before syncing Capacitor:
 
 ```bash
-set CAPACITOR_SERVER_URL=https://your-deployed-next-app.example.com
+set CAPACITOR_SERVER_URL=https://svit-erp.vercel.app
 npm run cap:sync
 npm run cap:android
 ```
