@@ -117,6 +117,7 @@ export default function IDCardPage() {
   const [idInput, setIdInput] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const [isSecured, setIsSecured] = useState(false);
 
   // Load persisted values on mount
   useEffect(() => {
@@ -126,6 +127,52 @@ export default function IDCardPage() {
       const ph = localStorage.getItem(LS_PHOTO);
       if (ph) setSavedPhoto(ph);
     } catch {}
+  }, []);
+
+  // Screenshot and Print protection listeners
+  useEffect(() => {
+    const handleBlur = () => setIsSecured(true);
+    const handleFocus = () => setIsSecured(false);
+    const handleVisibility = () => {
+      if (document.hidden) {
+        setIsSecured(true);
+      } else {
+        setIsSecured(false);
+      }
+    };
+
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    // Block save, print, and copy keyboard combinations
+    const handleKeyDown = (e) => {
+      // Block PrintScreen key
+      if (e.key === "PrintScreen") {
+        navigator.clipboard.writeText(""); // Clear clipboard immediately
+        setIsSecured(true);
+        e.preventDefault();
+      }
+      // Block Ctrl+P (Print), Ctrl+S (Save), and Ctrl+U (View Source)
+      if ((e.ctrlKey || e.metaKey) && (e.key === "p" || e.key === "s" || e.key === "u")) {
+        e.preventDefault();
+      }
+    };
+
+    const handleContextMenu = (e) => {
+      e.preventDefault();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("contextmenu", handleContextMenu);
+
+    return () => {
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("contextmenu", handleContextMenu);
+    };
   }, []);
 
   // Fetch profile + ERP photo
@@ -335,7 +382,7 @@ export default function IDCardPage() {
          ID CARD PREVIEW
          ══════════════════════════════════════ */}
       <div className="idcard-container">
-        <div className="idcard" ref={cardRef}>
+        <div className="idcard" ref={cardRef} style={{ filter: isSecured ? "blur(28px)" : "none", transition: "filter 0.15s ease", pointerEvents: isSecured ? "none" : "auto" }}>
           {/* Red vertical strip on left */}
           <div className="idcard-left-strip">
             <span className="idcard-college-name-vertical">
@@ -465,7 +512,7 @@ export default function IDCardPage() {
          ══════════════════════════════════════ */}
       {showFullscreen && typeof document !== "undefined" && createPortal(
         <div className="idcard-fullscreen-overlay" onClick={() => setShowFullscreen(false)}>
-          <div className="idcard-fullscreen-card" onClick={(e) => { e.stopPropagation(); setShowFullscreen(false); }}>
+          <div className="idcard-fullscreen-card" onClick={(e) => { e.stopPropagation(); setShowFullscreen(false); }} style={{ filter: isSecured ? "blur(28px)" : "none", transition: "filter 0.15s ease", pointerEvents: isSecured ? "none" : "auto" }}>
             {/* Red vertical strip */}
             <div className="idcard-left-strip">
               <span className="idcard-college-name-vertical">

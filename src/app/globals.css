@@ -4783,3 +4783,12 @@ body {
     border-radius: 8px 0 0 8px;
   }
 }
+
+/* ── Print & Save to PDF Protection ── */
+@media print {
+  body, html, .page-shell, #__next, .idcard-container, .idcard, .idcard-fullscreen-overlay {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+}
