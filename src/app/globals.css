@@ -4446,16 +4446,19 @@ body {
 
 /* ── Barcode (SVG, real Code 128) ── */
 .idcard-barcode-svg {
-  width: 83%;
+  width: 100%;
   height: 44px;
-  margin: 0 auto 6px; /* Match physical card: tight gap above name */
-  display: block;
+  margin: 4px auto 14px; /* Generous bottom margin for perfect quiet zone spacing */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: visible;
 }
 
 .idcard-barcode-svg svg {
   display: block;
-  margin: 0 auto !important;
-  max-width: 100%;
+  max-width: 90%;
+  height: auto;
 }
 
 /* ── Name ── */
@@ -4465,6 +4468,7 @@ body {
   color: #1a1a1a;
   text-align: center;
   letter-spacing: 0.05em;
+  margin-top: 8px; /* Safe gap to prevent barcode overlap */
   margin-bottom: 20px; /* Match physical card: gap above details */
   font-family: "Georgia", "Times New Roman", serif;
   text-transform: uppercase;
@@ -4712,12 +4716,16 @@ body {
 
   .idcard-fullscreen-card .idcard-barcode-svg {
     height: 50px;
-    width: 86%;
-    margin: 0 auto 8px;
+    width: 100%;
+    margin: 8px auto 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
   .idcard-fullscreen-card .idcard-name {
     font-size: 1.45rem;
+    margin-top: 10px;
     margin-bottom: 24px;
   }
 
