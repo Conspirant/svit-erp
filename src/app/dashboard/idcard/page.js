@@ -547,6 +547,28 @@ export default function IDCardPage() {
               <p style={{ marginTop: 6 }}>
                 For enhanced privacy, download the official app to enable <strong>hardware-level screenshot protection</strong>!
               </p>
+              <a
+                href="/svit-erp.apk"
+                download="svit-erp.apk"
+                className="idcard-promo-download-btn"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  marginTop: 10,
+                  padding: "8px 14px",
+                  background: "#21835c",
+                  color: "#ffffff",
+                  borderRadius: "10px",
+                  fontSize: "0.75rem",
+                  fontWeight: 900,
+                  textDecoration: "none",
+                  boxShadow: "0 4px 12px rgba(33, 131, 92, 0.2)",
+                  transition: "transform 150ms ease"
+                }}
+              >
+                📥 Download Official APK
+              </a>
             </div>
           </div>
         )}
