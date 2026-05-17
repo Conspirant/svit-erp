@@ -4884,8 +4884,8 @@ body {
   display: flex;
   gap: 12px;
   padding: 14px;
-  background: rgba(186, 100, 41, 0.06);
-  border: 1px solid rgba(186, 100, 41, 0.15);
+  background: rgba(33, 131, 92, 0.05);
+  border: 1px solid rgba(33, 131, 92, 0.15);
   border-radius: 16px;
   text-align: left;
 }
@@ -4897,8 +4897,8 @@ body {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(186, 100, 41, 0.1);
-  color: #ba6429;
+  background: rgba(33, 131, 92, 0.1);
+  color: #21835c;
   flex-shrink: 0;
 }
 
@@ -4909,7 +4909,7 @@ body {
 .idcard-promo-body h3 {
   font-size: 0.85rem;
   font-weight: 800;
-  color: #ba6429;
+  color: #21835c;
   margin: 0 0 4px;
 }
 

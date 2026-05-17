@@ -537,15 +537,15 @@ export default function IDCardPage() {
         ) : (
           <div className="idcard-apk-promo-banner">
             <div className="idcard-promo-icon-box">
-              <Lock size={18} />
+              <ShieldCheck size={18} />
             </div>
             <div className="idcard-promo-body">
-              <h3>🔒 ID Privacy Notice</h3>
+              <h3>🛡️ Secure & Private</h3>
               <p>
-                Screenshots and screen recording of this page are <strong>highly restricted</strong> in the official SVIT ERP app (.APK).
+                Your digital ID and photo are stored <strong>strictly locally</strong> on your device. We do not store or track your identity data on any server.
               </p>
               <p style={{ marginTop: 6 }}>
-                If you are concerned about your ID's privacy and use your ID card from here, we request you to kindly <strong>download the official app now</strong>.
+                For enhanced privacy, download the official app to enable <strong>hardware-level screenshot protection</strong>!
               </p>
             </div>
           </div>
