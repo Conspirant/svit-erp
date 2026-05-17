@@ -129,6 +129,27 @@ export default function IDCardPage() {
     } catch {}
   }, []);
 
+  // Notify Android WebView wrapper to enable/disable FLAG_SECURE specifically for this page
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && window.Android && typeof window.Android.setSecureScreen === "function") {
+        window.Android.setSecureScreen(true);
+      }
+    } catch (e) {
+      console.error("Failed to enable native secure screen:", e);
+    }
+
+    return () => {
+      try {
+        if (typeof window !== "undefined" && window.Android && typeof window.Android.setSecureScreen === "function") {
+          window.Android.setSecureScreen(false);
+        }
+      } catch (e) {
+        console.error("Failed to disable native secure screen:", e);
+      }
+    };
+  }, []);
+
   // Screenshot and Print protection listeners
   useEffect(() => {
     const handleBlur = () => setIsSecured(true);
