@@ -24,10 +24,23 @@
   box-sizing: border-box;
   padding: 0;
   margin: 0;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Disable native callouts on interactive nodes */
+a, button, img {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
 
 html {
   color-scheme: light;
+}
+
+/* APK WebView Scale down zoom adjustment */
+html.is-apk {
+  font-size: 92% !important;
 }
 
 body {

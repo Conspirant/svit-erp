@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Home, IdCard, Info, RefreshCw, Settings, Star, UserRound } from "lucide-react";
 import { apiFetch, clearClientSession } from "@/lib/clientApi";
 
@@ -34,6 +34,28 @@ export default function AppShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+ 
+  useEffect(() => {
+    // 1. Detect Android WebView (APK wrapper) to apply minor zoom out scaling
+    const ua = navigator.userAgent || "";
+    const isWebView = /wv|Android.*Version\/[0-9.]+/i.test(ua);
+    if (isWebView) {
+      document.documentElement.classList.add("is-apk");
+    }
+
+    // 2. Globally disable long-press context menu / link preview tooltips in mobile viewports
+    const handleContextMenu = (e) => {
+      // Allow context menu for actual text input fields but disable it on navigation/buttons
+      if (e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener("contextmenu", handleContextMenu, { passive: false });
+    return () => {
+      window.removeEventListener("contextmenu", handleContextMenu);
+    };
+  }, []);
 
   const meta = useMemo(() => {
     return PAGE_META.find((item) => pathname === item.match || pathname.startsWith(`${item.match}/`)) || PAGE_META[PAGE_META.length - 1];
