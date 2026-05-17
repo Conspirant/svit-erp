@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { IdCard, Camera, CheckCircle2, AlertTriangle, Maximize2, X } from "lucide-react";
+import { IdCard, Camera, CheckCircle2, AlertTriangle, Maximize2, X, ShieldCheck, Lock } from "lucide-react";
 import Barcode from "react-barcode";
 
 /* ────────────────────────────────────────────────
@@ -118,6 +118,7 @@ export default function IDCardPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [isSecured, setIsSecured] = useState(false);
+  const [isApk, setIsApk] = useState(false);
 
   // Load persisted values on mount
   useEffect(() => {
@@ -126,6 +127,11 @@ export default function IDCardPage() {
       if (id) setSavedStudentId(id);
       const ph = localStorage.getItem(LS_PHOTO);
       if (ph) setSavedPhoto(ph);
+
+      // Check if inside Android WebView container (APK wrapper)
+      const ua = navigator.userAgent || "";
+      const isWebView = /wv|Android.*Version\/[0-9.]+/i.test(ua);
+      setIsApk(isWebView);
     } catch {}
   }, []);
 
@@ -521,8 +527,33 @@ export default function IDCardPage() {
         </button>
       </div>
 
+      {/* ── APK Active Protection Badge OR Browser Warning & Download Banner ── */}
+      <div style={{ maxWidth: 360, margin: "16px auto 0", padding: "0 14px" }}>
+        {isApk ? (
+          <div className="idcard-secure-badge-apk">
+            <ShieldCheck size={16} style={{ flexShrink: 0 }} />
+            <span>Hardware Screenshot Protection Active</span>
+          </div>
+        ) : (
+          <div className="idcard-apk-promo-banner">
+            <div className="idcard-promo-icon-box">
+              <Lock size={18} />
+            </div>
+            <div className="idcard-promo-body">
+              <h3>🔒 ID Privacy Notice</h3>
+              <p>
+                Screenshots and screen recording of this page are <strong>highly restricted</strong> in the official SVIT ERP app (.APK).
+              </p>
+              <p style={{ marginTop: 6 }}>
+                If you are concerned about your ID's privacy and use your ID card from here, we request you to kindly <strong>download the official app now</strong>.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Info note */}
-      <div style={{ textAlign: "center", marginTop: 16, padding: "0 16px" }}>
+      <div style={{ textAlign: "center", marginTop: 12, padding: "0 16px" }}>
         <p style={{ fontSize: "0.78rem", color: "var(--muted)", lineHeight: 1.5 }}>
           Name, Department, and USN are auto-fetched from ERP. The barcode encodes your {savedStudentId ? "Student ID" : "USN"} in Code 128 format. We hope it's correct!
         </p>
