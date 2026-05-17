@@ -4342,3 +4342,418 @@ body {
     padding-right: 24px;
   }
 }
+
+/* ══════════════════════════════════════════════
+   ID CARD — Physical SVIT ID replica
+   ══════════════════════════════════════════════ */
+
+.idcard-container {
+  display: flex;
+  justify-content: center;
+  padding: 0 8px;
+}
+
+.idcard {
+  position: relative;
+  width: 320px;
+  min-height: 480px;
+  background: linear-gradient(180deg, #fefefe 0%, #f7f5f0 100%);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.10),
+    0 14px 44px rgba(0,0,0,0.14),
+    0 0 0 1px rgba(0,0,0,0.06);
+}
+
+/* ── Red vertical strip (left) ──
+   Physical card: bold italic serif, white on red,
+   text reads bottom → top                        */
+.idcard-left-strip {
+  width: 44px;
+  min-height: 100%;
+  background: linear-gradient(180deg, #d83030 0%, #c12020 50%, #b01a1a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.idcard-college-name-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  font-family: "Georgia", "Times New Roman", "Palatino Linotype", "Book Antiqua", serif;
+  line-height: 1;
+}
+
+/* ── Main card body ── */
+.idcard-body {
+  flex: 1;
+  padding: 16px 14px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Photo ── */
+.idcard-photo-frame {
+  width: 115px;
+  height: 145px;
+  background: linear-gradient(145deg, #2e63a6 0%, #1c3d6e 100%);
+  border: 2.5px solid #2a508e;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 8px;
+  margin-bottom: 20px; /* Match physical card: large gap below photo */
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.14),
+    inset 0 0 12px rgba(0,0,0,0.08);
+}
+
+.idcard-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.idcard-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* ── Barcode (SVG, real Code 128) ── */
+.idcard-barcode-svg {
+  width: 80%;
+  height: 38px;
+  margin: 0 auto 6px; /* Match physical card: tight gap above name */
+  display: block;
+}
+
+/* ── Name ── */
+.idcard-name {
+  font-size: 1.35rem; /* Larger normal text */
+  font-weight: 800;
+  color: #1a1a1a;
+  text-align: center;
+  letter-spacing: 0.05em;
+  margin-bottom: 20px; /* Match physical card: gap above details */
+  font-family: "Georgia", "Times New Roman", serif;
+  text-transform: uppercase;
+}
+
+/* ── Details wrapper (holds watermark behind) ── */
+.idcard-details-wrapper {
+  width: 100%;
+  position: relative;
+  margin-bottom: 6px;
+}
+
+/* Faded SVIT logo watermark — centered behind details */
+.idcard-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+  opacity: 0.1;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Detail rows ── */
+.idcard-details {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Match physical card: generous spacing between detail rows */
+  position: relative;
+  z-index: 1;
+}
+
+.idcard-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  line-height: 1.4;
+}
+
+.idcard-label {
+  font-size: 0.9rem; /* Larger normal text */
+  font-weight: 600;
+  color: #333;
+  min-width: 76px;
+  flex-shrink: 0;
+  font-family: "Inter", Arial, sans-serif;
+}
+
+.idcard-separator {
+  font-size: 0.9rem;
+  color: #333;
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.idcard-value {
+  font-size: 1rem;
+  color: #1a1a1a;
+  font-weight: 800;
+  font-family: "Inter", Arial, sans-serif;
+}
+
+.idcard-value-large {
+  font-size: 1.25rem; /* Larger normal text */
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+
+.idcard-value-bold {
+  font-size: 1.15rem; /* Larger normal text */
+  font-weight: 900;
+}
+
+/* ── Footer area (SVIT text + principal signature) ── */
+.idcard-footer {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 12px;
+  position: relative;
+}
+
+.idcard-seal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.idcard-svit-text {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #333;
+  opacity: 0.2;
+  letter-spacing: 0.08em;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-style: italic;
+}
+
+.idcard-principal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* Principal signature image (actual SVG from file) */
+.idcard-signature-img {
+  width: 110px;
+  height: 40px;
+  display: block;
+  object-fit: contain;
+}
+
+.idcard-principal span {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #444;
+  letter-spacing: 0.02em;
+}
+
+/* ── Right-side notch ── */
+.idcard-notch {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 52px;
+  background: var(--bg);
+  border-radius: 7px 0 0 7px;
+  box-shadow: inset 2px 0 6px rgba(0,0,0,0.1);
+}
+
+/* ── Responsive tweaks ── */
+@media (max-width: 360px) {
+  .idcard {
+    width: 295px;
+    min-height: 450px;
+  }
+  .idcard-left-strip {
+    width: 40px;
+  }
+  .idcard-college-name-vertical {
+    font-size: 0.88rem;
+  }
+  .idcard-photo-frame {
+    width: 104px;
+    height: 124px;
+  }
+  .idcard-name {
+    font-size: 1.15rem;
+  }
+  .idcard-barcode-svg {
+    height: 30px;
+  }
+  .idcard-watermark {
+    width: 110px;
+    height: 110px;
+  }
+}
+
+/* ══════════════════════════════════════════════
+   FULLSCREEN ID CARD MODAL
+   CR80 standard: 85.6mm × 54mm  (ratio ~1.585)
+   ══════════════════════════════════════════════ */
+
+.idcard-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647; /* Ensure it covers ALL navbars and headers */
+  background: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: idcardFadeIn 200ms ease;
+}
+
+@keyframes idcardFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* The fullscreen card uses the same .idcard classes
+   but scaled up to fill the viewport height
+   while keeping the CR80 aspect ratio (1 : 1.585) */
+.idcard-fullscreen-card {
+  position: relative;
+  /* Height fills most of the viewport; width derived from aspect ratio */
+  height: min(92vh, 800px);
+  width: calc(min(92vh, 800px) / 1.585);
+  max-width: 95vw;
+  background: linear-gradient(180deg, #fefefe 0%, #f7f5f0 100%);
+  border-radius: 18px;
+  overflow: hidden;
+  display: flex;
+  box-shadow:
+    0 4px 20px rgba(0,0,0,0.3),
+    0 20px 60px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(255,255,255,0.08);
+  animation: idcardScaleIn 250ms ease;
+}
+
+@keyframes idcardScaleIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* Scale up internals for the fullscreen card
+   We adjust these specifically so they don't look comically large */
+.idcard-fullscreen-card .idcard-left-strip {
+  width: 56px;
+}
+
+.idcard-fullscreen-card .idcard-college-name-vertical {
+  font-size: 1.15rem;
+}
+
+.idcard-fullscreen-card .idcard-body {
+  padding: 24px 20px 18px 18px;
+}
+
+.idcard-fullscreen-card .idcard-photo-frame {
+  width: 140px;
+  height: 180px;
+  margin-top: 12px;
+  margin-bottom: 24px;
+}
+
+.idcard-fullscreen-card .idcard-barcode-svg {
+  height: 44px;
+  width: 85%;
+  margin: 0 auto 8px;
+}
+
+.idcard-fullscreen-card .idcard-name {
+  font-size: 1.45rem; /* Reduced from previous too-large fullscreen size */
+  margin-bottom: 24px;
+}
+
+.idcard-fullscreen-card .idcard-details {
+  gap: 12px; /* Bigger spacing in fullscreen */
+}
+
+.idcard-fullscreen-card .idcard-label {
+  font-size: 1.05rem; /* Reduced */
+  min-width: 90px;
+}
+
+.idcard-fullscreen-card .idcard-separator {
+  font-size: 1.05rem;
+}
+
+.idcard-fullscreen-card .idcard-value {
+  font-size: 1.15rem; /* Reduced */
+}
+
+.idcard-fullscreen-card .idcard-value-large {
+  font-size: 1.45rem; /* Reduced */
+}
+
+.idcard-fullscreen-card .idcard-value-bold {
+  font-size: 1.35rem; /* Reduced */
+}
+
+.idcard-fullscreen-card .idcard-watermark {
+  width: 180px;
+  height: 180px;
+}
+
+.idcard-fullscreen-card .idcard-footer {
+  padding-top: 20px;
+}
+
+.idcard-fullscreen-card .idcard-signature-img {
+  width: 130px;
+  height: 48px;
+}
+
+.idcard-fullscreen-card .idcard-principal span {
+  font-size: 0.85rem;
+}
+
+.idcard-fullscreen-card .idcard-svit-text {
+  font-size: 1.4rem;
+}
+
+.idcard-fullscreen-card .idcard-notch {
+  width: 16px;
+  height: 60px;
+  border-radius: 8px 0 0 8px;
+}

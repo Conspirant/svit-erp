@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { CalendarDays, Home, Info, RefreshCw, Settings, Star, UserRound } from "lucide-react";
+import { CalendarDays, Home, IdCard, Info, RefreshCw, Settings, Star, UserRound } from "lucide-react";
 import { apiFetch, clearClientSession } from "@/lib/clientApi";
 
 const NAV_ITEMS = [
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/events", label: "Calendar", icon: CalendarDays },
   { href: "/dashboard/attendance", label: "Attendance", icon: UserRound },
   { href: "/dashboard/results", label: "Results", icon: Star },
+  { href: "/dashboard/idcard", label: "ID Card", icon: IdCard },
   { href: "/dashboard/info", label: "Info", icon: Info },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
@@ -20,6 +21,7 @@ const PAGE_META = [
   { match: "/dashboard/events", title: "Semester Calendar", eyebrow: "Academic events" },
   { match: "/dashboard/attendance", title: "Attendance", eyebrow: "Overall status" },
   { match: "/dashboard/results", title: "Results", eyebrow: "Provisional" },
+  { match: "/dashboard/idcard", title: "Student ID Card", eyebrow: "Digital identity" },
   { match: "/dashboard/info", title: "Student Info", eyebrow: "Verified profile" },
   { match: "/dashboard/bunk", title: "Attendance Planner", eyebrow: "Calculator" },
   { match: "/dashboard/marketplace", title: "Task Marketplace", eyebrow: "Campus work" },
