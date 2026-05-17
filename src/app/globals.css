@@ -4371,7 +4371,7 @@ body {
    Physical card: bold italic serif, white on red,
    text reads bottom → top                        */
 .idcard-left-strip {
-  width: 44px;
+  width: 48px;
   min-height: 100%;
   background: linear-gradient(180deg, #d83030 0%, #c12020 50%, #b01a1a 100%);
   display: flex;
@@ -4387,10 +4387,10 @@ body {
   text-orientation: mixed;
   transform: rotate(180deg);
   color: #fff;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 800;
   font-style: italic;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
   text-shadow: 0 1px 2px rgba(0,0,0,0.25);
@@ -4401,7 +4401,7 @@ body {
 /* ── Main card body ── */
 .idcard-body {
   flex: 1;
-  padding: 16px 14px 12px 12px;
+  padding: 16px 14px 12px 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4452,6 +4452,12 @@ body {
   display: block;
 }
 
+.idcard-barcode-svg svg {
+  display: block;
+  margin: 0 auto !important;
+  max-width: 100%;
+}
+
 /* ── Name ── */
 .idcard-name {
   font-size: 1.35rem; /* Larger normal text */
@@ -4493,6 +4499,7 @@ body {
   gap: 8px; /* Match physical card: generous spacing between detail rows */
   position: relative;
   z-index: 1;
+  padding-left: 12px;
 }
 
 .idcard-detail-row {
@@ -4685,11 +4692,11 @@ body {
 /* Scale up internals for fullscreen card ONLY on larger screens (tablets/desktops) */
 @media (min-width: 480px) {
   .idcard-fullscreen-card .idcard-left-strip {
-    width: 56px;
+    width: 60px;
   }
 
   .idcard-fullscreen-card .idcard-college-name-vertical {
-    font-size: 1.15rem;
+    font-size: 1.3rem;
   }
 
   .idcard-fullscreen-card .idcard-body {
@@ -4716,6 +4723,7 @@ body {
 
   .idcard-fullscreen-card .idcard-details {
     gap: 12px;
+    padding-left: 20px;
   }
 
   .idcard-fullscreen-card .idcard-label {

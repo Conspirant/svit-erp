@@ -366,7 +366,7 @@ export default function IDCardPage() {
                 background="transparent"
                 lineColor="#000"
                 height={44}
-                width={1.85}
+                width={2.0}
                 margin={0}
               />
             </div>
@@ -493,7 +493,7 @@ export default function IDCardPage() {
                   background="transparent"
                   lineColor="#000"
                   height={44}
-                  width={1.85}
+                  width={2.0}
                   margin={0}
                 />
               </div>
