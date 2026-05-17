@@ -22,6 +22,7 @@ const PAGE_META = [
   { match: "/dashboard/attendance", title: "Attendance", eyebrow: "Overall status" },
   { match: "/dashboard/results", title: "Results", eyebrow: "Provisional" },
   { match: "/dashboard/idcard", title: "Student ID Card", eyebrow: "Digital identity" },
+  { match: "/dashboard/exams", title: "Semester End Exams", eyebrow: "VTU Timetable" },
   { match: "/dashboard/info", title: "Student Info", eyebrow: "Verified profile" },
   { match: "/dashboard/bunk", title: "Attendance Planner", eyebrow: "Calculator" },
   { match: "/dashboard/marketplace", title: "Task Marketplace", eyebrow: "Campus work" },

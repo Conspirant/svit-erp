@@ -252,6 +252,10 @@ export default function Dashboard() {
           <span className="home-action-icon">🪪</span>
           <span className="home-action-label">ID Card</span>
         </Link>
+        <Link href="/dashboard/exams" className="home-action-tile">
+          <span className="home-action-icon">📋</span>
+          <span className="home-action-label">Exams</span>
+        </Link>
       </nav>
 
       <section className="grid" style={{ marginTop: 32 }}>
