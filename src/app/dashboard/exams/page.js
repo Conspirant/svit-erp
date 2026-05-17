@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/clientApi";
-import { Calendar, Clock, BookOpen, AlertCircle, Sparkles, Filter, List, ArrowLeft } from "lucide-react";
+import { Calendar, Clock, AlertCircle, Sparkles, Filter, List } from "lucide-react";
 
 // VTU June/July 2026 Timetable Database (Individual subjects parsed from image)
 const EXAM_DATABASE = [
@@ -102,7 +102,6 @@ export default function ExamsPage() {
   const router = useRouter();
   const [studentCourses, setStudentCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState("my"); // "my" or "all"
 
   // Fetch student courses on mount
@@ -134,9 +133,7 @@ export default function ExamsPage() {
           } catch {}
         }
       })
-      .catch((err) => {
-        if (alive) setError("Failed to sync your registered subjects.");
-      })
+      .catch(() => {})
       .finally(() => {
         if (alive) setLoading(false);
       });
@@ -152,7 +149,6 @@ export default function ExamsPage() {
     const normalizedExam = normalize(examCode);
     return studentCourses.some((registered) => {
       const normalizedReg = normalize(registered.course);
-      // Perfect match or one contains the other (e.g. 1BMATC201 vs 1BMATC201-A)
       return normalizedReg.includes(normalizedExam) || normalizedExam.includes(normalizedReg);
     });
   };
@@ -163,8 +159,6 @@ export default function ExamsPage() {
     if (viewMode === "my") {
       list = EXAM_DATABASE.filter((exam) => isRegistered(exam.code));
     }
-    
-    // Sort chronologically by date
     return [...list].sort((a, b) => new Date(a.date) - new Date(b.date));
   }, [viewMode, studentCourses]);
 
@@ -180,8 +174,8 @@ export default function ExamsPage() {
     
     if (diffDays === 0) return { label: "Today", type: "today" };
     if (diffDays === 1) return { label: "Tomorrow", type: "tomorrow" };
-    if (diffDays > 1) return { label: `In ${diffDays} days`, type: "upcoming" };
-    return { label: "Completed", type: "past" };
+    if (diffDays > 1) return { label: `In ${diffDays}d`, type: "upcoming" };
+    return { label: "Done", type: "past" };
   };
 
   // Next upcoming exam helper
@@ -211,212 +205,179 @@ export default function ExamsPage() {
   if (loading) return <div className="center-state"><div className="loader" /></div>;
 
   return (
-    <main className="page-shell fade-in native-screen" style={{ paddingBottom: "100px" }}>
-      {/* Visual Header */}
-      <section className="native-page-head" style={{ marginBottom: "16px" }}>
-        <div>
-          <h1>Exam Timetable</h1>
-          <p>Visvesvaraya Technological University (VTU) · June/July 2026</p>
-        </div>
-      </section>
-
-      {/* Countdown Card (Only if registered exams are found) */}
+    <main className="page-shell fade-in native-screen" style={{ paddingBottom: "80px", maxWidth: "600px", margin: "0 auto" }}>
+      
+      {/* Dynamic Minimal Next-Exam Highlight Ticker */}
       {nextExam && viewMode === "my" && (
-        <section 
-          className="panel" 
+        <div 
           style={{
-            background: "linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%)",
-            color: "white",
-            padding: "20px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            background: "rgba(35, 102, 84, 0.05)",
+            border: "1px solid rgba(35, 102, 84, 0.12)",
+            borderRadius: "12px",
+            padding: "10px 14px",
             marginBottom: "20px",
-            border: "none",
-            borderRadius: "16px",
-            boxShadow: "0 10px 25px rgba(35, 102, 84, 0.25)",
-            position: "relative",
-            overflow: "hidden"
+            fontSize: "0.82rem"
           }}
         >
-          {/* Faded background element */}
-          <div style={{ position: "absolute", right: "-20px", bottom: "-30px", fontSize: "10rem", opacity: 0.08, fontWeight: 900, pointerEvents: "none" }}>VTU</div>
-          
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--accent-soft)", fontWeight: 800, fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-            <Sparkles size={14} />
-            <span>Next Target</span>
-          </div>
-          
-          <h2 style={{ fontSize: "1.6rem", fontWeight: 900, marginTop: "8px", lineHeight: 1.2 }}>
-            {daysToNextExam === 0 ? "Your Exam is Today!" : daysToNextExam === 1 ? "Exam Tomorrow!" : `Next Exam in ${daysToNextExam} Days`}
-          </h2>
-          
-          <div style={{ marginTop: "14px", padding: "12px", background: "rgba(255,255,255,0.08)", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <strong style={{ fontSize: "0.95rem", display: "block" }}>{nextExam.title}</strong>
-            <span style={{ fontSize: "0.78rem", opacity: 0.8, display: "block", marginTop: "4px" }}>
-              Code: {nextExam.code} · {nextExam.day}, {new Date(nextExam.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-            </span>
-          </div>
-        </section>
+          <Sparkles size={14} color="var(--primary)" style={{ flexShrink: 0 }} />
+          <span style={{ color: "var(--primary-strong)", fontWeight: 700 }}>
+            {daysToNextExam === 0 ? "You have an exam today!" : daysToNextExam === 1 ? "Next exam is tomorrow" : `Next exam is in ${daysToNextExam} days`}:
+          </span>
+          <span style={{ opacity: 0.8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {nextExam.code}
+          </span>
+        </div>
       )}
 
-      {/* Toggle View Options */}
+      {/* Tabs / Filters - Very Minimal */}
       <div 
         style={{
           display: "flex",
-          background: "var(--surface-soft)",
-          padding: "4px",
-          borderRadius: "10px",
-          marginBottom: "20px",
-          border: "1px solid var(--line)"
+          borderBottom: "1px solid var(--line)",
+          marginBottom: "24px",
+          gap: "16px"
         }}
       >
         <button
           type="button"
           onClick={() => setViewMode("my")}
           style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            padding: "10px",
-            borderRadius: "8px",
+            padding: "10px 4px",
             fontSize: "0.85rem",
             fontWeight: 800,
             cursor: "pointer",
-            background: viewMode === "my" ? "var(--surface)" : "transparent",
+            background: "transparent",
             color: viewMode === "my" ? "var(--primary)" : "var(--muted)",
-            boxShadow: viewMode === "my" ? "0 4px 10px rgba(0,0,0,0.04)" : "none",
-            transition: "all 150ms ease"
+            borderBottom: viewMode === "my" ? "2px solid var(--primary)" : "2px solid transparent",
+            marginBottom: "-1px",
+            transition: "all 120ms ease"
           }}
         >
-          <Filter size={15} />
-          My Exams ({studentCourses.length})
+          My Schedule ({studentCourses.length})
         </button>
         <button
           type="button"
           onClick={() => setViewMode("all")}
           style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            padding: "10px",
-            borderRadius: "8px",
+            padding: "10px 4px",
             fontSize: "0.85rem",
             fontWeight: 800,
             cursor: "pointer",
-            background: viewMode === "all" ? "var(--surface)" : "transparent",
+            background: "transparent",
             color: viewMode === "all" ? "var(--primary)" : "var(--muted)",
-            boxShadow: viewMode === "all" ? "0 4px 10px rgba(0,0,0,0.04)" : "none",
-            transition: "all 150ms ease"
+            borderBottom: viewMode === "all" ? "2px solid var(--primary)" : "2px solid transparent",
+            marginBottom: "-1px",
+            transition: "all 120ms ease"
           }}
         >
-          <List size={15} />
-          All Exams ({EXAM_DATABASE.length})
+          Full Scheme ({EXAM_DATABASE.length})
         </button>
       </div>
 
-      {/* Exam List */}
-      <section className="native-list">
+      {/* Clean Timeline-Style Exam List */}
+      <section style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         {filteredExams.length > 0 ? (
           filteredExams.map((exam, idx) => {
             const countdown = getCountdown(exam.date);
             const registered = isRegistered(exam.code);
+            const parsedDate = new Date(exam.date);
             
-            // Styled tags for different countdown states
-            const getBadgeStyles = (type) => {
-              switch (type) {
-                case "today":
-                  return { bg: "var(--danger-soft)", color: "var(--danger)", border: "rgba(183, 51, 51, 0.15)" };
-                case "tomorrow":
-                  return { bg: "var(--warning-soft)", color: "var(--warning)", border: "rgba(167, 105, 19, 0.15)" };
-                case "upcoming":
-                  return { bg: "var(--success-soft)", color: "var(--success)", border: "rgba(33, 131, 92, 0.15)" };
-                default:
-                  return { bg: "var(--surface-strong)", color: "var(--muted)", border: "rgba(0,0,0,0.05)" };
-              }
-            };
-            const badge = getBadgeStyles(countdown.type);
+            const isToday = countdown.type === "today";
+            const isPast = countdown.type === "past";
 
             return (
               <article 
                 key={`${exam.code}-${idx}`} 
-                className="panel"
                 style={{
-                  padding: "16px",
-                  borderRadius: "14px",
-                  border: registered && viewMode === "all" ? "2px solid var(--primary)" : "1px solid var(--line)",
-                  position: "relative",
-                  transition: "transform 150ms ease",
-                  background: countdown.type === "today" ? "rgba(183, 51, 51, 0.02)" : "var(--surface)"
+                  display: "flex",
+                  gap: "16px",
+                  padding: "12px 14px",
+                  background: isToday ? "rgba(183, 51, 51, 0.03)" : "var(--surface)",
+                  borderRadius: "12px",
+                  border: isToday 
+                    ? "1px solid rgba(183, 51, 51, 0.2)" 
+                    : registered && viewMode === "all"
+                      ? "1px solid rgba(35, 102, 84, 0.3)" 
+                      : "1px solid var(--line)",
+                  opacity: isPast ? 0.6 : 1,
+                  transition: "opacity 150ms ease"
                 }}
               >
-                {/* Visual Accent for Registered Exams in All Mode */}
-                {registered && viewMode === "all" && (
-                  <span 
-                    style={{
-                      position: "absolute",
-                      top: "-10px",
-                      left: "14px",
-                      background: "var(--primary)",
-                      color: "white",
-                      fontSize: "0.68rem",
-                      fontWeight: 900,
-                      padding: "2px 8px",
-                      borderRadius: "6px",
-                      textTransform: "uppercase"
-                    }}
-                  >
-                    Your Subject
-                  </span>
-                )}
-
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
-                  <div>
-                    <span style={{ fontSize: "0.72rem", color: "var(--accent)", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                      Subject Code: {exam.code}
-                    </span>
-                    <h3 style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--ink)", marginTop: "4px", lineHeight: 1.35 }}>
-                      {exam.title}
-                    </h3>
-                  </div>
-                  
-                  {/* Countdown pill */}
-                  <span 
-                    style={{
-                      flexShrink: 0,
-                      fontSize: "0.72rem",
-                      fontWeight: 900,
-                      padding: "6px 10px",
-                      background: badge.bg,
-                      color: badge.color,
-                      borderRadius: "8px",
-                      border: `1px solid ${badge.border}`,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em"
-                    }}
-                  >
-                    {countdown.label}
-                  </span>
-                </div>
-
+                {/* Minimalist Date Plate */}
                 <div 
                   style={{
                     display: "flex",
-                    flexWrap: "wrap",
-                    gap: "14px",
-                    marginTop: "14px",
-                    paddingTop: "12px",
-                    borderTop: "1px dashed var(--line)"
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "48px",
+                    height: "48px",
+                    background: isToday ? "var(--danger-soft)" : registered ? "var(--surface-soft)" : "rgba(0,0,0,0.02)",
+                    borderRadius: "8px",
+                    flexShrink: 0
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", color: "var(--muted)" }}>
-                    <Calendar size={13} color="var(--primary)" />
-                    <span>{exam.day}, {new Date(exam.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                  <span style={{ fontSize: "0.7rem", fontWeight: 900, textTransform: "uppercase", opacity: 0.6, color: isToday ? "var(--danger)" : "var(--ink)" }}>
+                    {parsedDate.toLocaleDateString("en-IN", { month: "short" })}
+                  </span>
+                  <span style={{ fontSize: "1.1rem", fontWeight: 950, color: isToday ? "var(--danger)" : "var(--ink)", marginTop: "-2px" }}>
+                    {parsedDate.toLocaleDateString("en-IN", { day: "numeric" })}
+                  </span>
+                </div>
+
+                {/* Main Content */}
+                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                    <span 
+                      style={{ 
+                        fontSize: "0.68rem", 
+                        color: registered ? "var(--primary)" : "var(--muted)", 
+                        fontWeight: 900, 
+                        letterSpacing: "0.04em", 
+                        textTransform: "uppercase" 
+                      }}
+                    >
+                      {exam.code} {registered && viewMode === "all" && "• Registered"}
+                    </span>
+                    
+                    {/* Tiny Countdown Pill */}
+                    <span 
+                      style={{ 
+                        fontSize: "0.68rem", 
+                        fontWeight: 900,
+                        color: isToday 
+                          ? "var(--danger)" 
+                          : countdown.type === "tomorrow"
+                            ? "var(--warning)"
+                            : "var(--muted)",
+                        textTransform: "uppercase"
+                      }}
+                    >
+                      {countdown.label}
+                    </span>
                   </div>
                   
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", color: "var(--muted)" }}>
-                    <Clock size={13} color="var(--primary)" />
+                  <h3 
+                    style={{ 
+                      fontSize: "0.88rem", 
+                      fontWeight: 800, 
+                      color: "var(--ink)", 
+                      marginTop: "3px", 
+                      lineHeight: 1.3,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    }}
+                  >
+                    {exam.title}
+                  </h3>
+
+                  <div style={{ display: "flex", gap: "12px", marginTop: "6px", opacity: 0.65, fontSize: "0.72rem" }}>
+                    <span>{exam.day}</span>
+                    <span>•</span>
                     <span>{exam.time}</span>
                   </div>
                 </div>
@@ -424,13 +385,11 @@ export default function ExamsPage() {
             );
           })
         ) : (
-          <div style={{ textAlign: "center", padding: "40px 20px", background: "var(--surface)", borderRadius: "14px", border: "1px solid var(--line)" }}>
-            <AlertCircle size={32} color="var(--muted)" style={{ margin: "0 auto 12px" }} />
-            <strong style={{ display: "block", color: "var(--ink)" }}>No registered exams found.</strong>
-            <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "4px" }}>
-              {viewMode === "my" 
-                ? "Your subject codes do not match any exams in the VTU June/July 2026 scheme. Check the 'All Exams' list."
-                : "No exams map in this scheme."}
+          <div style={{ textAlign: "center", padding: "40px 20px", background: "var(--surface)", borderRadius: "12px", border: "1px solid var(--line)" }}>
+            <AlertCircle size={24} color="var(--muted)" style={{ margin: "0 auto 10px", opacity: 0.6 }} />
+            <strong style={{ display: "block", color: "var(--ink)", fontSize: "0.88rem" }}>No registered exams.</strong>
+            <p style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: "4px" }}>
+              Your course codes do not match any exams in this VTU scheme.
             </p>
           </div>
         )}
