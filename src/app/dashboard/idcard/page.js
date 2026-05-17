@@ -365,8 +365,8 @@ export default function IDCardPage() {
                 displayValue={false}
                 background="transparent"
                 lineColor="#000"
-                height={38}
-                width={1.6}
+                height={44}
+                width={1.85}
                 margin={0}
               />
             </div>
@@ -425,9 +425,6 @@ export default function IDCardPage() {
               </div>
             </div>
           </div>
-
-          {/* Right side notch */}
-          <div className="idcard-notch" />
         </div>
       </div>
 
@@ -495,8 +492,8 @@ export default function IDCardPage() {
                   displayValue={false}
                   background="transparent"
                   lineColor="#000"
-                  height={38}
-                  width={1.6}
+                  height={44}
+                  width={1.85}
                   margin={0}
                 />
               </div>
@@ -539,8 +536,6 @@ export default function IDCardPage() {
                 </div>
               </div>
             </div>
-
-            <div className="idcard-notch" />
           </div>
         </div>,
         document.body

@@ -4411,8 +4411,8 @@ body {
 
 /* ── Photo ── */
 .idcard-photo-frame {
-  width: 115px;
-  height: 145px;
+  width: 122px;
+  height: 154px;
   background: linear-gradient(145deg, #2e63a6 0%, #1c3d6e 100%);
   border: 2.5px solid #2a508e;
   border-radius: 3px;
@@ -4446,8 +4446,8 @@ body {
 
 /* ── Barcode (SVG, real Code 128) ── */
 .idcard-barcode-svg {
-  width: 80%;
-  height: 38px;
+  width: 83%;
+  height: 44px;
   margin: 0 auto 6px; /* Match physical card: tight gap above name */
   display: block;
 }
@@ -4697,15 +4697,15 @@ body {
   }
 
   .idcard-fullscreen-card .idcard-photo-frame {
-    width: 140px;
-    height: 180px;
+    width: 155px;
+    height: 198px;
     margin-top: 12px;
     margin-bottom: 24px;
   }
 
   .idcard-fullscreen-card .idcard-barcode-svg {
-    height: 44px;
-    width: 85%;
+    height: 50px;
+    width: 86%;
     margin: 0 auto 8px;
   }
 
