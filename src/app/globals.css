@@ -4355,8 +4355,8 @@ body {
 
 .idcard {
   position: relative;
-  width: 320px;
-  min-height: 480px;
+  width: min(100%, 320px);
+  aspect-ratio: 1 / 1.55;
   background: linear-gradient(180deg, #fefefe 0%, #f7f5f0 100%);
   border-radius: 12px;
   overflow: hidden;
@@ -4653,9 +4653,9 @@ body {
    while keeping the CR80 aspect ratio (1 : 1.585) */
 .idcard-fullscreen-card {
   position: relative;
-  /* Height fills most of the viewport; width derived from aspect ratio */
-  height: min(92vh, 800px);
-  width: calc(min(92vh, 800px) / 1.585);
+  width: min(88vw, calc(82vh / 1.58));
+  aspect-ratio: 1 / 1.58;
+  height: auto;
   max-width: 95vw;
   background: linear-gradient(180deg, #fefefe 0%, #f7f5f0 100%);
   border-radius: 18px;
@@ -4668,92 +4668,102 @@ body {
   animation: idcardScaleIn 250ms ease;
 }
 
+/* Ensure the notch blends perfectly into the black overlay backdrop on all screen sizes */
+.idcard-fullscreen-card .idcard-notch {
+  width: 16px;
+  height: 60px;
+  border-radius: 8px 0 0 8px;
+  background: #000000;
+  box-shadow: inset 2px 0 6px rgba(255,255,255,0.05);
+}
+
 @keyframes idcardScaleIn {
   from { transform: scale(0.85); opacity: 0; }
   to   { transform: scale(1); opacity: 1; }
 }
 
-/* Scale up internals for the fullscreen card
-   We adjust these specifically so they don't look comically large */
-.idcard-fullscreen-card .idcard-left-strip {
-  width: 56px;
-}
+/* Scale up internals for fullscreen card ONLY on larger screens (tablets/desktops) */
+@media (min-width: 480px) {
+  .idcard-fullscreen-card .idcard-left-strip {
+    width: 56px;
+  }
 
-.idcard-fullscreen-card .idcard-college-name-vertical {
-  font-size: 1.15rem;
-}
+  .idcard-fullscreen-card .idcard-college-name-vertical {
+    font-size: 1.15rem;
+  }
 
-.idcard-fullscreen-card .idcard-body {
-  padding: 24px 20px 18px 18px;
-}
+  .idcard-fullscreen-card .idcard-body {
+    padding: 24px 20px 18px 18px;
+  }
 
-.idcard-fullscreen-card .idcard-photo-frame {
-  width: 140px;
-  height: 180px;
-  margin-top: 12px;
-  margin-bottom: 24px;
-}
+  .idcard-fullscreen-card .idcard-photo-frame {
+    width: 140px;
+    height: 180px;
+    margin-top: 12px;
+    margin-bottom: 24px;
+  }
 
-.idcard-fullscreen-card .idcard-barcode-svg {
-  height: 44px;
-  width: 85%;
-  margin: 0 auto 8px;
-}
+  .idcard-fullscreen-card .idcard-barcode-svg {
+    height: 44px;
+    width: 85%;
+    margin: 0 auto 8px;
+  }
 
-.idcard-fullscreen-card .idcard-name {
-  font-size: 1.45rem; /* Reduced from previous too-large fullscreen size */
-  margin-bottom: 24px;
-}
+  .idcard-fullscreen-card .idcard-name {
+    font-size: 1.45rem;
+    margin-bottom: 24px;
+  }
 
-.idcard-fullscreen-card .idcard-details {
-  gap: 12px; /* Bigger spacing in fullscreen */
-}
+  .idcard-fullscreen-card .idcard-details {
+    gap: 12px;
+  }
 
-.idcard-fullscreen-card .idcard-label {
-  font-size: 1.05rem; /* Reduced */
-  min-width: 90px;
-}
+  .idcard-fullscreen-card .idcard-label {
+    font-size: 1.05rem;
+    min-width: 90px;
+  }
 
-.idcard-fullscreen-card .idcard-separator {
-  font-size: 1.05rem;
-}
+  .idcard-fullscreen-card .idcard-separator {
+    font-size: 1.05rem;
+  }
 
-.idcard-fullscreen-card .idcard-value {
-  font-size: 1.15rem; /* Reduced */
-}
+  .idcard-fullscreen-card .idcard-value {
+    font-size: 1.15rem;
+  }
 
-.idcard-fullscreen-card .idcard-value-large {
-  font-size: 1.45rem; /* Reduced */
-}
+  .idcard-fullscreen-card .idcard-value-large {
+    font-size: 1.45rem;
+  }
 
-.idcard-fullscreen-card .idcard-value-bold {
-  font-size: 1.35rem; /* Reduced */
-}
+  .idcard-fullscreen-card .idcard-value-bold {
+    font-size: 1.35rem;
+  }
 
-.idcard-fullscreen-card .idcard-watermark {
-  width: 180px;
-  height: 180px;
-}
+  .idcard-fullscreen-card .idcard-watermark {
+    width: 180px;
+    height: 180px;
+  }
 
-.idcard-fullscreen-card .idcard-footer {
-  padding-top: 20px;
-}
+  .idcard-fullscreen-card .idcard-footer {
+    padding-top: 20px;
+  }
 
-.idcard-fullscreen-card .idcard-signature-img {
-  width: 130px;
-  height: 48px;
-}
+  .idcard-fullscreen-card .idcard-signature-img {
+    width: 130px;
+    height: 48px;
+  }
 
-.idcard-fullscreen-card .idcard-principal span {
-  font-size: 0.85rem;
-}
+  .idcard-fullscreen-card .idcard-principal span {
+    font-size: 0.85rem;
+  }
 
-.idcard-fullscreen-card .idcard-svit-text {
-  font-size: 1.4rem;
-}
+  .idcard-fullscreen-card .idcard-svit-text {
+    font-size: 1.4rem;
+  }
 
-.idcard-fullscreen-card .idcard-notch {
-  width: 16px;
-  height: 60px;
-  border-radius: 8px 0 0 8px;
+  .idcard-fullscreen-card .idcard-notch {
+    width: 16px;
+    height: 60px;
+    border-radius: 8px 0 0 8px;
+  }
 }
