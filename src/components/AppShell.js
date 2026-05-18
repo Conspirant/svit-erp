@@ -34,7 +34,7 @@ export default function AppShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
- 
+
   useEffect(() => {
     // 1. Detect Android WebView (APK wrapper) to apply minor zoom out scaling
     const ua = navigator.userAgent || "";

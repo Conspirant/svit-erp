@@ -3614,6 +3614,87 @@ body {
   color: #fff;
 }
 
+/* ─── Detailed Results Marks Grid ─── */
+.result-marks-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.result-mark-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.result-mark-cell.highlight {
+  background: rgba(52, 209, 120, 0.08);
+  border-color: rgba(52, 209, 120, 0.25);
+}
+
+.result-mark-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.result-mark-value {
+  display: block;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.result-mark-value.empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.result-mark-cell.highlight .result-mark-value {
+  color: var(--success);
+}
+
+.result-attendance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.result-attendance-row strong {
+  font-size: 1.05rem;
+}
+
+.safe-text {
+  color: var(--success) !important;
+}
+
+.danger-text {
+  color: var(--danger) !important;
+}
+
+@media (max-width: 380px) {
+  .result-marks-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 .native-home>.overview-grid {
   margin-top: 18px;
 }

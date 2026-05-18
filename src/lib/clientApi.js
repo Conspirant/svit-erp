@@ -73,3 +73,106 @@ export function clearClientSession() {
     sessionStorage.removeItem("marketplace_dev_profile");
   } catch { }
 }
+
+export function getMergedAttendance(attendanceList, usn) {
+  if (!attendanceList || !usn) return attendanceList || [];
+  
+  try {
+    const raw = localStorage.getItem("self_logged_attendance");
+    if (!raw) return attendanceList;
+    const allSelfLogged = JSON.parse(raw);
+    const studentLogs = allSelfLogged[usn];
+    if (!studentLogs) return attendanceList;
+    
+    return attendanceList.map(item => {
+      const courseCode = item.course.toUpperCase();
+      const courseLogs = studentLogs[courseCode];
+      if (!courseLogs) return item;
+      
+      const newDates = [...(item.dates || [])];
+      let addedPresent = 0;
+      let addedAbsent = 0;
+      
+      Object.entries(courseLogs).forEach(([dateStr, log]) => {
+        const normDate = dateStr.replace(/\//g, '-');
+        const existsOfficially = newDates.some(
+          d => d.date === dateStr || d.date.replace(/\//g, '-') === normDate
+        );
+        
+        if (!existsOfficially) {
+          newDates.push({
+            date: dateStr,
+            time: log.time || "",
+            status: log.status,
+            isSelfLogged: true
+          });
+          
+          if (log.status === "Present") {
+            addedPresent++;
+          } else if (log.status === "Absent") {
+            addedAbsent++;
+          }
+        }
+      });
+      
+      if (addedPresent > 0 || addedAbsent > 0) {
+        const present = Number(item.present || 0) + addedPresent;
+        const absent = Number(item.absent || 0) + addedAbsent;
+        const total = Math.max(Number(item.total || 0), Number(item.present || 0) + Number(item.absent || 0)) + addedPresent + addedAbsent;
+        const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+        
+        newDates.sort((a, b) => {
+          const parseD = (d) => {
+            const p = d.split('-');
+            return p.length === 3 ? new Date(`${p[2]}-${p[1]}-${p[0]}`).getTime() : 0;
+          };
+          return parseD(a.date) - parseD(b.date);
+        });
+        
+        return {
+          ...item,
+          present,
+          absent,
+          total,
+          percentage,
+          dates: newDates
+        };
+      }
+      
+      return item;
+    });
+  } catch (e) {
+    console.error("Error merging attendance:", e);
+    return attendanceList;
+  }
+}
+
+export function saveSelfLoggedAttendance(usn, courseCode, dateStr, status, time) {
+  if (!usn || !courseCode || !dateStr) return;
+  try {
+    const raw = localStorage.getItem("self_logged_attendance");
+    const allSelfLogged = raw ? JSON.parse(raw) : {};
+    if (!allSelfLogged[usn]) {
+      allSelfLogged[usn] = {};
+    }
+    const cleanCourse = courseCode.toUpperCase();
+    if (!allSelfLogged[usn][cleanCourse]) {
+      allSelfLogged[usn][cleanCourse] = {};
+    }
+    
+    if (status === null) {
+      delete allSelfLogged[usn][cleanCourse][dateStr];
+      if (Object.keys(allSelfLogged[usn][cleanCourse]).length === 0) {
+        delete allSelfLogged[usn][cleanCourse];
+      }
+    } else {
+      allSelfLogged[usn][cleanCourse][dateStr] = { status, time: time || "" };
+    }
+    
+    localStorage.setItem("self_logged_attendance", JSON.stringify(allSelfLogged));
+    window.dispatchEvent(new Event("attendanceChanged"));
+  } catch (e) {
+    console.error("Error saving self logged attendance:", e);
+  }
+}
+

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/clientApi";
+import { apiFetch, getMergedAttendance, saveSelfLoggedAttendance } from "@/lib/clientApi";
 
 const SEMESTER_END_DATE = new Date("2026-06-15T23:59:59");
 
@@ -28,7 +28,7 @@ function getCanSkip(item, target, remainingCalculated) {
   return Math.max(remaining - needed, 0);
 }
 
-function AttendanceCard({ item, classesRemaining, target, index }) {
+function AttendanceCard({ item, classesRemaining, target, index, usn }) {
   const [isLogOpen, setIsLogOpen] = useState(false);
 
   let remainingCalculated = 0;
@@ -76,11 +76,30 @@ function AttendanceCard({ item, classesRemaining, target, index }) {
                 <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "var(--surface-soft)", borderRadius: "12px", border: "1px solid var(--line)" }}>
                   <div>
                     <strong style={{ fontSize: "0.9rem", color: "#fff", display: "block", marginBottom: "4px" }}>{dateObj.date}</strong>
-                    <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{dateObj.time}</span>
+                    <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
+                      {dateObj.time}
+                      {dateObj.isSelfLogged && (
+                        <span style={{ color: "var(--warning)", fontWeight: 800, marginLeft: "8px" }}>
+                          • Self Logged
+                        </span>
+                      )}
+                    </span>
                   </div>
-                  <span style={{ fontSize: "0.75rem", fontWeight: 900, color: dateObj.status === "Present" ? "var(--success)" : "var(--danger)", padding: "6px 10px", background: dateObj.status === "Present" ? "rgba(33, 131, 92, 0.12)" : "rgba(255, 59, 48, 0.12)", borderRadius: "8px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    {dateObj.status}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 900, color: dateObj.status === "Present" ? "var(--success)" : "var(--danger)", padding: "6px 10px", background: dateObj.status === "Present" ? "rgba(33, 131, 92, 0.12)" : "rgba(255, 59, 48, 0.12)", borderRadius: "8px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      {dateObj.status}
+                    </span>
+                    {dateObj.isSelfLogged && (
+                      <button
+                        type="button"
+                        onClick={() => saveSelfLoggedAttendance(usn, item.course, dateObj.date, null)}
+                        style={{ background: "transparent", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: "1.1rem", fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "4px", transition: "transform 150ms ease" }}
+                        title="Delete Self Log"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -98,6 +117,13 @@ export default function AttendancePage() {
   const [target, setTarget] = useState(75);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const handleUpdate = () => setRefreshKey(prev => prev + 1);
+    window.addEventListener("attendanceChanged", handleUpdate);
+    return () => window.removeEventListener("attendanceChanged", handleUpdate);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -168,7 +194,10 @@ export default function AttendancePage() {
     return counts;
   }, [timetable]);
 
-  const attendance = useMemo(() => data?.attendance || [], [data]);
+  const attendance = useMemo(() => {
+    if (!data) return [];
+    return getMergedAttendance(data.attendance, data.usn);
+  }, [data, refreshKey]);
   const overall = useMemo(() => {
     if (!attendance.length) return 0;
     return Math.round(attendance.reduce((sum, item) => sum + toNumber(item.percentage), 0) / attendance.length);
@@ -213,6 +242,7 @@ export default function AttendancePage() {
             classesRemaining={classesRemaining}
             target={target}
             index={index}
+            usn={data?.usn}
           />
         )) : <p className="subtle">No attendance data found.</p>}
       </section>

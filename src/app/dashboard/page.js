@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getMergedAttendance, saveSelfLoggedAttendance } from "@/lib/clientApi";
 
 const toNumber = (value, fallback = 0) => {
   const number = Number(value);
@@ -17,7 +18,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [dismissExam, setDismissExam] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const router = useRouter();
+
+  useEffect(() => {
+    const handleUpdate = () => setRefreshKey(prev => prev + 1);
+    window.addEventListener("attendanceChanged", handleUpdate);
+    return () => window.removeEventListener("attendanceChanged", handleUpdate);
+  }, []);
 
   useEffect(() => {
     // Show cached data instantly if available
@@ -65,7 +73,10 @@ export default function Dashboard() {
     fetchAll();
   }, [router]);
 
-  const attendance = useMemo(() => data?.attendance || [], [data]);
+  const attendance = useMemo(() => {
+    if (!data) return [];
+    return getMergedAttendance(data.attendance, data.usn);
+  }, [data, refreshKey]);
   const cie = useMemo(() => data?.cie || [], [data]);
 
   const summary = useMemo(() => {
@@ -125,10 +136,27 @@ export default function Dashboard() {
 
       return { ...cls, attendance: courseMatch, status, diffEnd, diffStart };
     });
-
-    const upcoming = mapped.filter(cls => cls.diffEnd > 0).sort((a, b) => a.diffStart - b.diffStart);
-    return upcoming.slice(0, 3);
   }, [timetable, attendance]);
+
+  const todayDateStr = useMemo(() => {
+    if (!timetable) return "";
+    const now = new Date();
+    const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const todayName = dayNames[now.getDay()];
+    const dayData = timetable.find(d => d.day.toUpperCase() === todayName);
+    if (dayData?.date) {
+      return dayData.date.replace(/\//g, '-');
+    }
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    return `${day}-${month}-${year}`;
+  }, [timetable]);
+
+  const handleSaveAttendance = (courseCode, status, time) => {
+    if (!data?.usn) return;
+    saveSelfLoggedAttendance(data.usn, courseCode, todayDateStr, status, time);
+  };
 
   if (loading) return <div className="center-state"><div className="loader" /></div>;
   if (error) return <div className="center-state"><div className="auth-card" style={{ textAlign: "center" }}><h1 className="title">Oops</h1><p>{error}</p><button onClick={() => router.push("/")} className="button">Retry</button></div></div>;
@@ -191,26 +219,90 @@ export default function Dashboard() {
 
       {todaySchedule && todaySchedule.length > 0 ? (
         <section className="home-schedule-list">
-          {todaySchedule.map((cls, i) => (
-            <article className="home-schedule-card" key={i}>
-              <div className="home-schedule-time">
-                {cls.time.split(" to ")[0]}
-                {cls.status === "NOW" && <span className="home-now-badge">NOW</span>}
-                {cls.status === "NEXT" && <span className="home-next-badge">NEXT</span>}
-              </div>
-              <div className="home-schedule-info">
-                <h3>{cls.course}</h3>
-                <p>{cls.room} · {cls.faculty}</p>
-              </div>
-              <div className="home-schedule-meta">
-                {cls.attendance && (
-                  <span className={`home-schedule-pct ${toNumber(cls.attendance.percentage) < 80 ? 'risk' : ''}`}>
-                    {cls.attendance.percentage}%
-                  </span>
-                )}
-              </div>
-            </article>
-          ))}
+          {todaySchedule.map((cls, i) => {
+            const courseCode = (cls.attendance?.course || cls.course).toUpperCase();
+            const officialEntry = cls.attendance?.dates?.find(
+              d => !d.isSelfLogged && (d.date === todayDateStr || d.date.replace(/\//g, '-') === todayDateStr)
+            );
+            const selfEntry = cls.attendance?.dates?.find(
+              d => d.isSelfLogged && (d.date === todayDateStr || d.date.replace(/\//g, '-') === todayDateStr)
+            );
+
+            return (
+              <article 
+                className="home-schedule-card" 
+                key={i} 
+                style={{ display: "grid", gridTemplateColumns: "80px minmax(0, 1fr) auto", rowGap: "12px", alignItems: "center" }}
+              >
+                <div className="home-schedule-time">
+                  {cls.time.split(" to ")[0]}
+                  {cls.status === "NOW" && <span className="home-now-badge">NOW</span>}
+                  {cls.status === "NEXT" && <span className="home-next-badge">NEXT</span>}
+                </div>
+                <div className="home-schedule-info">
+                  <h3>{cls.course}</h3>
+                  <p>{cls.room} · {cls.faculty}</p>
+                </div>
+                <div className="home-schedule-meta">
+                  {cls.attendance && (
+                    <span className={`home-schedule-pct ${toNumber(cls.attendance.percentage) < 80 ? 'risk' : ''}`}>
+                      {cls.attendance.percentage}%
+                    </span>
+                  )}
+                </div>
+
+                {/* Attendance Interactive Logging Widget */}
+                <div style={{ gridColumn: "1 / -1", borderTop: "1px solid var(--line)", paddingTop: "12px", marginTop: "4px" }}>
+                  {officialEntry ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: officialEntry.status === "Present" ? "var(--success)" : "var(--danger)" }} />
+                      <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 700 }}>
+                        Official Attendance: <strong style={{ color: officialEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{officialEntry.status === "Present" ? "Attended" : "Bunked"}</strong>
+                      </span>
+                    </div>
+                  ) : selfEntry ? (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: selfEntry.status === "Present" ? "var(--success)" : "var(--danger)" }} />
+                        <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 700 }}>
+                          You marked this as <strong style={{ color: selfEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{selfEntry.status === "Present" ? "Attended" : "Bunked"}</strong>
+                        </span>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => handleSaveAttendance(courseCode, null)}
+                        style={{ background: "rgba(255,255,255,0.06)", border: "none", color: "var(--muted)", padding: "4px 10px", borderRadius: "8px", fontSize: "0.72rem", fontWeight: 800, cursor: "pointer", transition: "all 150ms ease" }}
+                      >
+                        Undo
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
+                      <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 900, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                        Did you attend this class?
+                      </span>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button 
+                          type="button"
+                          onClick={() => handleSaveAttendance(courseCode, "Present", cls.time)}
+                          style={{ flex: 1, padding: "8px 14px", background: "rgba(52, 209, 120, 0.12)", border: "1px solid rgba(52, 209, 120, 0.2)", borderRadius: "10px", color: "var(--success)", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer", transition: "all 150ms ease" }}
+                        >
+                          Yes, Attended
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => handleSaveAttendance(courseCode, "Absent", cls.time)}
+                          style={{ flex: 1, padding: "8px 14px", background: "rgba(255, 91, 104, 0.12)", border: "1px solid rgba(255, 91, 104, 0.2)", borderRadius: "10px", color: "var(--danger)", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer", transition: "all 150ms ease" }}
+                        >
+                          No, Bunked
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </section>
       ) : (
         <div className="home-empty-day">
