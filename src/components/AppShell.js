@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Home, IdCard, Info, RefreshCw, Settings, Star, UserRound } from "lucide-react";
+import { CalendarDays, Home, IdCard, Info, RefreshCw, Settings, Star, UserRound, Map } from "lucide-react";
 import { apiFetch, clearClientSession } from "@/lib/clientApi";
 
 const NAV_ITEMS = [
@@ -27,6 +27,8 @@ const PAGE_META = [
   { match: "/dashboard/bunk", title: "Attendance Planner", eyebrow: "Calculator" },
   { match: "/dashboard/marketplace", title: "Task Marketplace", eyebrow: "Campus work" },
   { match: "/dashboard/connect", title: "Campus Connect", eyebrow: "Student chat" },
+  { match: "/dashboard/canteen", title: "SVIT Canteen", eyebrow: "Secure Pick-Up Queue" },
+  { match: "/dashboard/map", title: "Campus Map", eyebrow: "Room Finder" },
   { match: "/dashboard", title: "Command Center", eyebrow: "SVIT ERP" },
 ];
 

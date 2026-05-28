@@ -348,6 +348,14 @@ export default function Dashboard() {
           <span className="home-action-icon">📋</span>
           <span className="home-action-label">Exams</span>
         </Link>
+        <Link href="/dashboard/canteen" className="home-action-tile">
+          <span className="home-action-icon">🍔</span>
+          <span className="home-action-label">Canteen</span>
+        </Link>
+        <Link href="/dashboard/map" className="home-action-tile">
+          <span className="home-action-icon">🗺️</span>
+          <span className="home-action-label">Campus Map</span>
+        </Link>
       </nav>
 
       <section className="grid" style={{ marginTop: 32 }}>

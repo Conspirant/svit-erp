@@ -460,6 +460,110 @@ export async function GET() {
             console.error('CIE table scraping error:', e.message);
         }
 
+        // Deduplicate & merge duplicate attendance and CIE entries (Teacher mishap preventer)
+        if (stats.attendance && stats.attendance.length > 0) {
+            const finalAttendance = [];
+            const attMap = new Map();
+
+            stats.attendance.forEach(item => {
+                const key = item.course.toUpperCase();
+                if (!attMap.has(key)) {
+                    attMap.set(key, []);
+                }
+                attMap.get(key).push(item);
+            });
+
+            for (const [courseKey, list] of attMap.entries()) {
+                const allDates = [];
+                let maxStillToGo = 0;
+                let courseName = '';
+                
+                list.forEach(item => {
+                    if (item.dates) {
+                        allDates.push(...item.dates);
+                    }
+                    if (item.stillToGo > maxStillToGo) {
+                        maxStillToGo = item.stillToGo;
+                    }
+                    if (item.courseName && !courseName) {
+                        courseName = item.courseName;
+                    }
+                });
+
+                // Deduplicate dates by date + time
+                const seenDates = new Set();
+                const uniqueDates = [];
+                allDates.forEach(d => {
+                    const key = `${d.date}_${d.time}`;
+                    if (!seenDates.has(key)) {
+                        seenDates.add(key);
+                        uniqueDates.push(d);
+                    }
+                });
+
+                // Sort dates chronologically
+                uniqueDates.sort((a, b) => {
+                    const parseD = (d) => {
+                        const p = d.split('-');
+                        return p.length === 3 ? new Date(`${p[2]}-${p[1]}-${p[0]}`).getTime() : 0;
+                    };
+                    return parseD(a.date) - parseD(b.date);
+                });
+
+                const present = uniqueDates.filter(d => d.status === 'Present').length;
+                const absent = uniqueDates.filter(d => d.status === 'Absent').length;
+                const total = present + absent;
+
+                const maxGaugePct = list.reduce((max, curr) => Math.max(max, curr.percentage || 0), 0);
+                const pct = total > 0 ? Math.round((present / total) * 100) : maxGaugePct;
+
+                finalAttendance.push({
+                    course: courseKey,
+                    courseName: courseName || list[0].courseName || courseNames.get(courseKey) || courseKey,
+                    percentage: pct,
+                    present,
+                    absent,
+                    total,
+                    stillToGo: maxStillToGo,
+                    dates: uniqueDates
+                });
+            }
+            stats.attendance = finalAttendance;
+        }
+
+        if (stats.cie && stats.cie.length > 0) {
+            const finalCie = [];
+            const cieMap = new Map();
+
+            stats.cie.forEach(item => {
+                const key = item.course.toUpperCase();
+                if (!cieMap.has(key)) {
+                    cieMap.set(key, []);
+                }
+                cieMap.get(key).push(item);
+            });
+
+            for (const [courseKey, list] of cieMap.entries()) {
+                let bestEntry = list[0];
+                for (const item of list) {
+                    if (item.breakdown && hasBreakdownMarks(item.breakdown)) {
+                        bestEntry = item;
+                        break;
+                    }
+                    if (item.marks > (bestEntry.marks || 0)) {
+                        bestEntry = item;
+                    }
+                }
+                
+                finalCie.push({
+                    ...bestEntry,
+                    course: courseKey,
+                    courseName: bestEntry.courseName || courseNames.get(courseKey) || courseKey
+                });
+            }
+            stats.cie = finalCie;
+        }
+
         // Try to get profile name
         stats.profileName = $('.cn-user-name, .profile-name').first().text().trim() || 'Student';
         // Fallback if the name is in a specific div (often inside a user profile block)
