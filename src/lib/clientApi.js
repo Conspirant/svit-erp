@@ -176,3 +176,39 @@ export function saveSelfLoggedAttendance(usn, courseCode, dateStr, status, time)
   }
 }
 
+export function filterElectives(list, keyGetter = (item) => item.course) {
+  if (!list) return [];
+  if (typeof window === "undefined") return list;
+  try {
+    const raw = localStorage.getItem("selected_electives");
+    if (!raw) return list;
+    const electives = JSON.parse(raw);
+    
+    return list.filter(item => {
+      const itemKey = keyGetter(item);
+      if (!itemKey) return true;
+      const code = itemKey.toUpperCase();
+      const name = (item.courseName || item.course || "").toUpperCase();
+
+      // Kannada filter
+      const isSamskrutika = code.startsWith("1BKSK") || name.includes("SAMSKRUTIKA");
+      const isBalake = code.startsWith("1BKBK") || name.includes("BALAKE");
+      
+      if (isSamskrutika && electives.kannada && electives.kannada !== 'samskrutika') return false;
+      if (isBalake && electives.kannada && electives.kannada !== 'balake') return false;
+
+      // ESC filter (Electricals vs Building Science / Mechanics)
+      const isElectrical = (code.startsWith("1BESCK") && code.endsWith("B")) || name.includes("ELECTRICAL");
+      const isBuilding = (code.startsWith("1BESCK") && code.endsWith("D")) || name.includes("BUILDING") || name.includes("MECHANIC");
+
+      if (isElectrical && electives.esc && electives.esc !== 'electricals') return false;
+      if (isBuilding && electives.esc && electives.esc !== 'building') return false;
+
+      return true;
+    });
+  } catch (e) {
+    console.error("Error filtering electives:", e);
+    return list;
+  }
+}
+

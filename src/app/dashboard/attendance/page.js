@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch, getMergedAttendance, saveSelfLoggedAttendance } from "@/lib/clientApi";
+import { apiFetch, getMergedAttendance, saveSelfLoggedAttendance, filterElectives } from "@/lib/clientApi";
 
 const SEMESTER_END_DATE = new Date("2026-06-15T23:59:59");
 
@@ -184,7 +184,8 @@ export default function AttendancePage() {
       const dayName = day.day.toUpperCase();
       const occurrences = dayCounts[dayName] || 0;
       if (occurrences > 0 && day.classes) {
-        day.classes.forEach(cls => {
+        const filteredClasses = filterElectives(day.classes, (cls) => cls.course);
+        filteredClasses.forEach(cls => {
           const cName = cls.course.toUpperCase();
           counts[cName] = (counts[cName] || 0) + occurrences;
         });
@@ -192,11 +193,11 @@ export default function AttendancePage() {
     });
     
     return counts;
-  }, [timetable]);
+  }, [timetable, refreshKey]);
 
   const attendance = useMemo(() => {
     if (!data) return [];
-    return getMergedAttendance(data.attendance, data.usn);
+    return filterElectives(getMergedAttendance(data.attendance, data.usn));
   }, [data, refreshKey]);
   const overall = useMemo(() => {
     if (!attendance.length) return 0;

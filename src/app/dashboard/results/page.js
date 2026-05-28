@@ -9,7 +9,7 @@ import {
   AlertTriangle, 
   Sliders 
 } from "lucide-react";
-import { apiFetch } from "@/lib/clientApi";
+import { apiFetch, filterElectives } from "@/lib/clientApi";
 
 const toNumber = (value, fallback = 0) => {
   const number = Number(value);
@@ -217,6 +217,14 @@ export default function ResultsPage() {
   const [targetSgpa, setTargetSgpa] = useState("");
   const [solverResult, setSolverResult] = useState(null);
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const handleUpdate = () => setRefreshKey(prev => prev + 1);
+    window.addEventListener("attendanceChanged", handleUpdate);
+    return () => window.removeEventListener("attendanceChanged", handleUpdate);
+  }, []);
+
   useEffect(() => {
     let alive = true;
     queueMicrotask(() => {
@@ -242,7 +250,7 @@ export default function ResultsPage() {
     return () => { alive = false; };
   }, []);
 
-  const cie = useMemo(() => data?.cie || [], [data]);
+  const cie = useMemo(() => filterElectives(data?.cie || []), [data, refreshKey]);
 
   useEffect(() => {
     if (cie.length > 0) {

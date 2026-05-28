@@ -1,17 +1,17 @@
 "use client";
-
+ 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getMergedAttendance, saveSelfLoggedAttendance } from "@/lib/clientApi";
-
+import { getMergedAttendance, saveSelfLoggedAttendance, filterElectives } from "@/lib/clientApi";
+ 
 const toNumber = (value, fallback = 0) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 };
-
+ 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-
+ 
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [timetable, setTimetable] = useState(null);
@@ -19,13 +19,28 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [dismissExam, setDismissExam] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [electives, setElectives] = useState(null);
+  const [showElectivePrompt, setShowElectivePrompt] = useState(false);
+  const [tempKannada, setTempKannada] = useState("samskrutika");
+  const [tempEsc, setTempEsc] = useState("electricals");
   const router = useRouter();
-
+ 
   useEffect(() => {
     const handleUpdate = () => setRefreshKey(prev => prev + 1);
     window.addEventListener("attendanceChanged", handleUpdate);
     return () => window.removeEventListener("attendanceChanged", handleUpdate);
   }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("selected_electives");
+      if (raw) {
+        setElectives(JSON.parse(raw));
+      } else {
+        setShowElectivePrompt(true);
+      }
+    } catch (e) {}
+  }, [refreshKey]);
 
   useEffect(() => {
     // Show cached data instantly if available
@@ -75,9 +90,14 @@ export default function Dashboard() {
 
   const attendance = useMemo(() => {
     if (!data) return [];
-    return getMergedAttendance(data.attendance, data.usn);
-  }, [data, refreshKey]);
-  const cie = useMemo(() => data?.cie || [], [data]);
+    const merged = getMergedAttendance(data.attendance, data.usn);
+    return filterElectives(merged);
+  }, [data, refreshKey, electives]);
+
+  const cie = useMemo(() => {
+    if (!data?.cie) return [];
+    return filterElectives(data.cie);
+  }, [data, electives]);
 
   const summary = useMemo(() => {
     const avgAtt = attendance.length > 0
@@ -102,7 +122,8 @@ export default function Dashboard() {
     const dayData = timetable.find(d => d.day.toUpperCase() === todayName);
     if (!dayData) return [];
 
-    return dayData.classes.map(cls => {
+    const filteredClasses = filterElectives(dayData.classes, (cls) => cls.course);
+    return filteredClasses.map(cls => {
       // Find matching attendance
       const courseMatch = attendance.find(a =>
         cls.course.toUpperCase().includes(a.course.toUpperCase()) ||
@@ -136,7 +157,7 @@ export default function Dashboard() {
 
       return { ...cls, attendance: courseMatch, status, diffEnd, diffStart };
     });
-  }, [timetable, attendance]);
+  }, [timetable, attendance, electives]);
 
   const todayDateStr = useMemo(() => {
     if (!timetable) return "";
@@ -156,6 +177,15 @@ export default function Dashboard() {
   const handleSaveAttendance = (courseCode, status, time) => {
     if (!data?.usn) return;
     saveSelfLoggedAttendance(data.usn, courseCode, todayDateStr, status, time);
+  };
+  const handleSaveElectives = (kannada, esc) => {
+    const obj = { kannada, esc };
+    try {
+      localStorage.setItem("selected_electives", JSON.stringify(obj));
+      setElectives(obj);
+      setShowElectivePrompt(false);
+      window.dispatchEvent(new Event("attendanceChanged"));
+    } catch (e) {}
   };
 
   if (loading) return <div className="center-state"><div className="loader" /></div>;
@@ -195,8 +225,142 @@ export default function Dashboard() {
         </div>
       </section>
 
+      {/* Elective Subjects Selector Card */}
+      {showElectivePrompt && (
+        <section className="panel fade-in" style={{ margin: "16px 12px 0", border: "1px solid var(--primary)", background: "rgba(35, 102, 84, 0.03)", boxShadow: "0 4px 20px rgba(35, 102, 84, 0.05)", borderRadius: "14px" }}>
+          <h2 style={{ fontSize: "0.95rem", fontWeight: 850, color: "var(--ink)", marginBottom: "4px" }}>🎒 Configure Your Electives</h2>
+          <p style={{ fontSize: "0.76rem", color: "var(--muted)", marginBottom: "12px", lineHeight: "1.4" }}>
+            Select your elective subjects to clean up your timetable, attendance, and results.
+          </p>
+
+          <div style={{ display: "grid", gap: "10px", marginBottom: "16px" }}>
+            {/* Kannada Selection */}
+            <div style={{ display: "grid", gap: "4px" }}>
+              <label style={{ fontSize: "0.74rem", fontWeight: 750, color: "var(--ink)" }}>Kannada Course</label>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  type="button"
+                  onClick={() => setTempKannada("samskrutika")}
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    borderRadius: "8px",
+                    fontSize: "0.75rem",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    background: tempKannada === "samskrutika" ? "var(--primary)" : "var(--surface-soft)",
+                    color: tempKannada === "samskrutika" ? "#fff" : "var(--muted)",
+                    border: tempKannada === "samskrutika" ? "1px solid var(--primary)" : "1px solid var(--line)",
+                    transition: "all 150ms ease"
+                  }}
+                >
+                  Samskrutika
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTempKannada("balake")}
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    borderRadius: "8px",
+                    fontSize: "0.75rem",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    background: tempKannada === "balake" ? "var(--primary)" : "var(--surface-soft)",
+                    color: tempKannada === "balake" ? "#fff" : "var(--muted)",
+                    border: tempKannada === "balake" ? "1px solid var(--primary)" : "1px solid var(--line)",
+                    transition: "all 150ms ease"
+                  }}
+                >
+                  Balake
+                </button>
+              </div>
+            </div>
+
+            {/* ESC Selection */}
+            <div style={{ display: "grid", gap: "4px", marginTop: "4px" }}>
+              <label style={{ fontSize: "0.74rem", fontWeight: 750, color: "var(--ink)" }}>Engineering Elective</label>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  type="button"
+                  onClick={() => setTempEsc("electricals")}
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    borderRadius: "8px",
+                    fontSize: "0.75rem",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    background: tempEsc === "electricals" ? "var(--accent)" : "var(--surface-soft)",
+                    color: tempEsc === "electricals" ? "#fff" : "var(--muted)",
+                    border: tempEsc === "electricals" ? "1px solid var(--accent)" : "1px solid var(--line)",
+                    transition: "all 150ms ease"
+                  }}
+                >
+                  Electricals
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTempEsc("building")}
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    borderRadius: "8px",
+                    fontSize: "0.75rem",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    background: tempEsc === "building" ? "var(--accent)" : "var(--surface-soft)",
+                    color: tempEsc === "building" ? "#fff" : "var(--muted)",
+                    border: tempEsc === "building" ? "1px solid var(--accent)" : "1px solid var(--line)",
+                    transition: "all 150ms ease"
+                  }}
+                >
+                  Building Sci.
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleSaveElectives(tempKannada, tempEsc)}
+            style={{
+              width: "100%",
+              padding: "10px",
+              background: "var(--primary)",
+              color: "#fff",
+              borderRadius: "10px",
+              fontSize: "0.8rem",
+              fontWeight: 850,
+              cursor: "pointer",
+              border: "none",
+              boxShadow: "0 4px 10px rgba(35, 102, 84, 0.2)",
+              transition: "all 150ms ease"
+            }}
+          >
+            Confirm Electives
+          </button>
+        </section>
+      )}
+
+      {/* Quick Edit Electives Badge (if already configured) */}
+      {!showElectivePrompt && electives && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "16px 12px 0", padding: "10px 14px", background: "var(--surface-soft)", borderRadius: "12px", border: "1px solid var(--line)" }}>
+          <span style={{ fontSize: "0.76rem", color: "var(--muted)", fontWeight: 700 }}>
+            Electives: <strong style={{ color: "var(--primary)" }}>{electives.kannada === "samskrutika" ? "Samskrutika" : "Balake"}</strong> &middot; <strong style={{ color: "var(--accent)" }}>{electives.esc === "electricals" ? "Electricals" : "Building Sci."}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowElectivePrompt(true)}
+            style={{ fontSize: "0.74rem", fontWeight: 800, color: "var(--primary)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+          >
+            Change
+          </button>
+        </div>
+      )}
+
       {/* Quick Stats Strip */}
-      <div className="home-stats-strip">
+      <div className="home-stats-strip" style={{ marginTop: showElectivePrompt || electives ? 16 : 12 }}>
         <div className="home-stat-pill">
           <span>Overall</span>
           <strong>{summary.avgAtt}%</strong>
