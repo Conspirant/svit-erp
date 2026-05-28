@@ -122,17 +122,19 @@ const getGradeDetails = (cie, see) => {
 };
 
 // Solves for target SGPA
-const solveTargetSgpa = (targetVal, courses, creditsMap) => {
+const solveTargetSgpa = (targetVal, courses, creditsMap, customCieMap = {}) => {
   const target = parseFloat(targetVal);
   if (isNaN(target) || target < 4.0 || target > 10.0) return null;
 
-  const validCourses = courses.filter(c => toNumber(getPrimaryMark(c).obtained) >= 20);
+  const getCie = (c) => customCieMap[c.course] !== undefined ? customCieMap[c.course] : toNumber(getPrimaryMark(c).obtained);
+
+  const validCourses = courses.filter(c => getCie(c) >= 20);
   const totalCredits = courses.reduce((sum, c) => sum + (creditsMap[c.course] || guessCredits(c.course, c.courseName)), 0);
   if (totalCredits === 0) return null;
 
   const projected = {};
   courses.forEach(c => {
-    const cie = toNumber(getPrimaryMark(c).obtained);
+    const cie = getCie(c);
     if (cie < 20) {
       projected[c.course] = 0;
     } else {
@@ -143,7 +145,7 @@ const solveTargetSgpa = (targetVal, courses, creditsMap) => {
   const getSgpa = (proj) => {
     let weightedSum = 0;
     courses.forEach(c => {
-      const cie = toNumber(getPrimaryMark(c).obtained);
+      const cie = getCie(c);
       const credits = creditsMap[c.course] || guessCredits(c.course, c.courseName);
       const see = proj[c.course];
       const { point } = getGradeDetails(cie, see);
@@ -154,7 +156,7 @@ const solveTargetSgpa = (targetVal, courses, creditsMap) => {
 
   const maxProj = {};
   courses.forEach(c => {
-    const cie = toNumber(getPrimaryMark(c).obtained);
+    const cie = getCie(c);
     maxProj[c.course] = cie < 20 ? 0 : 100;
   });
   const maxSgpa = getSgpa(maxProj);
@@ -172,7 +174,7 @@ const solveTargetSgpa = (targetVal, courses, creditsMap) => {
     let minGP = 11;
 
     for (const c of validCourses) {
-      const cie = toNumber(getPrimaryMark(c).obtained);
+      const cie = getCie(c);
       const see = currentProj[c.course];
       const { point } = getGradeDetails(cie, see);
 
@@ -191,7 +193,7 @@ const solveTargetSgpa = (targetVal, courses, creditsMap) => {
 
     if (!bestCourse) break;
 
-    const cie = toNumber(getPrimaryMark(bestCourse).obtained);
+    const cie = getCie(bestCourse);
     const see = currentProj[bestCourse.course];
     const currentTotal = cie + see / 2;
     const nextThresh = gradeThresh.find(t => t > currentTotal);
@@ -211,6 +213,7 @@ export default function ResultsPage() {
 
   const [projectedMarks, setProjectedMarks] = useState({});
   const [courseCredits, setCourseCredits] = useState({});
+  const [customCie, setCustomCie] = useState({});
   const [targetSgpa, setTargetSgpa] = useState("");
   const [solverResult, setSolverResult] = useState(null);
 
@@ -245,12 +248,15 @@ export default function ResultsPage() {
     if (cie.length > 0) {
       const initialMarks = {};
       const initialCredits = {};
+      const initialCie = {};
       cie.forEach(c => {
         initialMarks[c.course] = 60;
         initialCredits[c.course] = guessCredits(c.course, c.courseName);
+        initialCie[c.course] = toNumber(getPrimaryMark(c).obtained, 0);
       });
       setProjectedMarks(prev => ({ ...initialMarks, ...prev }));
       setCourseCredits(prev => ({ ...initialCredits, ...prev }));
+      setCustomCie(prev => ({ ...initialCie, ...prev }));
     }
   }, [cie]);
 
@@ -260,7 +266,7 @@ export default function ResultsPage() {
     let fails = 0;
 
     cie.forEach(c => {
-      const cieVal = toNumber(getPrimaryMark(c).obtained);
+      const cieVal = customCie[c.course] ?? toNumber(getPrimaryMark(c).obtained);
       const seeVal = projectedMarks[c.course] ?? 60;
       const credits = courseCredits[c.course] ?? guessCredits(c.course, c.courseName);
       const { point, isPass } = getGradeDetails(cieVal, seeVal);
@@ -275,10 +281,18 @@ export default function ResultsPage() {
       failedCount: fails,
       totalCredits: totalCreds,
     };
-  }, [cie, projectedMarks, courseCredits]);
+  }, [cie, projectedMarks, courseCredits, customCie]);
 
   const handleSliderChange = (courseCode, val) => {
     setProjectedMarks(prev => ({
+      ...prev,
+      [courseCode]: Number(val)
+    }));
+    setSolverResult(null);
+  };
+
+  const handleCieSliderChange = (courseCode, val) => {
+    setCustomCie(prev => ({
       ...prev,
       [courseCode]: Number(val)
     }));
@@ -296,7 +310,7 @@ export default function ResultsPage() {
     setTargetSgpa(val);
     if (!val || isNaN(Number(val))) return;
 
-    const res = solveTargetSgpa(val, cie, courseCredits);
+    const res = solveTargetSgpa(val, cie, courseCredits, customCie);
     if (res) {
       setProjectedMarks(res.projected);
       if (res.error) {
@@ -486,19 +500,18 @@ export default function ResultsPage() {
                 </div>
               </div>
             </div>
-
-            {/* Target SGPA Slider (Compact) */}
-            <div style={{ display: "grid", gap: "8px", marginTop: "14px" }}>
+            {/* Target SGPA Slider (Compact & Responsive) */}
+            <div style={{ display: "grid", gap: "10px", marginTop: "14px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.78rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", color: "var(--ink)" }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 750, display: "flex", alignItems: "center", gap: "6px", color: "var(--ink)" }}>
                   <Target size={14} color="var(--primary)" /> Target Goal
                 </span>
-                <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--primary)" }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: 850, color: "var(--primary)" }}>
                   {Number(targetSgpa || currentSgpa).toFixed(2)}
                 </span>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 <input 
                   type="range" 
                   min="4.00" 
@@ -507,29 +520,31 @@ export default function ResultsPage() {
                   value={targetSgpa || currentSgpa.toFixed(2)} 
                   onChange={(e) => handleTargetChange(e.target.value)}
                   style={{ 
-                    flex: 1, 
+                    width: "100%", 
                     accentColor: "var(--primary)",
-                    height: "4px",
+                    height: "6px",
                     cursor: "pointer"
                   }}
                 />
                 
-                {/* Compact Preset Chips */}
-                <div style={{ display: "flex", gap: "4px" }}>
+                {/* Compact Preset Chips Centered Below Slider */}
+                <div style={{ display: "flex", gap: "6px", justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 750, marginRight: "4px" }}>Presets:</span>
                   {[7.5, 8.0, 8.5, 9.0].map((val) => (
                     <button
                       key={val}
                       type="button"
                       onClick={() => applyPreset(val)}
                       style={{
-                        padding: "4px 8px",
-                        borderRadius: "4px",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
                         fontSize: "0.72rem",
                         fontWeight: 800,
                         cursor: "pointer",
                         background: (targetSgpa && Math.abs(Number(targetSgpa) - val) < 0.01) ? "var(--primary)" : "var(--surface-soft)",
                         color: (targetSgpa && Math.abs(Number(targetSgpa) - val) < 0.01) ? "#ffffff" : "var(--muted)",
-                        border: "1px solid var(--line)"
+                        border: "1px solid var(--line)",
+                        transition: "all 150ms ease"
                       }}
                     >
                       {val.toFixed(1)}
@@ -547,11 +562,11 @@ export default function ResultsPage() {
             </div>
           </section>
 
-          {/* Minimalist Subject Row List */}
-          <section className="native-list" style={{ display: "grid", gap: "8px" }}>
+          {/* Subject Row List with Custom CIE & SEE prediction */}
+          <section className="native-list" style={{ display: "grid", gap: "12px" }}>
             {cie.length ? cie.map((item) => {
               const primaryMark = getPrimaryMark(item);
-              const cieVal = toNumber(primaryMark.obtained);
+              const cieVal = customCie[item.course] ?? toNumber(primaryMark.obtained);
               const seeVal = projectedMarks[item.course] ?? 60;
               const credits = courseCredits[item.course] ?? guessCredits(item.course, item.courseName);
               const { total, grade, isPass, reason } = getGradeDetails(cieVal, seeVal);
@@ -561,118 +576,199 @@ export default function ResultsPage() {
                   key={item.course}
                   className="panel"
                   style={{
-                    padding: "12px 16px",
+                    padding: "16px",
                     display: "grid",
-                    gap: "8px",
-                    borderLeft: cieVal < 20 ? "3px solid var(--danger)" : (!isPass ? "3px solid var(--warning)" : "1px solid var(--line)")
+                    gap: "12px",
+                    background: "var(--surface)",
+                    borderRadius: "14px",
+                    border: "1px solid var(--line)",
+                    borderLeft: cieVal < 20 ? "4px solid var(--danger)" : (!isPass ? "4px solid var(--warning)" : "4px solid var(--success)"),
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.03)",
+                    transition: "border-color 150ms ease, box-shadow 150ms ease"
                   }}
                 >
                   {/* Info Header Row */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
-                        <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--ink)" }}>{item.course}</span>
-                        <span className="subtle" style={{ fontSize: "0.76rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "200px" }} title={item.courseName}>
-                          {item.courseName}
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        <span style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.01em" }}>{item.course}</span>
+                        <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 6px", background: "var(--surface-soft)", borderRadius: "4px", color: "var(--muted)" }}>
+                          Credits: {credits}
                         </span>
                       </div>
-                      
-                      {/* Compact Sub-labels */}
-                      <div style={{ display: "flex", gap: "8px", fontSize: "0.72rem", color: "var(--muted)", marginTop: "2px" }}>
-                        <span>CIE: <strong>{cieVal}</strong></span>
-                        <span>•</span>
-                        <span>SEE: <strong>{seeVal}</strong> <span style={{ fontSize: "0.66rem" }}>({Math.round(seeVal/2)} scaled)</span></span>
-                        <span>•</span>
-                        <span>
-                          Credits: 
-                          <select 
-                            value={credits}
-                            onChange={(e) => handleCreditChange(item.course, e.target.value)}
-                            style={{
-                              fontSize: "0.7rem",
-                              fontWeight: 700,
-                              background: "none",
-                              border: "none",
-                              color: "var(--primary)",
-                              padding: "0 2px",
-                              marginLeft: "2px",
-                              cursor: "pointer"
-                            }}
-                          >
-                            {[1, 2, 3, 4].map((c) => (
-                              <option key={c} value={c}>{c}</option>
-                            ))}
-                          </select>
-                        </span>
-                      </div>
+                      <h3 style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--muted)", marginTop: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "normal", wordBreak: "break-word", lineHeight: "1.3" }} title={item.courseName}>
+                        {item.courseName || "Subject Name"}
+                      </h3>
                     </div>
 
-                    {/* Compact Grade Pill */}
-                    <div 
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        fontSize: "0.78rem",
-                        fontWeight: 800,
-                        textAlign: "center",
-                        minWidth: "46px",
-                        ...getGradeColorStyle(grade)
-                      }}
-                    >
-                      {grade} <span style={{ fontSize: "0.62rem", opacity: 0.9 }}>({getGradeDetails(cieVal, seeVal).point})</span>
+                    {/* Grade Badge */}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" }}>
+                      <div 
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                          fontSize: "0.82rem",
+                          fontWeight: 850,
+                          textAlign: "center",
+                          minWidth: "50px",
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                          ...getGradeColorStyle(grade)
+                        }}
+                      >
+                        {grade}
+                      </div>
+                      <span style={{ fontSize: "0.68rem", color: "var(--muted)", fontWeight: 700 }}>
+                        GP: {getGradeDetails(cieVal, seeVal).point}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Compact Slider & Aggregate row */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={cieVal < 20 ? 0 : seeVal}
-                      disabled={cieVal < 20}
-                      onChange={(e) => handleSliderChange(item.course, e.target.value)}
-                      style={{ 
-                        flex: 1, 
-                        accentColor: cieVal < 20 ? "var(--line)" : "var(--primary)",
-                        cursor: cieVal < 20 ? "not-allowed" : "pointer",
-                        height: "4px"
-                      }}
-                    />
-                    
-                    {/* Aggregated Total Pill */}
+                  {/* Dual Sliders Container */}
+                  <div style={{ display: "grid", gap: "14px", padding: "12px 0", borderTop: "1px dashed var(--line)", borderBottom: "1px dashed var(--line)" }}>
+                    {/* CIE Slider */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.78rem", fontWeight: 750, color: "var(--ink)" }}>CIE (Internals)</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", fontWeight: 800, color: "var(--muted)" }}>
+                          <input
+                            type="number"
+                            min="0"
+                            max="50"
+                            value={cieVal}
+                            onChange={(e) => handleCieSliderChange(item.course, Math.min(50, Math.max(0, Number(e.target.value))))}
+                            style={{
+                              width: "42px",
+                              padding: "2px 4px",
+                              fontSize: "0.78rem",
+                              fontWeight: 800,
+                              textAlign: "center",
+                              background: "var(--surface-soft)",
+                              border: "1px solid var(--line)",
+                              borderRadius: "6px",
+                              color: "var(--primary)"
+                            }}
+                          />
+                          <span>/ 50</span>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="50"
+                        value={cieVal}
+                        onChange={(e) => handleCieSliderChange(item.course, e.target.value)}
+                        style={{
+                          width: "100%",
+                          accentColor: "var(--primary)",
+                          height: "6px",
+                          cursor: "pointer"
+                        }}
+                      />
+                    </div>
+
+                    {/* SEE Slider */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.78rem", fontWeight: 750, color: "var(--ink)" }}>SEE (Written Exam)</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", fontWeight: 800, color: "var(--muted)" }}>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={cieVal < 20 ? 0 : seeVal}
+                            disabled={cieVal < 20}
+                            onChange={(e) => handleSliderChange(item.course, Math.min(100, Math.max(0, Number(e.target.value))))}
+                            style={{
+                              width: "42px",
+                              padding: "2px 4px",
+                              fontSize: "0.78rem",
+                              fontWeight: 800,
+                              textAlign: "center",
+                              background: cieVal < 20 ? "rgba(0,0,0,0.05)" : "var(--surface-soft)",
+                              border: "1px solid var(--line)",
+                              borderRadius: "6px",
+                              color: "var(--accent)",
+                              cursor: cieVal < 20 ? "not-allowed" : "default"
+                            }}
+                          />
+                          <span style={{ fontSize: "0.74rem" }}>/ 100</span>
+                          <span style={{ fontSize: "0.68rem", fontWeight: 600, marginLeft: "4px" }}>({Math.round(seeVal / 2)} scaled)</span>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={cieVal < 20 ? 0 : seeVal}
+                        disabled={cieVal < 20}
+                        onChange={(e) => handleSliderChange(item.course, e.target.value)}
+                        style={{
+                          width: "100%",
+                          accentColor: "var(--accent)",
+                          height: "6px",
+                          cursor: cieVal < 20 ? "not-allowed" : "pointer"
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Summary & Alerts Row */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                      {/* Credit Selection */}
+                      <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 700 }}>Credits:</span>
+                      <select 
+                        value={credits}
+                        onChange={(e) => handleCreditChange(item.course, e.target.value)}
+                        style={{
+                          fontSize: "0.72rem",
+                          fontWeight: 800,
+                          background: "var(--surface-soft)",
+                          border: "1px solid var(--line)",
+                          borderRadius: "4px",
+                          color: "var(--primary)",
+                          padding: "2px 6px",
+                          cursor: "pointer"
+                        }}
+                      >
+                        {[1, 2, 3, 4].map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+
                     <span 
                       style={{ 
-                        fontSize: "0.72rem", 
-                        fontWeight: 800, 
+                        fontSize: "0.78rem", 
+                        fontWeight: 850, 
                         color: isPass ? "var(--success)" : "var(--danger)",
-                        background: isPass ? "var(--success-soft)" : "var(--danger-soft)",
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                        whiteSpace: "nowrap"
+                        background: isPass ? "rgba(33, 131, 92, 0.08)" : "rgba(255, 59, 48, 0.08)",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        border: isPass ? "1px solid rgba(33, 131, 92, 0.15)" : "1px solid rgba(255, 59, 48, 0.15)"
                       }}
                     >
-                      Total: {total}%
+                      Aggregate: {total} / 100
                     </span>
                   </div>
 
-                  {/* Tiny warning alerts */}
+                  {/* Warning Alerts */}
                   {cieVal < 20 && (
-                    <div style={{ fontSize: "0.7rem", color: "var(--danger)", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <div style={{ fontSize: "0.7rem", color: "var(--danger)", display: "flex", alignItems: "center", gap: "6px", background: "rgba(255, 59, 48, 0.04)", padding: "6px 10px", borderRadius: "6px", border: "1px solid rgba(255, 59, 48, 0.1)" }}>
                       <AlertTriangle size={12} />
-                      <span>CIE below VTU minimum (20). Course Fail.</span>
+                      <span>CIE fails minimum passing score (20/50). Student cannot write SEE.</span>
                     </div>
                   )}
 
                   {cieVal >= 20 && seeVal < 35 && (
-                    <div style={{ fontSize: "0.7rem", color: "var(--warning)", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <div style={{ fontSize: "0.7rem", color: "var(--warning)", display: "flex", alignItems: "center", gap: "6px", background: "rgba(186, 100, 41, 0.04)", padding: "6px 10px", borderRadius: "6px", border: "1px solid rgba(186, 100, 41, 0.1)" }}>
                       <AlertTriangle size={12} />
-                      <span>SEE below VTU passing written score (35/100).</span>
+                      <span>SEE fails minimum written passing score (35/100).</span>
                     </div>
                   )}
 
                   {cieVal >= 20 && seeVal >= 35 && !isPass && (
-                    <div style={{ fontSize: "0.7rem", color: "var(--warning)", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <div style={{ fontSize: "0.7rem", color: "var(--warning)", display: "flex", alignItems: "center", gap: "6px", background: "rgba(186, 100, 41, 0.04)", padding: "6px 10px", borderRadius: "6px", border: "1px solid rgba(186, 100, 41, 0.1)" }}>
                       <AlertTriangle size={12} />
                       <span>{reason}. CIE + scaled SEE must be &ge; 40.</span>
                     </div>
