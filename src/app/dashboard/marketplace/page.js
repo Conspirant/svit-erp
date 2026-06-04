@@ -18,6 +18,7 @@ const NAV_TABS = [
   { href: "/dashboard/info", label: "Profile" },
   { href: "/dashboard/bunk", label: "Bunk Calc" },
   { href: "/dashboard/connect", label: "Connect" },
+  { href: "/dashboard/unlocked", label: "Unlocked" },
 ];
 
 const SORTS = [

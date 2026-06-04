@@ -109,7 +109,7 @@ export async function GET() {
           timeout: 10000,
           responseType: 'arraybuffer',
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Cookie': sessionCookie,
           },
         });

@@ -7,7 +7,11 @@ import {
   Target, 
   CheckCircle2, 
   AlertTriangle, 
-  Sliders 
+  Sliders,
+  EyeOff,
+  Award,
+  Sparkles,
+  RefreshCw
 } from "lucide-react";
 import { apiFetch, filterElectives } from "@/lib/clientApi";
 
@@ -219,6 +223,38 @@ export default function ResultsPage() {
 
   const [refreshKey, setRefreshKey] = useState(0);
 
+
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    const fetchProfile = async () => {
+      try {
+        const cached = sessionStorage.getItem("profile_data");
+        if (cached) {
+          const prof = JSON.parse(cached);
+          if (alive) setProfile(prof);
+          return;
+        }
+        const res = await fetch("/api/student/profile");
+        if (res.status === 401) return;
+        const json = await res.json();
+        if (json.success && alive) {
+          setProfile(json.data);
+          try { sessionStorage.setItem("profile_data", JSON.stringify(json.data)); } catch { }
+        }
+      } catch (err) {
+        console.error("Failed fetching profile", err);
+      }
+    };
+    fetchProfile();
+    return () => { alive = false; };
+  }, []);
+
+
+
+
+
   useEffect(() => {
     const handleUpdate = () => setRefreshKey(prev => prev + 1);
     window.addEventListener("attendanceChanged", handleUpdate);
@@ -250,7 +286,7 @@ export default function ResultsPage() {
     return () => { alive = false; };
   }, []);
 
-  const cie = useMemo(() => filterElectives(data?.cie || []), [data, refreshKey]);
+  const cie = useMemo(() => filterElectives(data?.cie || []), [data]);
 
   useEffect(() => {
     if (cie.length > 0) {
@@ -262,9 +298,11 @@ export default function ResultsPage() {
         initialCredits[c.course] = guessCredits(c.course, c.courseName);
         initialCie[c.course] = toNumber(getPrimaryMark(c).obtained, 0);
       });
-      setProjectedMarks(prev => ({ ...initialMarks, ...prev }));
-      setCourseCredits(prev => ({ ...initialCredits, ...prev }));
-      setCustomCie(prev => ({ ...initialCie, ...prev }));
+      queueMicrotask(() => {
+        setProjectedMarks(prev => ({ ...initialMarks, ...prev }));
+        setCourseCredits(prev => ({ ...initialCredits, ...prev }));
+        setCustomCie(prev => ({ ...initialCie, ...prev }));
+      });
     }
   }, [cie]);
 
@@ -344,6 +382,27 @@ export default function ResultsPage() {
     }
   };
 
+  const userCieAverage = useMemo(() => {
+    if (!cie || cie.length === 0) return 0;
+    let sum = 0;
+    let count = 0;
+    cie.forEach(c => {
+      const mark = getPrimaryMark(c);
+      if (mark && mark.obtained !== null) {
+        const maxVal = mark.max || 50;
+        const obtainedVal = toNumber(mark.obtained);
+        const normalized = maxVal === 50 ? obtainedVal : (obtainedVal / maxVal) * 50;
+        sum += normalized;
+        count++;
+      }
+    });
+    return count > 0 ? Number((sum / count).toFixed(2)) : 0;
+  }, [cie]);
+
+
+
+
+
   if (loading) return <div className="center-state"><div className="loader" /></div>;
   if (error) return <div className="center-state"><div className="notice error">{error}</div></div>;
 
@@ -372,9 +431,10 @@ export default function ResultsPage() {
         >
           ESA (Predictor)
         </button>
+
       </div>
 
-      {activeTab === "isa" ? (
+      {activeTab === "isa" && (
         <>
           <div className="native-chip-row">
             <button className={semester === "current" ? "active" : ""} type="button" onClick={() => setSemester("current")}>
@@ -475,8 +535,9 @@ export default function ResultsPage() {
             }) : <p className="subtle">No internal marks data found.</p>}
           </section>
         </>
-      ) : (
-        /* MINIMALIST ESA TAB */
+      )}
+
+      {activeTab === "esa" && (
         <div className="fade-in" style={{ display: "grid", gap: "16px" }}>
           
           {/* Combined Compact Header & Solver Panel */}
@@ -792,6 +853,8 @@ export default function ResultsPage() {
           </footer>
         </div>
       )}
+
     </main>
   );
 }
+

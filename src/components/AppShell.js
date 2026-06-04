@@ -27,8 +27,7 @@ const PAGE_META = [
   { match: "/dashboard/bunk", title: "Attendance Planner", eyebrow: "Calculator" },
   { match: "/dashboard/marketplace", title: "Task Marketplace", eyebrow: "Campus work" },
   { match: "/dashboard/connect", title: "Campus Connect", eyebrow: "Student chat" },
-  { match: "/dashboard/canteen", title: "SVIT Canteen", eyebrow: "Secure Pick-Up Queue" },
-  { match: "/dashboard/map", title: "Campus Map", eyebrow: "Room Finder" },
+  { match: "/dashboard/feedback", title: "Faculty Feedback", eyebrow: "Academic survey" },
   { match: "/dashboard", title: "Command Center", eyebrow: "SVIT ERP" },
 ];
 

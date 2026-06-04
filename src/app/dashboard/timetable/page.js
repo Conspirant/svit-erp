@@ -172,7 +172,7 @@ export default function Timetable() {
         <Link className="tab" href="/dashboard/events">Calendar</Link>
         <Link className="tab active" href="/dashboard/timetable">Timetable</Link>
         <Link className="tab" href="/dashboard/info">Profile</Link>
-        <Link className="tab" href="/dashboard/bunk">Bunk Calc</Link>
+        <Link className="tab" href="/dashboard/bunk">Bunk Planner</Link>
         <Link className="tab" href="/dashboard/connect">Connect</Link>
       </nav>
 

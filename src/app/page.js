@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiJson, clearClientSession } from "@/lib/clientApi";
@@ -284,6 +285,27 @@ export default function Home() {
 
         {/* Footer hint */}
         <p className="app-login-hint">Login with your SVIT ERP credentials</p>
+
+        {/* Institutional Policies Footer */}
+        <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.78rem', display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <Link href="/privacy?tab=terms" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'underline', transition: 'color 150ms ease' }} className="policy-footer-link">
+            Terms & Conditions
+          </Link>
+          <span style={{ color: 'rgba(255,255,255,0.2)' }}>•</span>
+          <Link href="/privacy?tab=privacy" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'underline', transition: 'color 150ms ease' }} className="policy-footer-link">
+            Privacy Policy
+          </Link>
+          <span style={{ color: 'rgba(255,255,255,0.2)' }}>•</span>
+          <Link href="/privacy?tab=refund" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'underline', transition: 'color 150ms ease' }} className="policy-footer-link">
+            Refund Policy
+          </Link>
+        </div>
+
+        <style dangerouslySetInnerHTML={{__html: `
+          .policy-footer-link:hover {
+            color: #ffffff !important;
+          }
+        `}} />
       </div>
 
       {/* Forgot Password Modal */}

@@ -145,7 +145,7 @@ export default function SettingsPage() {
             <ChevronRight size={18} color="var(--muted)" />
           </div>
 
-          <div className="settings-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: "16px 20px", cursor: 'pointer' }}>
+          <div className="settings-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: "16px 20px", cursor: 'pointer' }} onClick={() => router.push("/privacy?tab=privacy")}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ padding: 8, background: "rgba(255,255,255,0.05)", borderRadius: 10 }}>
                 <Shield size={20} color="var(--ink)" />

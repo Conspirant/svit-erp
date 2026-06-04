@@ -374,106 +374,31 @@ export default function Dashboard() {
           <strong>{summary.avgCie}</strong>
         </div>
       </div>
-
-      {/* Today's Schedule */}
-      <div className="home-section-title">
-        <h2>Today&apos;s Schedule</h2>
-        <Link href="/dashboard/timetable">Full week</Link>
-      </div>
-
-      {todaySchedule && todaySchedule.length > 0 ? (
-        <section className="home-schedule-list">
-          {todaySchedule.map((cls, i) => {
-            const courseCode = (cls.attendance?.course || cls.course).toUpperCase();
-            const officialEntry = cls.attendance?.dates?.find(
-              d => !d.isSelfLogged && (d.date === todayDateStr || d.date.replace(/\//g, '-') === todayDateStr)
-            );
-            const selfEntry = cls.attendance?.dates?.find(
-              d => d.isSelfLogged && (d.date === todayDateStr || d.date.replace(/\//g, '-') === todayDateStr)
-            );
-
-            return (
-              <article 
-                className="home-schedule-card" 
-                key={i} 
-                style={{ display: "grid", gridTemplateColumns: "80px minmax(0, 1fr) auto", rowGap: "12px", alignItems: "center" }}
-              >
-                <div className="home-schedule-time">
-                  {cls.time.split(" to ")[0]}
-                  {cls.status === "NOW" && <span className="home-now-badge">NOW</span>}
-                  {cls.status === "NEXT" && <span className="home-next-badge">NEXT</span>}
-                </div>
-                <div className="home-schedule-info">
-                  <h3>{cls.course}</h3>
-                  <p>{cls.room} · {cls.faculty}</p>
-                </div>
-                <div className="home-schedule-meta">
-                  {cls.attendance && (
-                    <span className={`home-schedule-pct ${toNumber(cls.attendance.percentage) < 80 ? 'risk' : ''}`}>
-                      {cls.attendance.percentage}%
-                    </span>
-                  )}
-                </div>
-
-                {/* Attendance Interactive Logging Widget */}
-                <div style={{ gridColumn: "1 / -1", borderTop: "1px solid var(--line)", paddingTop: "12px", marginTop: "4px" }}>
-                  {officialEntry ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: officialEntry.status === "Present" ? "var(--success)" : "var(--danger)" }} />
-                      <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 700 }}>
-                        Official Attendance: <strong style={{ color: officialEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{officialEntry.status === "Present" ? "Attended" : "Bunked"}</strong>
-                      </span>
-                    </div>
-                  ) : selfEntry ? (
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: selfEntry.status === "Present" ? "var(--success)" : "var(--danger)" }} />
-                        <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 700 }}>
-                          You marked this as <strong style={{ color: selfEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{selfEntry.status === "Present" ? "Attended" : "Bunked"}</strong>
-                        </span>
-                      </div>
-                      <button 
-                        type="button"
-                        onClick={() => handleSaveAttendance(courseCode, null)}
-                        style={{ background: "rgba(255,255,255,0.06)", border: "none", color: "var(--muted)", padding: "4px 10px", borderRadius: "8px", fontSize: "0.72rem", fontWeight: 800, cursor: "pointer", transition: "all 150ms ease" }}
-                      >
-                        Undo
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
-                      <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 900, letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                        Did you attend this class?
-                      </span>
-                      <div style={{ display: "flex", gap: "8px" }}>
-                        <button 
-                          type="button"
-                          onClick={() => handleSaveAttendance(courseCode, "Present", cls.time)}
-                          style={{ flex: 1, padding: "8px 14px", background: "rgba(52, 209, 120, 0.12)", border: "1px solid rgba(52, 209, 120, 0.2)", borderRadius: "10px", color: "var(--success)", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer", transition: "all 150ms ease" }}
-                        >
-                          Yes, Attended
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => handleSaveAttendance(courseCode, "Absent", cls.time)}
-                          style={{ flex: 1, padding: "8px 14px", background: "rgba(255, 91, 104, 0.12)", border: "1px solid rgba(255, 91, 104, 0.2)", borderRadius: "10px", color: "var(--danger)", fontWeight: 800, fontSize: "0.78rem", cursor: "pointer", transition: "all 150ms ease" }}
-                        >
-                          No, Bunked
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </article>
-            );
-          })}
+      {/* Faculty Feedback Notification Banner */}
+      <Link href="/dashboard/feedback" style={{ textDecoration: "none" }}>
+        <section className="panel fade-in" style={{
+          margin: "16px 12px 0",
+          background: "linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(129, 140, 248, 0.05))",
+          border: "1px solid rgba(167, 139, 250, 0.3)",
+          boxShadow: "0 4px 20px rgba(167, 139, 250, 0.1)",
+          borderRadius: "14px",
+          padding: "14px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          cursor: "pointer",
+          transition: "all 0.2s ease",
+        }}>
+          <span style={{ fontSize: "1.5rem" }}>⚡</span>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ fontSize: "0.9rem", fontWeight: 850, color: "#c4b5fd", margin: 0 }}>Faculty Feedback is Live!</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--muted)", margin: "2px 0 0", lineHeight: "1.3" }}>
+              Submit positive ratings for all faculty members automatically with one click.
+            </p>
+          </div>
+          <span style={{ fontSize: "1.1rem", color: "#a78bfa" }}>&rarr;</span>
         </section>
-      ) : (
-        <div className="home-empty-day">
-          <p>No classes scheduled for today.</p>
-          <p style={{ fontSize: "0.8rem", opacity: 0.6 }}>Enjoy your break!</p>
-        </div>
-      )}
+      </Link>
 
       {/* Quick Actions Grid */}
       <div className="home-section-title" style={{ marginTop: 24 }}>
@@ -490,7 +415,7 @@ export default function Dashboard() {
         </Link>
         <Link href="/dashboard/bunk" className="home-action-tile">
           <span className="home-action-icon">🧮</span>
-          <span className="home-action-label">Bunk Calc</span>
+          <span className="home-action-label">Bunk Planner</span>
         </Link>
         <Link href="/dashboard/results" className="home-action-tile">
           <span className="home-action-icon">📝</span>
@@ -508,17 +433,17 @@ export default function Dashboard() {
           <span className="home-action-icon">🪪</span>
           <span className="home-action-label">ID Card</span>
         </Link>
+        <Link href="/dashboard/unlocked" className="home-action-tile">
+          <span className="home-action-icon">🔓</span>
+          <span className="home-action-label">Unlocked</span>
+        </Link>
+        <Link href="/dashboard/feedback" className="home-action-tile">
+          <span className="home-action-icon">✍️</span>
+          <span className="home-action-label">Feedback</span>
+        </Link>
         <Link href="/dashboard/exams" className="home-action-tile">
           <span className="home-action-icon">📋</span>
           <span className="home-action-label">Exams</span>
-        </Link>
-        <Link href="/dashboard/canteen" className="home-action-tile">
-          <span className="home-action-icon">🍔</span>
-          <span className="home-action-label">Canteen</span>
-        </Link>
-        <Link href="/dashboard/map" className="home-action-tile">
-          <span className="home-action-icon">🗺️</span>
-          <span className="home-action-label">Campus Map</span>
         </Link>
       </nav>
 

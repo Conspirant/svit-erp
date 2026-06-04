@@ -275,7 +275,7 @@ export async function GET() {
                 const detailedRequests = attendanceLinks.map(linkObj =>
                     axios.get(linkObj.url, {
                         httpsAgent,
-                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Cookie': sessionCookie }
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Cookie': sessionCookie }
                     }).then(res => {
                         const _$ = cheerio.load(res.data);
                         const pageText = _$('body').text().replace(/\s+/g, ' ');
@@ -358,7 +358,7 @@ export async function GET() {
                     axios.get(linkObj.url, {
                         httpsAgent,
                         timeout: 15000,
-                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Cookie': sessionCookie }
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Cookie': sessionCookie }
                     }).then((detailRes) => parseCieDetailPage(detailRes.data, linkObj)).catch(() => null)
                 );
 
