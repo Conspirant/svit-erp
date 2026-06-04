@@ -19,8 +19,7 @@ export const dynamic = 'force-dynamic';
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
-  keepAlive: true,
-  maxSockets: 5,
+  keepAlive: false,
 });
 
 const BASE_URL = 'https://svit-students.accredia.in:8084/index.php';
@@ -382,7 +381,7 @@ export async function GET(request) {
 
       const ackUrl = getFullUrl(parsed.acknowledgementUrl);
       debugLog(`Fetching acknowledgement ackUrl: ${ackUrl}`);
-      const ackRes = await fetchPage(ackUrl, sessionCookie, { responseType: 'arraybuffer' });
+      const ackRes = await fetchPage(ackUrl, sessionCookie, { responseType: 'arraybuffer', timeout: 30000 });
       sessionCookie = updateCookies(sessionCookie, ackRes.headers['set-cookie']);
 
       const isPdf = ackRes.headers['content-type']?.includes('pdf') || 
