@@ -158,6 +158,25 @@ export default function Home() {
           </h1>
           <div className="app-login-divider" />
           <p className="app-login-subtitle">Student ERP</p>
+          <div 
+            style={{ 
+              marginTop: "12px", 
+              padding: "6px 12px", 
+              background: "rgba(52, 209, 120, 0.1)", 
+              border: "1px solid rgba(52, 209, 120, 0.24)", 
+              borderRadius: "20px", 
+              fontSize: "0.72rem", 
+              fontWeight: 800, 
+              color: "#34d178", 
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              letterSpacing: "0.02em"
+            }}
+          >
+            <span style={{ display: "inline-block", width: "6px", height: "6px", background: "#34d178", borderRadius: "50%" }} />
+            UPDATED VTU SEE TIMETABLE FOR 2ND SEM STUDENTS
+          </div>
         </div>
 
         {/* Login Form Card */}
