@@ -1,110 +1,18 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/clientApi";
-import { Calendar, Clock, AlertCircle, Sparkles, Filter, List } from "lucide-react";
-
-// VTU June/July 2026 Timetable Database (Individual subjects parsed from image)
-const EXAM_DATABASE = [
-  // Day 1: 16-06-2026
-  { code: "1BMATM201", title: "Multivariable Calculus and Numerical Methods", date: "2026-06-16", day: "Tuesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BMATE201", title: "Calculus, Laplace Transform and Numerical Techniques", date: "2026-06-16", day: "Tuesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BMATC201", title: "Differential Calculus & Numerical Methods", date: "2026-06-16", day: "Tuesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BMATS201", title: "Numerical Methods", date: "2026-06-16", day: "Tuesday", time: "2:00 PM to 5:00 PM" },
-
-  // Day 2: 17-06-2026
-  { code: "1BESC104A", title: "Building Sciences & Mechanics", date: "2026-06-17", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BESC104B", title: "Introduction to Electrical Engineering", date: "2026-06-17", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BESC104C", title: "Introduction to Electronics & Communication Engineering", date: "2026-06-17", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BESC104D", title: "Introduction to Mechanical Engineering", date: "2026-06-17", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BESC104E", title: "Essentials of Information Technology", date: "2026-06-17", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-
-  // Day 3: 18-06-2026
-  { code: "1BAIA103", title: "Introduction to AI and Applications", date: "2026-06-18", day: "Thursday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BAIA203", title: "Introduction to AI and Applications", date: "2026-06-18", day: "Thursday", time: "2:00 PM to 5:00 PM" },
-
-  // Day 4: 19-06-2026
-  { code: "1BKSK109", title: "Samskrutika Kannada", date: "2026-06-19", day: "Friday", time: "2:00 PM to 3:00 PM" },
-  { code: "1BKSK209", title: "Samskrutika Kannada", date: "2026-06-19", day: "Friday", time: "2:00 PM to 3:00 PM" },
-  { code: "1BKBK109", title: "Balake Kannada", date: "2026-06-19", day: "Friday", time: "2:00 PM to 3:00 PM" },
-  { code: "1BKBK209", title: "Balake Kannada", date: "2026-06-19", day: "Friday", time: "2:00 PM to 3:00 PM" },
-
-  // Day 5: 22-06-2026
-  { code: "1BPHYC102", title: "Physics for Sustainable Structural Systems", date: "2026-06-22", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BPHYC202", title: "Physics for Sustainable Structural Systems", date: "2026-06-22", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BPHYM102", title: "Physics of Materials", date: "2026-06-22", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BPHYM202", title: "Physics of Materials", date: "2026-06-22", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BPHEC102", title: "Quantum Physics and Electronics Sensors", date: "2026-06-22", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BPHEC202", title: "Quantum Physics and Electronics Sensors", date: "2026-06-22", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BPHEE102", title: "Electrical Engineering Materials", date: "2026-06-22", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BPHEE202", title: "Electrical Engineering Materials", date: "2026-06-22", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BPHYS102", title: "Quantum Physics and Applications", date: "2026-06-22", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BPHYS202", title: "Quantum Physics and Applications", date: "2026-06-22", day: "Monday", time: "2:00 PM to 5:00 PM" },
-
-  // Day 6: 24-06-2026
-  { code: "1BCHEC102", title: "Applied Chemistry for Sustainable Structure & Material Design", date: "2026-06-24", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BCHEC202", title: "Applied Chemistry for Sustainable Structure & Material Design", date: "2026-06-24", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BCHEM102", title: "Applied Chemistry for Advanced Metal Protection and Sustainable Energy Systems", date: "2026-06-24", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BCHEM202", title: "Applied Chemistry for Advanced Metal Protection and Sustainable Energy Systems", date: "2026-06-24", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BCHEE102", title: "Applied Chemistry for Emerging Electronics and Futuristic Devices", date: "2026-06-24", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BCHEE202", title: "Applied Chemistry for Emerging Electronics and Futuristic Devices", date: "2026-06-24", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BCHES102", title: "Applied Chemistry for Smart Systems", date: "2026-06-24", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BCHES202", title: "Applied Chemistry for Smart Systems", date: "2026-06-24", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-
-  // Day 7: 29-06-2026
-  { code: "1BPLC105B", title: "Python Programming", date: "2026-06-29", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BPLC205B", title: "Python Programming", date: "2026-06-29", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BPLC105E", title: "Introduction to C Programming", date: "2026-06-29", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BPLC205E", title: "Introduction to C Programming", date: "2026-06-29", day: "Monday", time: "2:00 PM to 5:00 PM" },
-
-  // Day 8: 01-07-2026
-  { code: "1BCIV105", title: "Engineering Mechanics", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BCIV205", title: "Engineering Mechanics", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BBEE105", title: "Basics of Electrical Engineering", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BBEE205", title: "Basics of Electrical Engineering", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BECE105", title: "Fundamentals of Electronics & Communication Engineering", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BECE205", title: "Fundamentals of Electronics & Communication Engineering", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BEME105", title: "Elements of Mechanical Engineering", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BEME205", title: "Elements of Mechanical Engineering", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BEIT105", title: "Programming in C", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BEIT205", title: "Programming in C", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BEBT105", title: "Elements of Biotechnology and Biomimetics", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BEBT205", title: "Elements of Biotechnology and Biomimetics", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BSSA105", title: "Principles of Soil Science & Agronomy", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BSSA205", title: "Principles of Soil Science & Agronomy", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BEAE105", title: "Elements of Aeronautical Engineering", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BEAE205", title: "Elements of Aeronautical Engineering", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BETX105", title: "Technology of Textile", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BETX205", title: "Technology of Textile", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BECHE105", title: "Elements of Chemical Engineering", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BECHE205", title: "Elements of Chemical Engineering", date: "2026-07-01", day: "Wednesday", time: "2:00 PM to 5:00 PM" },
-
-  // Day 9: 03-07-2026
-  { code: "1BENG106", title: "Communication Skills", date: "2026-07-03", day: "Friday", time: "2:00 PM to 3:00 PM" },
-  { code: "1BENG206", title: "Communication Skills", date: "2026-07-03", day: "Friday", time: "2:00 PM to 3:00 PM" },
-
-  // Day 10: 06-07-2026
-  { code: "1BESC204A", title: "Building Sciences & Mechanics", date: "2026-07-06", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BESC204B", title: "Introduction to Electrical Engineering", date: "2026-07-06", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BESC204C", title: "Introduction to Electronics & Communication Engineering", date: "2026-07-06", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BESC204D", title: "Introduction to Mechanical Engineering", date: "2026-07-06", day: "Monday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BESC204E", title: "Essentials of Information Technology", date: "2026-07-06", day: "Monday", time: "2:00 PM to 5:00 PM" },
-
-  // Day 11: 07-07-2026
-  { code: "1BMATM101", title: "Differential Calculus & Linear Algebra: ME Stream", date: "2026-07-07", day: "Tuesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BMATE101", title: "Differential Calculus & Linear Algebra: EEE Stream", date: "2026-07-07", day: "Tuesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BMATC101", title: "Differential Calculus & Linear Algebra: CV Stream", date: "2026-07-07", day: "Tuesday", time: "2:00 PM to 5:00 PM" },
-  { code: "1BMATS101", title: "Calculus & Linear Algebra: CSE Stream", date: "2026-07-07", day: "Tuesday", time: "2:00 PM to 5:00 PM" }
-];
+import { apiFetch, getMergedAttendance, filterElectives } from "@/lib/clientApi";
+import { EXAM_DATABASE } from "@/lib/examSchedule";
+import { AlertCircle, Sparkles } from "lucide-react";
 
 export default function ExamsPage() {
   const router = useRouter();
-  const [studentCourses, setStudentCourses] = useState([]);
+  const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState("my"); // "my" or "all"
+  const viewMode = "my";
 
-  // Fetch student courses on mount
+  // Fetch student dashboard data on mount
   useEffect(() => {
     let alive = true;
     
@@ -115,8 +23,8 @@ export default function ExamsPage() {
         const cached = sessionStorage.getItem("dashboard_data");
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (parsed.attendance) {
-            setStudentCourses(parsed.attendance);
+          if (parsed && parsed.attendance) {
+            setDashboardData(parsed);
             setLoading(false);
           }
         }
@@ -126,8 +34,8 @@ export default function ExamsPage() {
     apiFetch("/api/student/dashboard")
       .then((res) => {
         if (!alive) return;
-        if (res.data && res.data.attendance) {
-          setStudentCourses(res.data.attendance);
+        if (res.data) {
+          setDashboardData(res.data);
           try {
             sessionStorage.setItem("dashboard_data", JSON.stringify(res.data));
           } catch {}
@@ -141,26 +49,66 @@ export default function ExamsPage() {
     return () => { alive = false; };
   }, []);
 
-  // Normalize subject code helper
-  const normalize = (code) => code.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const homepageCourses = useMemo(() => {
+    if (!dashboardData) return [];
+    const merged = getMergedAttendance(dashboardData.attendance, dashboardData.usn);
+    return filterElectives(merged);
+  }, [dashboardData]);
 
   // Matcher for registered subjects
-  const isRegistered = (examCode) => {
-    const normalizedExam = normalize(examCode);
-    return studentCourses.some((registered) => {
-      const normalizedReg = normalize(registered.course);
-      return normalizedReg.includes(normalizedExam) || normalizedExam.includes(normalizedReg);
+  const isRegistered = useCallback((examCode) => {
+    const clean = (c) => c.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const normalizedExam = clean(examCode);
+    
+    return homepageCourses.some((registered) => {
+      const normalizedReg = clean(registered.course);
+      
+      // Extract semester digits (the first digit in the code after the initial prefix)
+      const getSemDigit = (c) => {
+        const withoutLeading = c.substring(1);
+        const match = withoutLeading.match(/\d/);
+        return match ? match[0] : null;
+      };
+      
+      const regSem = getSemDigit(normalizedReg);
+      const examSem = getSemDigit(normalizedExam);
+      
+      // If both codes have a semester digit, they must match!
+      if (regSem && examSem && regSem !== examSem) {
+        return false;
+      }
+      
+      // Exact match after basic clean
+      if (normalizedReg === normalizedExam) return true;
+      
+      // Match if one includes the other
+      if (normalizedReg.includes(normalizedExam) || normalizedExam.includes(normalizedReg)) return true;
+      
+      // Remove any 'K' at index 5 (e.g. 1BESCK204A -> 1BESC204A)
+      const regNoK = normalizedReg.replace(/^([A-Z0-9]{5})K/, "$1");
+      const exNoK = normalizedExam.replace(/^([A-Z0-9]{5})K/, "$1");
+      if (regNoK === exNoK) return true;
+
+      // Fallback: match by course name
+      if (registered.courseName && examCode) {
+        const exam = EXAM_DATABASE.find((e) => e.code === examCode);
+        if (exam && exam.title) {
+          const cleanName = (n) => n.toLowerCase().replace(/[^a-z0-9]/g, "");
+          const regName = cleanName(registered.courseName);
+          const exName = cleanName(exam.title);
+          if (regName.includes(exName) || exName.includes(regName)) return true;
+        }
+      }
+
+      return false;
     });
-  };
+  }, [homepageCourses]);
 
   // Filter and sort exams
   const filteredExams = useMemo(() => {
-    let list = EXAM_DATABASE;
-    if (viewMode === "my") {
-      list = EXAM_DATABASE.filter((exam) => isRegistered(exam.code));
-    }
+    const list = EXAM_DATABASE.filter((exam) => isRegistered(exam.code));
     return [...list].sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [viewMode, studentCourses]);
+  }, [isRegistered]);
 
   // Compute countdown details
   const getCountdown = (examDateStr) => {
@@ -180,17 +128,15 @@ export default function ExamsPage() {
 
   // Next upcoming exam helper
   const nextExam = useMemo(() => {
-    const myExams = EXAM_DATABASE.filter((exam) => isRegistered(exam.code));
     const now = new Date();
     now.setHours(0,0,0,0);
     
-    const upcoming = myExams
+    const upcoming = filteredExams
       .map(exam => ({ ...exam, dateObj: new Date(exam.date) }))
-      .filter(exam => exam.dateObj >= now)
-      .sort((a, b) => a.dateObj - b.dateObj);
+      .filter(exam => exam.dateObj >= now);
       
     return upcoming[0] || null;
-  }, [studentCourses]);
+  }, [filteredExams]);
 
   const daysToNextExam = useMemo(() => {
     if (!nextExam) return null;
@@ -232,49 +178,20 @@ export default function ExamsPage() {
         </div>
       )}
 
-      {/* Tabs / Filters - Very Minimal */}
+      {/* Clean Header Section */}
       <div 
         style={{
           display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
           borderBottom: "1px solid var(--line)",
-          marginBottom: "24px",
-          gap: "16px"
+          paddingBottom: "12px",
+          marginBottom: "24px"
         }}
       >
-        <button
-          type="button"
-          onClick={() => setViewMode("my")}
-          style={{
-            padding: "10px 4px",
-            fontSize: "0.85rem",
-            fontWeight: 800,
-            cursor: "pointer",
-            background: "transparent",
-            color: viewMode === "my" ? "var(--primary)" : "var(--muted)",
-            borderBottom: viewMode === "my" ? "2px solid var(--primary)" : "2px solid transparent",
-            marginBottom: "-1px",
-            transition: "all 120ms ease"
-          }}
-        >
-          My Schedule ({studentCourses.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode("all")}
-          style={{
-            padding: "10px 4px",
-            fontSize: "0.85rem",
-            fontWeight: 800,
-            cursor: "pointer",
-            background: "transparent",
-            color: viewMode === "all" ? "var(--primary)" : "var(--muted)",
-            borderBottom: viewMode === "all" ? "2px solid var(--primary)" : "2px solid transparent",
-            marginBottom: "-1px",
-            transition: "all 120ms ease"
-          }}
-        >
-          Full Scheme ({EXAM_DATABASE.length})
-        </button>
+        <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "var(--primary)", letterSpacing: "0.04em" }}>
+          YOUR EXAM SCHEDULE ({filteredExams.length} EXAMS)
+        </span>
       </div>
 
       {/* Clean Timeline-Style Exam List */}

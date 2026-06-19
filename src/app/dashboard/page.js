@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getMergedAttendance, saveSelfLoggedAttendance, filterElectives } from "@/lib/clientApi";
+import { EXAM_DATABASE } from "@/lib/examSchedule";
  
 const toNumber = (value, fallback = 0) => {
   const number = Number(value);
@@ -188,6 +189,82 @@ export default function Dashboard() {
     } catch (e) {}
   };
 
+  const registeredExams = useMemo(() => {
+    if (!data) return [];
+    
+    const clean = (c) => c.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const merged = getMergedAttendance(data.attendance, data.usn);
+    const homepageCourses = filterElectives(merged);
+    
+    const isRegistered = (examCode) => {
+      const normalizedExam = clean(examCode);
+      
+      return homepageCourses.some((registered) => {
+        const normalizedReg = clean(registered.course);
+        
+        if (normalizedReg === normalizedExam) return true;
+        if (normalizedReg.includes(normalizedExam) || normalizedExam.includes(normalizedReg)) return true;
+        
+        const regNoK = normalizedReg.replace(/^([A-Z0-9]{5})K/, "$1");
+        const exNoK = normalizedExam.replace(/^([A-Z0-9]{5})K/, "$1");
+        if (regNoK === exNoK) return true;
+
+        if (registered.courseName && examCode) {
+          const exam = EXAM_DATABASE.find((e) => e.code === examCode);
+          if (exam && exam.title) {
+            const cleanName = (n) => n.toLowerCase().replace(/[^a-z0-9]/g, "");
+            const regName = cleanName(registered.courseName);
+            const exName = cleanName(exam.title);
+            if (regName.includes(exName) || exName.includes(regName)) return true;
+          }
+        }
+
+        return false;
+      });
+    };
+
+    const getSemDigit = (c) => {
+      const withoutLeading = c.substring(1);
+      const match = withoutLeading.match(/\d/);
+      return match ? match[0] : null;
+    };
+
+    const list = EXAM_DATABASE.filter((exam) => {
+      const examCodeClean = clean(exam.code);
+      
+      const match = homepageCourses.find((registered) => {
+        const normalizedReg = clean(registered.course);
+        const regSem = getSemDigit(normalizedReg);
+        const examSem = getSemDigit(examCodeClean);
+        
+        if (regSem && examSem && regSem !== examSem) {
+          return false;
+        }
+        
+        return isRegistered(exam.code);
+      });
+      
+      return !!match;
+    });
+
+    return [...list].sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, [data, refreshKey, electives]);
+
+  const getCountdown = (examDateStr) => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const examDate = new Date(examDateStr);
+    examDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = examDate - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return { label: "Today", type: "today" };
+    if (diffDays === 1) return { label: "Tomorrow", type: "tomorrow" };
+    if (diffDays > 1) return { label: `In ${diffDays}d`, type: "upcoming" };
+    return { label: "Done", type: "past" };
+  };
+ 
   if (loading) return <div className="center-state"><div className="loader" /></div>;
   if (error) return <div className="center-state"><div className="auth-card" style={{ textAlign: "center" }}><h1 className="title">Oops</h1><p>{error}</p><button onClick={() => router.push("/")} className="button">Retry</button></div></div>;
 
@@ -374,31 +451,86 @@ export default function Dashboard() {
           <strong>{summary.avgCie}</strong>
         </div>
       </div>
-      {/* Faculty Feedback Notification Banner */}
-      <Link href="/dashboard/feedback" style={{ textDecoration: "none" }}>
-        <section className="panel fade-in" style={{
-          margin: "16px 12px 0",
-          background: "linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(129, 140, 248, 0.05))",
-          border: "1px solid rgba(167, 139, 250, 0.3)",
-          boxShadow: "0 4px 20px rgba(167, 139, 250, 0.1)",
-          borderRadius: "14px",
-          padding: "14px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          cursor: "pointer",
-          transition: "all 0.2s ease",
-        }}>
-          <span style={{ fontSize: "1.5rem" }}>⚡</span>
-          <div style={{ flex: 1 }}>
-            <h3 style={{ fontSize: "0.9rem", fontWeight: 850, color: "#c4b5fd", margin: 0 }}>Faculty Feedback is Live!</h3>
-            <p style={{ fontSize: "0.75rem", color: "var(--muted)", margin: "2px 0 0", lineHeight: "1.3" }}>
-              Submit positive ratings for all faculty members automatically with one click.
-            </p>
+      {/* Upcoming Exams Panel */}
+      {registeredExams.length > 0 && (
+        <section 
+          className="panel fade-in" 
+          style={{ 
+            margin: "16px 12px 0", 
+            border: "1px solid var(--line)", 
+            borderRadius: "14px", 
+            background: "var(--surface)",
+            padding: "16.5px"
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+            <h3 style={{ fontSize: "0.9rem", fontWeight: 850, color: "var(--ink)", margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
+              📋 Upcoming VTU Exams
+            </h3>
+            <Link 
+              href="/dashboard/exams" 
+              style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--primary)", textDecoration: "none" }}
+            >
+              View Full Schedule &rarr;
+            </Link>
           </div>
-          <span style={{ fontSize: "1.1rem", color: "#a78bfa" }}>&rarr;</span>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {registeredExams.map((exam, idx) => {
+              const countdown = getCountdown(exam.date);
+              const isToday = countdown.type === "today";
+              const isPast = countdown.type === "past";
+              
+              if (isPast) return null;
+
+              const [y, m, d] = exam.date.split("-");
+              const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+              const formattedDate = `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
+
+              return (
+                <div 
+                  key={`${exam.code}-${idx}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 12px",
+                    background: isToday ? "rgba(183, 51, 51, 0.04)" : "var(--surface-soft)",
+                    border: isToday ? "1px solid rgba(183, 51, 51, 0.2)" : "1px solid var(--line)",
+                    borderRadius: "10px",
+                    fontSize: "0.8rem"
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1, marginRight: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <strong style={{ color: "var(--ink)", fontWeight: 800 }}>{exam.code}</strong>
+                      <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>• {formattedDate} ({exam.day})</span>
+                    </div>
+                    <div style={{ fontSize: "0.76rem", color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: "2px" }}>
+                      {exam.title}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <span 
+                      style={{ 
+                        fontSize: "0.72rem", 
+                        fontWeight: 900, 
+                        color: isToday ? "var(--danger)" : countdown.type === "tomorrow" ? "var(--warning)" : "var(--primary)",
+                        textTransform: "uppercase" 
+                      }}
+                    >
+                      {countdown.label}
+                    </span>
+                    <div style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: "2px" }}>
+                      9:30 AM
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
-      </Link>
+      )}
 
       {/* Quick Actions Grid */}
       <div className="home-section-title" style={{ marginTop: 24 }}>
