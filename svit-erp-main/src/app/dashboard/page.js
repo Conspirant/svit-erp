@@ -273,7 +273,7 @@ export default function Dashboard() {
   const activeStudentId = studentId || (activeUsn ? activeUsn.slice(-5) : "25CD092");
 
   return (
-    <main className="mobile-app-shell native-home fade-in" style={{ paddingBottom: "100px" }}>
+    <div className="dashboard-home-view native-home fade-in">
       {/* Executive Student Profile Card */}
       <section className="home-profile-card" style={{ marginTop: 12 }}>
         <div className="home-profile-header-row">
@@ -578,6 +578,6 @@ export default function Dashboard() {
           </div>
         </section>
       </section>
-    </main>
+    </div>
   );
 }

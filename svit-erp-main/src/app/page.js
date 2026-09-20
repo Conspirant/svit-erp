@@ -42,6 +42,8 @@ export default function Home() {
   const [forgotErpUsername, setForgotErpUsername] = useState("");
   const [forgotCookies, setForgotCookies] = useState("");
   const [forgotHiddenFields, setForgotHiddenFields] = useState(null);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [savedCreds, setSavedCreds] = useState(null);
   const router = useRouter();
 
   const fetchCaptcha = useCallback(async () => {
@@ -62,13 +64,54 @@ export default function Home() {
     }
   }, []);
 
-  // Clear cached data from previous session and load captcha
+  const parseDobString = useCallback((dobStr) => {
+    if (!dobStr || typeof dobStr !== "string") return;
+    const cleaned = dobStr.trim();
+    // YYYY-MM-DD
+    const ymd = cleaned.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (ymd) {
+      setYyyy(ymd[1]);
+      setMm(ymd[2].padStart(2, "0"));
+      setDd(ymd[3].padStart(2, "0"));
+      setDobText(cleaned);
+      return;
+    }
+    // DD-MM-YYYY
+    const dmy = cleaned.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    if (dmy) {
+      setDd(dmy[1].padStart(2, "0"));
+      setMm(dmy[2].padStart(2, "0"));
+      setYyyy(dmy[3]);
+      setDobText(cleaned);
+      return;
+    }
+    setDobText(cleaned);
+  }, []);
+
+  // Clear cached data from previous session, load captcha, and retrieve saved credentials
   useEffect(() => {
     try {
       clearClientSession();
     } catch { }
     fetchCaptcha();
-  }, [fetchCaptcha]);
+
+    try {
+      const saved = localStorage.getItem("svit_saved_credentials");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.usn) {
+          setSavedCreds(parsed);
+          setUsn(parsed.usn);
+          if (parsed.mode) setMode(parsed.mode);
+          if (parsed.dd) setDd(parsed.dd);
+          if (parsed.mm) setMm(parsed.mm);
+          if (parsed.yyyy) setYyyy(parsed.yyyy);
+          if (parsed.dobText) setDobText(parsed.dobText);
+          else if (parsed.dob) parseDobString(parsed.dob);
+        }
+      }
+    } catch { }
+  }, [fetchCaptcha, parseDobString]);
 
   const getDob = useCallback(() => {
     if (mode === "dropdown") {
@@ -77,6 +120,29 @@ export default function Home() {
     }
     return dobText.trim();
   }, [mode, dd, mm, yyyy, dobText]);
+
+  const handleAutofillSaved = () => {
+    if (!savedCreds) return;
+    if (savedCreds.usn) setUsn(savedCreds.usn);
+    if (savedCreds.mode) setMode(savedCreds.mode);
+    if (savedCreds.dd) setDd(savedCreds.dd);
+    if (savedCreds.mm) setMm(savedCreds.mm);
+    if (savedCreds.yyyy) setYyyy(savedCreds.yyyy);
+    if (savedCreds.dobText) setDobText(savedCreds.dobText);
+    else if (savedCreds.dob) parseDobString(savedCreds.dob);
+
+    setTimeout(() => {
+      const captchaInput = document.getElementById("login-captcha");
+      if (captchaInput) captchaInput.focus();
+    }, 50);
+  };
+
+  const handleClearSaved = () => {
+    try {
+      localStorage.removeItem("svit_saved_credentials");
+    } catch { }
+    setSavedCreds(null);
+  };
 
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
@@ -98,6 +164,28 @@ export default function Home() {
         { username: usn, dob, captcha: captchaCode.trim() },
         { retries: 0, redirectOnUnauthorized: false }
       );
+
+      if (rememberMe) {
+        try {
+          const credsPayload = {
+            usn: usn.toUpperCase(),
+            dob,
+            mode,
+            dd,
+            mm,
+            yyyy,
+            dobText: mode === "type" ? dobText : dob
+          };
+          localStorage.setItem("svit_saved_credentials", JSON.stringify(credsPayload));
+          setSavedCreds(credsPayload);
+        } catch { }
+      } else {
+        try {
+          localStorage.removeItem("svit_saved_credentials");
+        } catch { }
+        setSavedCreds(null);
+      }
+
       router.push("/dashboard");
     } catch (err) {
       setError(err.message || "Could not connect to the ERP server. Please try again.");
@@ -189,15 +277,17 @@ export default function Home() {
           </h1>
           <div className="app-login-divider" />
           <p className="app-login-subtitle">Student ERP</p>
+          <span className="app-login-odd-term-notice">Only for odd term ppl</span>
         </div>
 
         {/* Login Form Card */}
-        <div className="app-login-card">
+        <form onSubmit={handleLogin} method="post" autoComplete="on" className="app-login-card">
           {/* USN Field */}
           <div className="app-login-field">
             <label className="app-login-label" htmlFor="login-usn">USN</label>
             <input
               id="login-usn"
+              name="username"
               type="text"
               className="app-login-input"
               placeholder="e.g. 1VA25CS001"
@@ -232,53 +322,79 @@ export default function Home() {
             </div>
 
             {mode === "dropdown" ? (
-              <div className="app-login-dob-row">
-                <select
-                  id="login-dd"
-                  className="app-login-input app-login-select"
-                  value={dd}
-                  onChange={(e) => setDd(e.target.value)}
-                  required={mode === "dropdown"}
-                >
-                  <option value="" disabled>Day</option>
-                  {DAYS.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-                <select
-                  id="login-mm"
-                  className="app-login-input app-login-select"
-                  value={mm}
-                  onChange={(e) => setMm(e.target.value)}
-                  required={mode === "dropdown"}
-                >
-                  <option value="" disabled>Month</option>
-                  {MONTHS.map((m) => (
-                    <option key={m.value} value={m.value}>{m.label}</option>
-                  ))}
-                </select>
-                <select
-                  id="login-yyyy"
-                  className="app-login-input app-login-select"
-                  value={yyyy}
-                  onChange={(e) => setYyyy(e.target.value)}
-                  required={mode === "dropdown"}
-                >
-                  <option value="" disabled>Year</option>
-                  {YEARS.map((y) => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              </div>
+              <>
+                <input
+                  type="password"
+                  name="password"
+                  id="login-dob-hidden"
+                  value={getDob()}
+                  onChange={(e) => parseDobString(e.target.value)}
+                  autoComplete="current-password"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    opacity: 0,
+                    pointerEvents: "none",
+                    height: 0,
+                    width: 0,
+                    border: 0,
+                    margin: 0,
+                    padding: 0
+                  }}
+                />
+                <div className="app-login-dob-row">
+                  <select
+                    id="login-dd"
+                    className="app-login-input app-login-select"
+                    value={dd}
+                    onChange={(e) => setDd(e.target.value)}
+                    required={mode === "dropdown"}
+                  >
+                    <option value="" disabled>Day</option>
+                    {DAYS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  <select
+                    id="login-mm"
+                    className="app-login-input app-login-select"
+                    value={mm}
+                    onChange={(e) => setMm(e.target.value)}
+                    required={mode === "dropdown"}
+                  >
+                    <option value="" disabled>Month</option>
+                    {MONTHS.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    id="login-yyyy"
+                    className="app-login-input app-login-select"
+                    value={yyyy}
+                    onChange={(e) => setYyyy(e.target.value)}
+                    required={mode === "dropdown"}
+                  >
+                    <option value="" disabled>Year</option>
+                    {YEARS.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
             ) : (
               <input
                 id="login-dob"
+                name="password"
                 type="password"
                 className="app-login-input"
                 autoComplete="current-password"
                 placeholder="YYYY-MM-DD or DD-MM-YYYY"
                 value={dobText}
-                onChange={(e) => setDobText(e.target.value)}
+                onChange={(e) => {
+                  setDobText(e.target.value);
+                  parseDobString(e.target.value);
+                }}
                 required={mode === "type"}
               />
             )}
@@ -390,12 +506,22 @@ export default function Home() {
             </div>
           )}
 
+          {/* Remember Credentials Checkbox */}
+          <label className="app-login-remember-row">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="app-login-remember-check"
+            />
+            <span>Remember credentials on this device</span>
+          </label>
+
           {/* Sign In Button */}
           <button
-            type="button"
+            type="submit"
             className="app-login-btn"
             disabled={loading}
-            onClick={handleLogin}
           >
             {loading ? <span className="app-login-spinner" aria-label="Signing in" /> : "Sign In"}
           </button>
@@ -410,7 +536,31 @@ export default function Home() {
               Forgot Password?
             </button>
           </div>
-        </div>
+
+          {/* Minimalist Saved Credentials Autofill Pill below Forgot Password */}
+          {savedCreds && (
+            <div className="app-login-saved-pill-row">
+              <button 
+                type="button"
+                className="app-login-saved-pill"
+                onClick={handleAutofillSaved}
+                title="Autofill remembered credentials"
+              >
+                <span className="app-login-saved-dot" />
+                <span>Autofill saved ({savedCreds.usn})</span>
+              </button>
+              <button 
+                type="button"
+                className="app-login-saved-clear"
+                onClick={handleClearSaved}
+                title="Forget saved credentials"
+                aria-label="Forget saved credentials"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
+        </form>
 
         {/* Footer hint */}
         <p className="app-login-hint">Login with your SVIT ERP credentials</p>
