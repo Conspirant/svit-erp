@@ -42,3 +42,8 @@ next-dev-*.err.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# scratch & test files
+scratch/
+test_real.js
+

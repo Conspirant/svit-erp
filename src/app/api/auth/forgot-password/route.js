@@ -3,11 +3,11 @@ import axios from 'axios';
 import https from 'https';
 import * as cheerio from 'cheerio';
 
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: false,
-});
+import { ERP_BASE_URL, createHttpsAgent } from '@/lib/erpConfig';
 
-const BASE_URL = 'https://svit-students.accredia.in:8084/index.php';
+const httpsAgent = createHttpsAgent();
+
+const BASE_URL = ERP_BASE_URL;
 
 const cleanText = (value) => value?.replace(/\s+/g, ' ').trim() || '';
 

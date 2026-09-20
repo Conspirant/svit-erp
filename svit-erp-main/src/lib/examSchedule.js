@@ -120,3 +120,84 @@ export function getAllExams(cycle) {
     semester: IA_EXAMS[cycle].semester,
   }));
 }
+
+export const EXAM_DATABASE = [
+  // Day 1: 23-06-2026
+  { code: "1BPHYC102", title: "Physics for Sustainable Structural Systems", date: "2026-06-23", day: "Tuesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BPHYC202", title: "Physics for Sustainable Structural Systems", date: "2026-06-23", day: "Tuesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BPHYM102", title: "Physics of Materials", date: "2026-06-23", day: "Tuesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BPHYM202", title: "Physics of Materials", date: "2026-06-23", day: "Tuesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BPHEC102", title: "Quantum Physics and Electronics Sensors", date: "2026-06-23", day: "Tuesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BPHEC202", title: "Quantum Physics and Electronics Sensors", date: "2026-06-23", day: "Tuesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BPHEE102", title: "Electrical Engineering Materials", date: "2026-06-23", day: "Tuesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BPHEE202", title: "Electrical Engineering Materials", date: "2026-06-23", day: "Tuesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BPHYS102", title: "Quantum Physics and Applications", date: "2026-06-23", day: "Tuesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BPHYS202", title: "Quantum Physics and Applications", date: "2026-06-23", day: "Tuesday", time: "9:30 AM to 12:30 PM" },
+
+  // Day 2: 25-06-2026
+  { code: "1BCHEC102", title: "Applied Chemistry for Sustainable Structure & Material Design", date: "2026-06-25", day: "Thursday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BCHEC202", title: "Applied Chemistry for Sustainable Structure & Material Design", date: "2026-06-25", day: "Thursday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BCHEM102", title: "Applied Chemistry for Advanced Metal Protection and Sustainable Energy Systems", date: "2026-06-25", day: "Thursday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BCHEM202", title: "Applied Chemistry for Advanced Metal Protection and Sustainable Energy Systems", date: "2026-06-25", day: "Thursday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BCHEE102", title: "Applied Chemistry for Emerging Electronics and Futuristic Devices", date: "2026-06-25", day: "Thursday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BCHEE202", title: "Applied Chemistry for Emerging Electronics and Futuristic Devices", date: "2026-06-25", day: "Thursday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BCHES102", title: "Applied Chemistry for Smart Systems", date: "2026-06-25", day: "Thursday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BCHES202", title: "Applied Chemistry for Smart Systems", date: "2026-06-25", day: "Thursday", time: "9:30 AM to 12:30 PM" },
+
+  // Day 3: 27-06-2026
+  { code: "1BPLC105B", title: "Python Programming", date: "2026-06-27", day: "Saturday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BPLC205B", title: "Python Programming", date: "2026-06-27", day: "Saturday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BPLC105E", title: "Introduction to C Programming", date: "2026-06-27", day: "Saturday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BPLC205E", title: "Introduction to C Programming", date: "2026-06-27", day: "Saturday", time: "9:30 AM to 12:30 PM" },
+
+  // Day 4: 29-06-2026
+  { code: "1BCIV105", title: "Engineering Mechanics", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BCIV205", title: "Engineering Mechanics", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BBEE105", title: "Basics of Electrical Engineering", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BBEE205", title: "Basics of Electrical Engineering", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BECE105", title: "Fundamentals of Electronics & Communication Engineering", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BECE205", title: "Fundamentals of Electronics & Communication Engineering", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BEME105", title: "Elements of Mechanical Engineering", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BEME205", title: "Elements of Mechanical Engineering", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BEBT105", title: "Elements of Biotechnology and Biomimetics", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BEBT205", title: "Elements of Biotechnology and Biomimetics", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BSSA105", title: "Principles of Soil Science & Agronomy", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BSSA205", title: "Principles of Soil Science & Agronomy", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BEAE105", title: "Elements of Aeronautical Engineering", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BEAE205", title: "Elements of Aeronautical Engineering", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BETX105", title: "Technology of Textile", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BETX205", title: "Technology of Textile", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BECHE105", title: "Elements of Chemical Engineering", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BECHE205", title: "Elements of Chemical Engineering", date: "2026-06-29", day: "Monday", time: "9:30 AM to 12:30 PM" },
+
+  // Day 5: 01-07-2026
+  { code: "1BEIT105", title: "Programming in C", date: "2026-07-01", day: "Wednesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BEIT205", title: "Programming in C", date: "2026-07-01", day: "Wednesday", time: "9:30 AM to 12:30 PM" },
+
+  // Day 6: 03-07-2026
+  { code: "1BENG106", title: "Communication Skills", date: "2026-07-03", day: "Friday", time: "9:30 AM to 10:30 AM" },
+  { code: "1BENG206", title: "Communication Skills", date: "2026-07-03", day: "Friday", time: "9:30 AM to 10:30 AM" },
+
+  // Day 7: 06-07-2026
+  { code: "1BESC204A", title: "Building Sciences & Mechanics", date: "2026-07-06", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BESC204B", title: "Introduction to Electrical Engineering", date: "2026-07-06", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BESC204C", title: "Introduction to Electronics & Communication Engineering", date: "2026-07-06", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BESC204D", title: "Introduction to Mechanical Engineering", date: "2026-07-06", day: "Monday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BESC204E", title: "Essentials of Information Technology", date: "2026-07-06", day: "Monday", time: "9:30 AM to 12:30 PM" },
+
+  // Day 8: 08-07-2026
+  { code: "1BMATM201", title: "Multivariable Calculus and Numerical Methods", date: "2026-07-08", day: "Wednesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BMATE201", title: "Calculus, Laplace Transform and Numerical Techniques", date: "2026-07-08", day: "Wednesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BMATC201", title: "Differential Calculus & Numerical Methods", date: "2026-07-08", day: "Wednesday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BMATS201", title: "Numerical Methods", date: "2026-07-08", day: "Wednesday", time: "9:30 AM to 12:30 PM" },
+
+  // Day 9: 10-07-2026
+  { code: "1BAIA103", title: "Introduction to AI and Applications", date: "2026-07-10", day: "Friday", time: "9:30 AM to 12:30 PM" },
+  { code: "1BAIA203", title: "Introduction to AI and Applications", date: "2026-07-10", day: "Friday", time: "9:30 AM to 12:30 PM" },
+
+  // Day 10: 13-07-2026
+  { code: "1BKSK109", title: "Samskrutika Kannada", date: "2026-07-13", day: "Monday", time: "9:30 AM to 10:30 AM" },
+  { code: "1BKSK209", title: "Samskrutika Kannada", date: "2026-07-13", day: "Monday", time: "9:30 AM to 10:30 AM" },
+  { code: "1BKBK109", title: "Balake Kannada", date: "2026-07-13", day: "Monday", time: "9:30 AM to 10:30 AM" },
+  { code: "1BKBK209", title: "Balake Kannada", date: "2026-07-13", day: "Monday", time: "9:30 AM to 10:30 AM" },
+];

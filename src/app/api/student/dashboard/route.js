@@ -5,13 +5,16 @@ import * as cheerio from 'cheerio';
 import https from 'https';
 import { setSessionIdentity } from '@/lib/authSession';
 
-const httpsAgent = new https.Agent({
-    rejectUnauthorized: false,
-    keepAlive: true,
-    maxSockets: 10,
-});
+import {
+    ERP_BASE_URL,
+    DEFAULT_USER_AGENT,
+    createHttpsAgent,
+    resolveErpUrl,
+} from '@/lib/erpConfig';
 
-const BASE_URL = 'https://svit-students.accredia.in:8084/index.php';
+const httpsAgent = createHttpsAgent();
+
+const BASE_URL = ERP_BASE_URL;
 
 const readBracketCount = (text, label) => {
     const match = text.match(new RegExp(`${label}\\s*\\[\\s*(\\d+)\\s*\\]`, 'i'));
@@ -231,7 +234,7 @@ export async function GET() {
                         const courseCode = cleanText(cells.first().text());
                         const courseName = cleanText(cells.eq(1).text());
                         if (courseCode && courseName) courseNames.set(courseCode, courseName);
-                        attendanceLinks.push({ course: courseCode, courseName, url: `https://svit-students.accredia.in:8084/${link}` });
+                        attendanceLinks.push({ course: courseCode, courseName, url: resolveErpUrl(link) });
                     }
 
                     if (link && link.includes('task=ciedetails')) {
@@ -239,7 +242,7 @@ export async function GET() {
                         const courseCode = cleanText(cells.first().text());
                         const courseName = cleanText(cells.eq(1).text());
                         if (courseCode && courseName) courseNames.set(courseCode, courseName);
-                        cieLinks.push({ course: courseCode, courseName, url: `https://svit-students.accredia.in:8084/${link}` });
+                        cieLinks.push({ course: courseCode, courseName, url: resolveErpUrl(link) });
                     }
                 });
                 if (rowData.length > 0) tableData.push(rowData);
@@ -596,6 +599,16 @@ export async function GET() {
         const semMatch = fullPageText.match(/Semester\s*:\s*(\d+)/i) || fullPageText.match(/SEM\s*0?(\d+)/i);
         if (semMatch) stats.semester = semMatch[1];
         else stats.semester = '';
+
+        const secMatch = fullPageText.match(/SEC\s*([A-Z0-9]+)/i) || fullPageText.match(/Section\s*:\s*([A-Z0-9]+)/i);
+        stats.section = secMatch ? secMatch[1].trim() : '';
+
+        const headerDetailMatch = fullPageText.match(/([A-Za-z.\-]+)\s*,\s*SEM\s*0?(\d+)\s*,?\s*SEC\s*([A-Z0-9]+)?/i);
+        if (headerDetailMatch) {
+            if (!stats.department) stats.department = headerDetailMatch[1].trim();
+            if (!stats.semester) stats.semester = headerDetailMatch[2].trim();
+            if (!stats.section && headerDetailMatch[3]) stats.section = headerDetailMatch[3].trim();
+        }
 
         // Try to find generic metric cards or panels
         $('.uk-card, .panel, .widget').each((i, el) => {

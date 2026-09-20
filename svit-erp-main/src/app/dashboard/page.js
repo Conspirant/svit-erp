@@ -1,10 +1,27 @@
 "use client";
-
+ 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSeatingInfo } from "@/lib/seatingData";
-import { detectCycle, getNextExam } from "@/lib/examSchedule";
+import {
+  ShieldCheck,
+  ChevronRight,
+  Copy,
+  Check,
+  Calendar as CalendarIcon,
+  BarChart3,
+  Clock,
+  Calculator,
+  FileText,
+  ShoppingBag,
+  MessageSquare,
+  IdCard as IdCardIcon,
+  Unlock,
+  PenTool,
+  GraduationCap,
+} from "lucide-react";
+import StudentAvatar from "@/components/StudentAvatar";
+import { getMergedAttendance, saveSelfLoggedAttendance } from "@/lib/clientApi";
 
 const toNumber = (value, fallback = 0) => {
   const number = Number(value);
@@ -13,500 +30,553 @@ const toNumber = (value, fallback = 0) => {
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-const getCourseLabel = (course) => {
-  if (!course) return "";
-  return course.courseName ? `${course.course} - ${course.courseName}` : course.course;
-};
-
 export default function Dashboard() {
   const [data, setData] = useState(null);
+  const [timetable, setTimetable] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [bunkCourseIdx, setBunkCourseIdx] = useState("");
-  const [bunkTarget, setBunkTarget] = useState(85);
-  const [classesLeft, setClassesLeft] = useState("");
-  const [selectedEstimate, setSelectedEstimate] = useState("");
-  const [dismissSeating, setDismissSeating] = useState(false);
-  const [dismissExam, setDismissExam] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [photo, setPhoto] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [profileExtra, setProfileExtra] = useState(null);
+  const [copiedUsn, setCopiedUsn] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Show cached data instantly if available
-    try {
-      const cached = sessionStorage.getItem('dashboard_data');
-      if (cached) {
-        setData(JSON.parse(cached));
-        setLoading(false);
-      }
-    } catch {}
+    const handleUpdate = () => setRefreshKey(prev => prev + 1);
+    window.addEventListener("attendanceChanged", handleUpdate);
+    return () => window.removeEventListener("attendanceChanged", handleUpdate);
+  }, []);
 
-    const fetchDashboard = async () => {
+  useEffect(() => {
+    // Show cached data instantly if available
+    queueMicrotask(() => {
       try {
-        const res = await fetch("/api/student/dashboard");
-        if (res.status === 401) {
+        const cachedData = sessionStorage.getItem('dashboard_data');
+        const cachedTimetable = sessionStorage.getItem('dashboard_timetable');
+        const savedPhoto = localStorage.getItem('svit_idcard_photo');
+        const isInvalid = savedPhoto && (savedPhoto.toLowerCase().includes("logo") || savedPhoto.toLowerCase().includes("svit"));
+        if (savedPhoto && !isInvalid) {
+          setPhoto(savedPhoto);
+        } else if (isInvalid) {
+          try { localStorage.removeItem('svit_idcard_photo'); } catch {}
+        }
+        const savedId = localStorage.getItem('svit_idcard_student_id');
+        const cachedProf = sessionStorage.getItem('profile_data');
+        if (cachedData) setData(JSON.parse(cachedData));
+        if (cachedTimetable) setTimetable(JSON.parse(cachedTimetable));
+        if (savedId) setStudentId(savedId);
+        if (cachedProf) setProfileExtra(JSON.parse(cachedProf));
+        if (cachedData && cachedTimetable) setLoading(false);
+      } catch { }
+    });
+
+    const fetchAll = async () => {
+      try {
+        const [dashRes, ttRes] = await Promise.all([
+          fetch("/api/student/dashboard"),
+          fetch("/api/student/timetable")
+        ]);
+
+        if (dashRes.status === 401 || ttRes.status === 401) {
           router.push("/");
           return;
         }
 
-        const json = await res.json();
-        if (json.success) {
-          setData(json.data);
-          try { sessionStorage.setItem('dashboard_data', JSON.stringify(json.data)); } catch {}
-        } else {
-          setError(json.error || "Failed to load dashboard data.");
+        const [dashJson, ttJson] = await Promise.all([dashRes.json(), ttRes.json()]);
+
+        if (dashJson.success) {
+          setData(dashJson.data);
+          try { sessionStorage.setItem('dashboard_data', JSON.stringify(dashJson.data)); } catch { }
         }
+        if (ttJson.success) {
+          setTimetable(ttJson.data);
+          try { sessionStorage.setItem('dashboard_timetable', JSON.stringify(ttJson.data)); } catch { }
+        }
+
+        if (!dashJson.success) setError(dashJson.error || "Failed to load dashboard.");
+
+        // Background fetch photo and profile if missing
+        try {
+          if (!localStorage.getItem('svit_idcard_photo')) {
+            fetch('/api/student/photo').then(r => r.ok ? r.json() : null).then(pJson => {
+              if (pJson?.photo) {
+                const isLogo = pJson.photo.toLowerCase().includes("logo") || pJson.photo.toLowerCase().includes("svit");
+                if (!isLogo) {
+                  setPhoto(pJson.photo);
+                  try { localStorage.setItem('svit_idcard_photo', pJson.photo); } catch {}
+                }
+              }
+            }).catch(() => {});
+          }
+          if (!sessionStorage.getItem('profile_data')) {
+            fetch('/api/student/profile').then(r => r.ok ? r.json() : null).then(prJson => {
+              if (prJson?.success && prJson?.data) {
+                setProfileExtra(prJson.data);
+                try { sessionStorage.setItem('profile_data', JSON.stringify(prJson.data)); } catch {}
+              }
+            }).catch(() => {});
+          }
+        } catch {}
       } catch (err) {
-        setError("Could not connect to the ERP server.");
+        setError("Could not connect to server.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDashboard();
+    fetchAll();
   }, [router]);
 
-  const attendance = useMemo(() => data?.attendance || [], [data]);
-  const cie = useMemo(() => data?.cie || [], [data]);
-  const selectedCourse = bunkCourseIdx !== "" ? attendance[Number(bunkCourseIdx)] : null;
-  const targetPercentage = useMemo(() => clamp(toNumber(bunkTarget, 85), 1, 100), [bunkTarget]);
-  const remainingClasses = selectedCourse ? Math.max(0, Math.floor(toNumber(classesLeft, selectedCourse.stillToGo || 0))) : 0;
+  const attendance = useMemo(() => {
+    if (!data) return [];
+    return getMergedAttendance(data.attendance, data.usn);
+  }, [data, refreshKey]);
+
+  const cie = useMemo(() => {
+    if (!data?.cie) return [];
+    return data.cie;
+  }, [data]);
 
   const summary = useMemo(() => {
-    const averageAttendance =
-      attendance.length > 0
-        ? Math.round(attendance.reduce((sum, item) => sum + toNumber(item.percentage), 0) / attendance.length)
-        : 0;
-    const belowTarget = attendance.filter((item) => toNumber(item.percentage) < 80).length;
-    const averageCie =
-      cie.length > 0
-        ? Math.round((cie.reduce((sum, item) => sum + toNumber(item.marks), 0) / cie.length) * 10) / 10
-        : 0;
-
-    return { averageAttendance, belowTarget, averageCie };
+    const avgAtt = attendance.length > 0
+      ? Math.round(attendance.reduce((sum, item) => sum + toNumber(item.percentage), 0) / attendance.length)
+      : 0;
+    const lowAtt = attendance.filter(item => toNumber(item.percentage) < 80).length;
+    
+    const validCie = cie.filter(item => toNumber(item.marks) > 0);
+    const avgCie = validCie.length > 0
+      ? Math.round((validCie.reduce((sum, item) => sum + toNumber(item.marks), 0) / validCie.length) * 10) / 10
+      : 0;
+    return { avgAtt, lowAtt, avgCie };
   }, [attendance, cie]);
 
-  const seatingInfo = useMemo(() => {
-    if (data?.usn) {
-      return getSeatingInfo(data.usn);
+  // Today's schedule logic
+  const todaySchedule = useMemo(() => {
+    if (!timetable) return null;
+    const now = new Date();
+    const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const todayName = dayNames[now.getDay()];
+
+    const dayData = timetable.find(d => d.day.toUpperCase() === todayName);
+    if (!dayData) return [];
+
+    const dayClasses = dayData.classes || [];
+    return dayClasses.map(cls => {
+      // Find matching attendance
+      const courseMatch = attendance.find(a =>
+        cls.course.toUpperCase().includes(a.course.toUpperCase()) ||
+        (a.courseName && cls.course.toUpperCase().includes(a.courseName.toUpperCase()))
+      );
+
+      // Determine Now/Next
+      let status = "";
+      let diffEnd = 1000;
+      let diffStart = 1000;
+      try {
+        const [startStr, endStr] = cls.time.split(" to ");
+        if (startStr && endStr) {
+          const parseTime = (timeStr) => {
+            const [h, m] = timeStr.match(/\d+/g);
+            const isPm = timeStr.toLowerCase().includes("pm") && parseInt(h) !== 12;
+            const t = new Date();
+            t.setHours(isPm ? parseInt(h) + 12 : (parseInt(h) === 12 && timeStr.toLowerCase().includes("am") ? 0 : parseInt(h)), parseInt(m), 0);
+            return t;
+          };
+          const startTime = parseTime(startStr);
+          const endTime = parseTime(endStr);
+
+          diffStart = (startTime - now) / (1000 * 60); // minutes until start
+          diffEnd = (endTime - now) / (1000 * 60); // minutes until end
+
+          if (diffStart <= 0 && diffEnd > 0) status = "NOW";
+          else if (diffStart > 0 && diffStart <= 60) status = "NEXT";
+        }
+      } catch (e) { }
+
+      return { ...cls, attendance: courseMatch, status, diffEnd, diffStart };
+    });
+  }, [timetable, attendance]);
+
+  const todayDateStr = useMemo(() => {
+    if (!timetable) return "";
+    const now = new Date();
+    const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const todayName = dayNames[now.getDay()];
+    const dayData = timetable.find(d => d.day.toUpperCase() === todayName);
+    if (dayData?.date) {
+      return dayData.date.replace(/\//g, '-');
     }
-    return null;
-  }, [data?.usn]);
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    return `${day}-${month}-${year}`;
+  }, [timetable]);
 
-  const examInfo = useMemo(() => {
-    if (!attendance || attendance.length === 0) return null;
-    const cycle = detectCycle(attendance);
-    if (!cycle) return null;
-    const next = getNextExam(cycle);
-    return next;
-  }, [attendance]);
+  const handleSaveAttendance = (courseCode, status, time) => {
+    const targetUsn = data?.usn || profileExtra?.usn;
+    if (!targetUsn) return;
+    saveSelfLoggedAttendance(targetUsn, courseCode, todayDateStr, status, time);
+    setRefreshKey((k) => k + 1);
+  };
+ 
+  if (loading) return <div className="center-state"><div className="loader" /></div>;
+  if (error) return <div className="center-state"><div className="auth-card" style={{ textAlign: "center" }}><h1 className="title">Oops</h1><p>{error}</p><button onClick={() => router.push("/")} className="button">Retry</button></div></div>;
 
-  const handleCourseChange = (value) => {
-    setBunkCourseIdx(value);
-    const course = value !== "" ? attendance[Number(value)] : null;
-    setClassesLeft(course?.stillToGo ?? "");
-    setSelectedEstimate("");
+  const handleCopyUsn = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const usnToCopy = data?.usn || profileExtra?.usn || "1VA25CD092";
+    if (usnToCopy) {
+      navigator.clipboard.writeText(usnToCopy);
+      setCopiedUsn(true);
+      setTimeout(() => setCopiedUsn(false), 2000);
+    }
   };
 
-  const estimateClassesUntil = (targetDateStr) => {
-    if (!selectedCourse) return 0;
-    
-    const targetDate = new Date(targetDateStr);
-    const today = new Date();
-    if (targetDate <= today) return 0;
-
-    let classesPerDay = 0;
-    const totalHeld = toNumber(selectedCourse.present) + Math.max(0, toNumber(selectedCourse.absent));
-
-    if (selectedCourse.dates && selectedCourse.dates.length > 0) {
-      const parseDate = (dStr) => {
-        const p = dStr.split('-');
-        return p.length === 3 ? new Date(`${p[2]}-${p[1]}-${p[0]}`) : null;
-      };
-      const validDates = selectedCourse.dates.map(d => parseDate(d.date)).filter(Boolean);
-      if (validDates.length > 0) {
-        validDates.sort((a, b) => a - b);
-        const firstDate = validDates[0];
-        const daysElapsed = Math.max(7, (today - firstDate) / (1000 * 60 * 60 * 24));
-        classesPerDay = validDates.length / daysElapsed;
-      }
-    }
-
-    if (classesPerDay === 0 && totalHeld > 0) {
-      const semStart = new Date(today.getFullYear(), 1, 15); // Roughly Feb 15
-      const daysElapsed = Math.max(7, (today - semStart) / (1000 * 60 * 60 * 24));
-      classesPerDay = totalHeld / daysElapsed;
-    }
-
-    const daysUntilTarget = (targetDate - today) / (1000 * 60 * 60 * 24);
-    const estimated = Math.round(classesPerDay * daysUntilTarget);
-    
-    return Math.max(0, Math.min(estimated, selectedCourse.stillToGo || estimated));
+  const BRANCH_MAP = {
+    "CS": "Computer Science & Engg",
+    "CD": "CSE · Data Science",
+    "EC": "Electronics & Communication",
+    "ME": "Mechanical Engineering",
+    "CV": "Civil Engineering",
+    "IS": "Information Science",
+    "AI": "Artificial Intelligence",
+    "CI": "AI & Machine Learning",
+    "CSE": "Computer Science & Engg",
+    "CSE(DS)": "CSE · Data Science",
+    "CSE(AI&ML)": "AI & Machine Learning",
   };
 
-  const calculateBunkResult = () => {
-    if (!selectedCourse) return "Choose a course to calculate attendance room.";
-    if (!selectedCourse.total) return "Detailed attendance data is not available for this course.";
+  const activeUsn = data?.usn || profileExtra?.usn || "1VA25CD092";
+  const activeName = data?.profileName || profileExtra?.name || "Student";
 
-    const present = Math.max(0, toNumber(selectedCourse.present));
-    const absent = Math.max(0, toNumber(selectedCourse.absent));
-    const completed = Math.max(toNumber(selectedCourse.total), present + absent);
-    const finalTotal = completed + remainingClasses;
+  let branchCode = (data?.department || profileExtra?.department || "").toUpperCase();
+  if (branchCode.startsWith("B.E-")) branchCode = branchCode.replace("B.E-", "");
+  if (branchCode.startsWith("B.E ")) branchCode = branchCode.replace("B.E ", "");
+  
+  const fullBranch = BRANCH_MAP[branchCode] || (branchCode ? `B.E · ${branchCode}` : "CSE · Data Science");
+  const semNum = data?.semester || profileExtra?.semester || "3";
+  const semStr = `Sem ${semNum}`;
+  const secStr = data?.section || "Sec B";
 
-    if (finalTotal <= 0) return "Detailed attendance data is not available for this course.";
-
-    const requiredFinalPresent = Math.ceil((targetPercentage / 100) * finalTotal);
-    const requiredToAttend = Math.max(requiredFinalPresent - present, 0);
-    const canMiss = Math.max(remainingClasses - requiredToAttend, 0);
-    const bestPossible = ((present + remainingClasses) / finalTotal) * 100;
-
-    if (!remainingClasses) {
-      const currentPercent = completed > 0 ? (present / completed) * 100 : toNumber(selectedCourse.percentage);
-      return currentPercent >= targetPercentage
-        ? `You are already at or above ${targetPercentage}%.`
-        : `No remaining classes found, so this course cannot reach ${targetPercentage}% from current data.`;
+  let batchStr = "2025–2029";
+  if (activeUsn) {
+    const yrMatch = activeUsn.match(/\d{2}/);
+    if (yrMatch) {
+      const startYr = 2000 + parseInt(yrMatch[0], 10);
+      batchStr = `${startYr}–${startYr + 4}`;
     }
-
-    if (requiredToAttend > remainingClasses) {
-      return `Even if you attend every class left, you can finish at ${Math.round(bestPossible * 10) / 10}%.`;
-    }
-
-    return canMiss > 0
-      ? `Attend ${requiredToAttend} of ${remainingClasses} remaining classes. You can miss ${canMiss}.`
-      : `Attend all ${remainingClasses} remaining classes to stay at or above ${targetPercentage}%.`;
-  };
-
-  if (loading) {
-    return (
-      <div className="center-state">
-        <div className="loader" />
-      </div>
-    );
   }
 
-  if (error) {
-    return (
-      <div className="center-state">
-        <div className="auth-card" style={{ maxWidth: 460, textAlign: "center" }}>
-          <p className="eyebrow">Dashboard unavailable</p>
-          <h1 className="title">Could not load data</h1>
-          <p className="subtle" style={{ marginTop: 12 }}>{error}</p>
-          <button onClick={() => router.push("/")} className="button" style={{ marginTop: 22 }}>
-            Back to sign in
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const quotaStr = profileExtra?.quota || profileExtra?.categoryalloted || "VTU 2022 Scheme";
+  const activeStudentId = studentId || (activeUsn ? activeUsn.slice(-5) : "25CD092");
 
   return (
-    <main className="page-shell fade-in">
-      <header className="app-header">
-        <div>
-          <p className="eyebrow">Student dashboard</p>
-          <h1 className="title">Hi, {data?.profileName || "Student"}</h1>
-          <p className="subtle" style={{ marginTop: 8 }}>
-            Your attendance, internal marks, and academic checks in one place.
-          </p>
-        </div>
-        <button onClick={() => router.push("/")} className="button secondary">
-          Logout
-        </button>
-      </header>
-
-      {seatingInfo && !dismissSeating && (
-        <div className="notification-banner primary-banner">
-          <div>
-            <h3 className="notification-title">Upcoming IA Exam Seating</h3>
-            <p className="notification-text">
-              You are allotted <strong>Room {seatingInfo.room}</strong>, <strong>Seat #{seatingInfo.seatNumber}</strong>. Good luck!
-            </p>
+    <main className="mobile-app-shell native-home fade-in" style={{ paddingBottom: "100px" }}>
+      {/* Executive Student Profile Card */}
+      <section className="home-profile-card" style={{ marginTop: 12 }}>
+        <div className="home-profile-header-row">
+          <div className="home-profile-badge-verified">
+            <span className="home-profile-pulse-dot" />
+            <ShieldCheck size={13} strokeWidth={2.6} />
+            <span>Verified Student</span>
           </div>
-          <button className="notification-dismiss" onClick={() => setDismissSeating(true)}>
-            Dismiss
-          </button>
+          <Link href="/dashboard/idcard" className="home-profile-id-link">
+            <span>Digital ID</span>
+            <ChevronRight size={13} strokeWidth={2.4} />
+          </Link>
+        </div>
+
+        <div className="home-profile-hero">
+          <div className="home-avatar-frame">
+            <div className="home-avatar-inner">
+              <StudentAvatar name={activeName} photo={photo} />
+            </div>
+            <span className="home-avatar-indicator" title="Active enrollment" />
+          </div>
+
+          <div className="home-profile-details">
+            <div className="home-profile-name-row">
+              <h2>{activeName}</h2>
+            </div>
+
+            <div className="home-profile-chips">
+              <button
+                type="button"
+                className="home-profile-chip"
+                onClick={handleCopyUsn}
+                title="Click to copy USN"
+              >
+                <span>{activeUsn}</span>
+                {copiedUsn ? <Check size={11} color="#4ade80" /> : <Copy size={11} />}
+              </button>
+
+              <span className="home-profile-chip accent">
+                ID: {activeStudentId}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Academic Details Matrix */}
+        <div className="home-profile-academic-grid">
+          <div className="home-academic-item">
+            <span>Department</span>
+            <strong>{fullBranch}</strong>
+          </div>
+          <div className="home-academic-item">
+            <span>Semester & Sec</span>
+            <strong>{semStr} · {secStr}</strong>
+          </div>
+          <div className="home-academic-item">
+            <span>Batch & Degree</span>
+            <strong>{batchStr} · B.E</strong>
+          </div>
+          <div className="home-academic-item">
+            <span>Scheme / Quota</span>
+            <strong>{quotaStr}</strong>
+          </div>
+        </div>
+
+        <div className="home-profile-footer">
+          <span className="home-profile-date">
+            <CalendarIcon size={13} strokeWidth={2} style={{ opacity: 0.8 }} />
+            <span>{new Date().toLocaleDateString("en-IN", { weekday: "long", month: "long", day: "numeric" })}</span>
+          </span>
+          <span className="home-profile-scheme">VTU Autonomous</span>
+        </div>
+      </section>
+
+      {/* Quick Stats Strip */}
+      <div className="home-stats-strip" style={{ marginTop: 16 }}>
+        <div className="home-stat-pill">
+          <span>Overall</span>
+          <strong>{summary.avgAtt}%</strong>
+          <small>Attendance</small>
+        </div>
+        <div className="home-stat-pill">
+          <span>At Risk</span>
+          <strong style={{ color: summary.lowAtt ? "var(--danger)" : "var(--success)" }}>{summary.lowAtt}</strong>
+          <small>{summary.lowAtt ? "Needs ≥ 80%" : "All Good"}</small>
+        </div>
+        <div className="home-stat-pill">
+          <span>Avg CIE</span>
+          <strong>{summary.avgCie}</strong>
+          <small>Scale of 50</small>
+        </div>
+      </div>
+
+      {/* Today's Schedule - Directly Connected */}
+      <div className="home-schedule-header">
+        <h2>Today&apos;s Schedule</h2>
+        <Link href="/dashboard/timetable">
+          Full week <ChevronRight size={14} />
+        </Link>
+      </div>
+
+      {todaySchedule && todaySchedule.length > 0 ? (
+        <section className="home-schedule-list">
+          {todaySchedule.map((cls, i) => {
+            const courseCode = (cls.attendance?.course || cls.course).toUpperCase();
+            const officialEntry = cls.attendance?.dates?.find(
+              (d) => !d.isSelfLogged && (d.date === todayDateStr || d.date.replace(/\//g, "-") === todayDateStr)
+            );
+            const selfEntry = cls.attendance?.dates?.find(
+              (d) => d.isSelfLogged && (d.date === todayDateStr || d.date.replace(/\//g, "-") === todayDateStr)
+            );
+
+            return (
+              <article className="home-schedule-card" key={i}>
+                <div className="home-schedule-time">
+                  <span>{cls.time.split(" to ")[0]}</span>
+                  {cls.status === "NOW" && <span className="home-now-badge">NOW</span>}
+                  {cls.status === "NEXT" && <span className="home-next-badge">NEXT</span>}
+                </div>
+                <div className="home-schedule-info">
+                  <h3>{cls.course}</h3>
+                  <p>{cls.room ? `${cls.room} · ` : ""}{cls.faculty || "Faculty"}</p>
+                </div>
+                <div className="home-schedule-meta">
+                  {cls.attendance && (
+                    <span className={`home-schedule-pct ${toNumber(cls.attendance.percentage) < 80 ? "risk" : ""}`}>
+                      {cls.attendance.percentage}%
+                    </span>
+                  )}
+                </div>
+
+                {/* Attendance Interactive Logging Widget */}
+                <div className="home-schedule-actions">
+                  {officialEntry ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: officialEntry.status === "Present" ? "var(--success)" : "var(--danger)" }} />
+                      <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 700 }}>
+                        Official Attendance: <strong style={{ color: officialEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{officialEntry.status === "Present" ? "Attended" : "Bunked"}</strong>
+                      </span>
+                    </div>
+                  ) : selfEntry ? (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: selfEntry.status === "Present" ? "var(--success)" : "var(--danger)" }} />
+                        <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 700 }}>
+                          You marked: <strong style={{ color: selfEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{selfEntry.status === "Present" ? "Attended" : "Bunked"}</strong>
+                        </span>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => handleSaveAttendance(courseCode, null)}
+                        style={{ background: "rgba(255,255,255,0.06)", border: "none", color: "var(--muted)", padding: "4px 10px", borderRadius: "8px", fontSize: "0.72rem", fontWeight: 800, cursor: "pointer", transition: "all 150ms ease" }}
+                      >
+                        Undo
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
+                      <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                        Did you attend this class?
+                      </span>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button 
+                          type="button"
+                          onClick={() => handleSaveAttendance(courseCode, "Present", cls.time)}
+                          style={{ flex: 1, padding: "7px 12px", background: "rgba(52, 209, 120, 0.12)", border: "1px solid rgba(52, 209, 120, 0.25)", borderRadius: "10px", color: "var(--success)", fontWeight: 800, fontSize: "0.76rem", cursor: "pointer", transition: "all 150ms ease" }}
+                        >
+                          Yes, Attended
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => handleSaveAttendance(courseCode, "Absent", cls.time)}
+                          style={{ flex: 1, padding: "7px 12px", background: "rgba(255, 91, 104, 0.12)", border: "1px solid rgba(255, 91, 104, 0.25)", borderRadius: "10px", color: "var(--danger)", fontWeight: 800, fontSize: "0.76rem", cursor: "pointer", transition: "all 150ms ease" }}
+                        >
+                          No, Bunked
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      ) : (
+        <div className="home-empty-day">
+          <p>No classes scheduled for today.</p>
+          <span style={{ fontSize: "0.78rem", color: "var(--muted)", display: "block", marginTop: 4 }}>Enjoy your day!</span>
         </div>
       )}
 
-      {examInfo && !dismissExam && (
-        <div className="notification-banner exam-banner">
-          <div style={{ flex: 1 }}>
-            <h3 className="notification-title">📝 Next Exam — {examInfo.day}, {examInfo.date.split('-').reverse().join('-')}</h3>
-            <p className="notification-text" style={{ marginTop: 4 }}>
-              <strong>Morning (9:30–11:00 AM):</strong> {examInfo.morning}
-            </p>
-            {examInfo.afternoon && (
-              <p className="notification-text" style={{ marginTop: 2 }}>
-                <strong>Afternoon (2:00–3:30 PM):</strong> {examInfo.afternoon}
-              </p>
-            )}
-            <span style={{ display: "inline-block", marginTop: 6, fontSize: "0.75rem", opacity: 0.8 }}>
-              {examInfo.cycleLabel} · {examInfo.semester}
-            </span>
-          </div>
-          <button className="notification-dismiss" onClick={() => setDismissExam(true)}>
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      <nav className="tabs" aria-label="Dashboard sections">
-        <Link className="tab active" href="/dashboard">Overview</Link>
-        <Link className="tab" href="/dashboard/events">Calendar</Link>
-        <Link className="tab" href="/dashboard/timetable">Timetable</Link>
-        <Link className="tab" href="/dashboard/info">Profile</Link>
-        <Link className="tab" href="/dashboard/bunk">Bunk Calc</Link>
-        <Link className="tab" href="/dashboard/dev">Dev Note</Link>
+      {/* Quick Actions Grid */}
+      <div className="home-section-title" style={{ marginTop: 24 }}>
+        <h2>Quick Actions</h2>
+      </div>
+      <nav className="home-quick-actions">
+        <Link href="/dashboard/attendance" className="home-action-tile">
+          <span className="home-action-icon-wrap">
+            <BarChart3 size={20} strokeWidth={1.8} />
+          </span>
+          <span className="home-action-label">Attendance</span>
+        </Link>
+        <Link href="/dashboard/timetable" className="home-action-tile">
+          <span className="home-action-icon-wrap">
+            <Clock size={20} strokeWidth={1.8} />
+          </span>
+          <span className="home-action-label">Timetable</span>
+        </Link>
+        <Link href="/dashboard/bunk" className="home-action-tile">
+          <span className="home-action-icon-wrap">
+            <Calculator size={20} strokeWidth={1.8} />
+          </span>
+          <span className="home-action-label">Bunk Planner</span>
+        </Link>
+        <Link href="/dashboard/results" className="home-action-tile">
+          <span className="home-action-icon-wrap">
+            <FileText size={20} strokeWidth={1.8} />
+          </span>
+          <span className="home-action-label">CIE Marks</span>
+        </Link>
+        <Link href="/dashboard/marketplace" className="home-action-tile">
+          <span className="home-action-icon-wrap">
+            <ShoppingBag size={20} strokeWidth={1.8} />
+          </span>
+          <span className="home-action-label">Market</span>
+        </Link>
+        <Link href="/dashboard/connect" className="home-action-tile">
+          <span className="home-action-icon-wrap">
+            <MessageSquare size={20} strokeWidth={1.8} />
+          </span>
+          <span className="home-action-label">Connect</span>
+        </Link>
+        <Link href="/dashboard/idcard" className="home-action-tile">
+          <span className="home-action-icon-wrap">
+            <IdCardIcon size={20} strokeWidth={1.8} />
+          </span>
+          <span className="home-action-label">ID Card</span>
+        </Link>
+        <Link href="/dashboard/unlocked" className="home-action-tile">
+          <span className="home-action-icon-wrap">
+            <Unlock size={20} strokeWidth={1.8} />
+          </span>
+          <span className="home-action-label">Unlocked</span>
+        </Link>
+        <Link href="/dashboard/feedback" className="home-action-tile">
+          <span className="home-action-icon-wrap">
+            <PenTool size={20} strokeWidth={1.8} />
+          </span>
+          <span className="home-action-label">Feedback</span>
+        </Link>
+        <Link href="/dashboard/exams" className="home-action-tile">
+          <span className="home-action-icon-wrap">
+            <GraduationCap size={20} strokeWidth={1.8} />
+          </span>
+          <span className="home-action-label">Exams</span>
+        </Link>
       </nav>
 
-      <section className="grid overview-grid">
-        <div className="metric-card span-4">
-          <p className="eyebrow">Average attendance</p>
-          <div className="metric-value">{summary.averageAttendance}%</div>
-          <p className="subtle">Across {attendance.length || 0} course{attendance.length === 1 ? "" : "s"}</p>
-        </div>
-        <div className="metric-card span-4">
-          <p className="eyebrow">Below 80%</p>
-          <div className="metric-value" style={{ color: summary.belowTarget ? "var(--danger)" : "var(--success)" }}>
-            {summary.belowTarget}
+      <section className="grid" style={{ marginTop: 32 }}>
+        {/* Attendance Snapshot */}
+        <section className="panel">
+          <div className="panel-head compact">
+            <h2 className="panel-title">Courses</h2>
+            <Link href="/dashboard/attendance" style={{ fontSize: "0.8rem", color: "var(--primary)" }}>View All</Link>
           </div>
-          <p className="subtle">Course{summary.belowTarget === 1 ? "" : "s"} needing attention</p>
-        </div>
-        <div className="metric-card span-4">
-          <p className="eyebrow">Average CIE</p>
-          <div className="metric-value">{summary.averageCie || "-"}</div>
-          <p className="subtle">From published internal marks</p>
-        </div>
-
-        <section className="panel span-6">
-          <div className="panel-head">
-            <div>
-              <h2 className="panel-title">Attendance</h2>
-              <p className="subtle">Course-wise attendance pulled from the ERP.</p>
-            </div>
-            {summary.belowTarget > 0 && <span className="badge danger">{summary.belowTarget} low</span>}
-          </div>
-
           <div className="list">
-            {attendance.length > 0 ? (
-              attendance.map((item, idx) => {
-                const percentage = toNumber(item.percentage);
-                return (
-                  <div className="course-row" key={`${item.course}-${idx}`}>
-                    <div className="course-top">
-                      <strong className="course-label">
-                        <span>{item.course}</span>
-                        {item.courseName && <span className="course-name">{item.courseName}</span>}
-                      </strong>
-                      <strong style={{ color: percentage < 80 ? "var(--danger)" : "var(--success)" }}>
-                        {percentage}%
-                      </strong>
-                    </div>
-                    <div className="progress" aria-label={`${item.course} attendance ${percentage}%`}>
-                      <span className={percentage < 80 ? "low" : ""} style={{ width: `${clamp(percentage, 0, 100)}%` }} />
-                    </div>
+            {attendance.slice(0, 5).map((item, idx) => (
+              <div className="home-course-mini" key={idx}>
+                <div className="home-course-mini-info">
+                  <strong>{item.courseName || item.course}</strong>
+                  <div className="home-course-mini-bar">
+                    <div
+                      className={`home-course-mini-fill ${toNumber(item.percentage) < 80 ? 'low' : ''}`}
+                      style={{ width: `${clamp(toNumber(item.percentage), 0, 100)}%` }}
+                    />
                   </div>
-                );
-              })
-            ) : (
-              <p className="subtle">No attendance data found.</p>
-            )}
+                </div>
+                <span style={{ fontSize: "0.9rem", fontWeight: 900, color: toNumber(item.percentage) < 80 ? "var(--danger)" : "var(--success)" }}>
+                  {item.percentage}%
+                </span>
+              </div>
+            ))}
           </div>
         </section>
 
-        <section className="panel span-6">
-          <div className="panel-head">
-            <div>
-              <h2 className="panel-title">Bunk calculator</h2>
-              <p className="subtle">Uses present, absent, and still-to-go classes for the final calculation.</p>
-            </div>
-            {selectedCourse && (
-              <span className={toNumber(selectedCourse.percentage) < targetPercentage ? "badge danger" : "badge success"}>
-                {selectedCourse.percentage}%
-              </span>
-            )}
+        {/* CIE Snapshot */}
+        <section className="panel">
+          <div className="panel-head compact">
+            <h2 className="panel-title">Internal Marks</h2>
           </div>
-
-          {attendance.length > 0 ? (
-            <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
-              <div className="field">
-                <label htmlFor="course">Course</label>
-                <select
-                  id="course"
-                  className="input"
-                  value={bunkCourseIdx}
-                  onChange={(e) => handleCourseChange(e.target.value)}
-                >
-                  <option value="">Choose course</option>
-                  {attendance.map((course, idx) => (
-                    <option key={`${course.course}-${idx}`} value={idx}>
-                      {getCourseLabel(course)} ({course.percentage}%)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="field">
-                <label htmlFor="target">Target percentage</label>
-                <input
-                  id="target"
-                  type="number"
-                  min="1"
-                  max="100"
-                  className="input"
-                  value={bunkTarget}
-                  onChange={(e) => setBunkTarget(e.target.value)}
-                  onBlur={() => setBunkTarget(targetPercentage)}
-                />
-              </div>
-
-              <div className="field">
-                <label htmlFor="classes-left">Classes still to go</label>
-                <input
-                  id="classes-left"
-                  type="number"
-                  min="0"
-                  className="input"
-                  value={classesLeft}
-                  placeholder={String(selectedCourse?.stillToGo ?? 0)}
-                  onChange={(e) => {
-                    setClassesLeft(e.target.value);
-                    setSelectedEstimate("");
-                  }}
-                  onBlur={() => setClassesLeft(remainingClasses)}
-                />
-                <div className="quick-options" style={{ display: "flex", gap: "6px", marginTop: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                  <span style={{ fontSize: "0.75rem", color: "var(--subtle-color)" }}>Estimate for:</span>
-                  <button 
-                    type="button" 
-                    className="badge" 
-                    style={{ 
-                      cursor: "pointer", 
-                      border: "1px solid var(--border)", 
-                      background: selectedEstimate === "ia1" ? "var(--primary)" : "transparent",
-                      color: selectedEstimate === "ia1" ? "#fff" : "inherit"
-                    }} 
-                    onClick={() => { setClassesLeft(estimateClassesUntil("2026-04-27")); setSelectedEstimate("ia1"); }}
-                  >
-                    IA 1
-                  </button>
-                  <button 
-                    type="button" 
-                    className="badge" 
-                    style={{ 
-                      cursor: "pointer", 
-                      border: "1px solid var(--border)", 
-                      background: selectedEstimate === "ia2" ? "var(--primary)" : "transparent",
-                      color: selectedEstimate === "ia2" ? "#fff" : "inherit"
-                    }} 
-                    onClick={() => { setClassesLeft(estimateClassesUntil("2026-06-08")); setSelectedEstimate("ia2"); }}
-                  >
-                    IA 2
-                  </button>
-                  <button 
-                    type="button" 
-                    className="badge" 
-                    style={{ 
-                      cursor: "pointer", 
-                      border: "1px solid var(--border)", 
-                      background: selectedEstimate === "overall" ? "var(--primary)" : "transparent",
-                      color: selectedEstimate === "overall" ? "#fff" : "inherit"
-                    }} 
-                    onClick={() => { setClassesLeft(selectedCourse?.stillToGo ?? 0); setSelectedEstimate("overall"); }}
-                  >
-                    Overall (SEE)
-                  </button>
-                </div>
-              </div>
-
-              <div className="soft-box" style={{ alignSelf: "end" }}>
-                <strong>{calculateBunkResult()}</strong>
-              </div>
-            </div>
-          ) : (
-            <p className="subtle">No attendance data available for planning.</p>
-          )}
-
-          {selectedCourse?.total > 0 && (
-            <>
-              <div className="stat-strip" style={{ marginTop: 16 }}>
-                <div className="soft-box">
-                  <span className="stat-number" style={{ color: "var(--success)" }}>{selectedCourse.present}</span>
-                  <span className="subtle">Present</span>
-                </div>
-                <div className="soft-box">
-                  <span className="stat-number" style={{ color: "var(--danger)" }}>{selectedCourse.absent}</span>
-                  <span className="subtle">Absent</span>
-                </div>
-                <div className="soft-box">
-                  <span className="stat-number">{remainingClasses}</span>
-                  <span className="subtle">Still to go</span>
-                </div>
-              </div>
-
-              {selectedCourse.dates?.length > 0 && (
-                <div style={{ marginTop: 16 }}>
-                  <h3 className="panel-title" style={{ marginBottom: 10 }}>Attendance timeline</h3>
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Time</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedCourse.dates.map((entry, idx) => (
-                          <tr key={`${entry.date}-${entry.time}-${idx}`}>
-                            <td>{entry.date}</td>
-                            <td>{entry.time}</td>
-                            <td style={{ color: entry.status === "Present" ? "var(--success)" : "var(--danger)", fontWeight: 800 }}>
-                              {entry.status}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </section>
-
-        <section className="panel span-12">
-          <div className="panel-head">
-            <div>
-              <h2 className="panel-title">Internal marks</h2>
-              <p className="subtle">Latest CIE values available in the portal.</p>
-            </div>
-          </div>
-
           <div className="list">
             {cie.length > 0 ? (
-              cie.map((item, idx) => (
-                <div className="course-row" key={`${item.course}-${idx}`}>
-                  <div className="course-top" style={{ marginBottom: 0 }}>
-                    <strong className="course-label">
-                      <span>{item.course}</span>
-                      {item.courseName && <span className="course-name">{item.courseName}</span>}
-                    </strong>
-                    <strong style={{ color: "var(--primary)" }}>{item.marks}</strong>
-                  </div>
+              cie.slice(0, 6).map((item, idx) => (
+                <div className="home-cie-row" key={idx}>
+                  <span>{item.course}</span>
+                  <strong>{item.marks}</strong>
                 </div>
               ))
             ) : (
-              <p className="subtle">No internal marks data found.</p>
+              <p className="subtle">No CIE data available.</p>
             )}
           </div>
         </section>
-
-        {data?.pageTitle && (
-          <section className="panel span-12">
-            <p className="eyebrow">Portal note</p>
-            <p className="subtle" style={{ marginTop: 8 }}>{data.pageTitle}</p>
-          </section>
-        )}
       </section>
     </main>
   );

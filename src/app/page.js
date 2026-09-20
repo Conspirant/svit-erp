@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiJson, clearClientSession } from "@/lib/clientApi";
-import { Mail, X, CheckCircle2, AlertCircle } from "lucide-react";
+import { Mail, X, CheckCircle2, AlertCircle, RotateCw } from "lucide-react";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MONTHS = [
@@ -25,6 +25,9 @@ export default function Home() {
   const [mm, setMm] = useState("");
   const [yyyy, setYyyy] = useState("");
   const [dobText, setDobText] = useState("");
+  const [captchaImage, setCaptchaImage] = useState("");
+  const [captchaCode, setCaptchaCode] = useState("");
+  const [captchaLoading, setCaptchaLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -41,12 +44,31 @@ export default function Home() {
   const [forgotHiddenFields, setForgotHiddenFields] = useState(null);
   const router = useRouter();
 
-  // Clear cached data from previous session
+  const fetchCaptcha = useCallback(async () => {
+    setCaptchaLoading(true);
+    try {
+      const res = await fetch("/api/auth/captcha", { cache: "no-store" });
+      const data = await res.json();
+      if (data.success && data.captchaImage) {
+        setCaptchaImage(data.captchaImage);
+        setCaptchaCode("");
+      } else {
+        console.error("Failed to load CAPTCHA:", data.error);
+      }
+    } catch (err) {
+      console.error("Error fetching CAPTCHA:", err);
+    } finally {
+      setCaptchaLoading(false);
+    }
+  }, []);
+
+  // Clear cached data from previous session and load captcha
   useEffect(() => {
     try {
       clearClientSession();
     } catch { }
-  }, []);
+    fetchCaptcha();
+  }, [fetchCaptcha]);
 
   const getDob = useCallback(() => {
     if (mode === "dropdown") {
@@ -57,20 +79,29 @@ export default function Home() {
   }, [mode, dd, mm, yyyy, dobText]);
 
   const handleLogin = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const dob = getDob();
     if (!dob) {
       setError("Please select or enter your date of birth.");
+      return;
+    }
+    if (!captchaCode.trim()) {
+      setError("Please enter the security code shown in the CAPTCHA image.");
       return;
     }
     setLoading(true);
     setError("");
 
     try {
-      await apiJson("/api/auth/login", { username: usn, dob }, { retries: 0, redirectOnUnauthorized: false });
+      await apiJson(
+        "/api/auth/login",
+        { username: usn, dob, captcha: captchaCode.trim() },
+        { retries: 0, redirectOnUnauthorized: false }
+      );
       router.push("/dashboard");
     } catch (err) {
       setError(err.message || "Could not connect to the ERP server. Please try again.");
+      fetchCaptcha();
     } finally {
       setLoading(false);
     }
@@ -158,25 +189,6 @@ export default function Home() {
           </h1>
           <div className="app-login-divider" />
           <p className="app-login-subtitle">Student ERP</p>
-          <div 
-            style={{ 
-              marginTop: "12px", 
-              padding: "6px 12px", 
-              background: "rgba(52, 209, 120, 0.1)", 
-              border: "1px solid rgba(52, 209, 120, 0.24)", 
-              borderRadius: "20px", 
-              fontSize: "0.72rem", 
-              fontWeight: 800, 
-              color: "#34d178", 
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              letterSpacing: "0.02em"
-            }}
-          >
-            <span style={{ display: "inline-block", width: "6px", height: "6px", background: "#34d178", borderRadius: "50%" }} />
-            UPDATED VTU SEE TIMETABLE FOR 2ND SEM STUDENTS
-          </div>
         </div>
 
         {/* Login Form Card */}
@@ -272,6 +284,104 @@ export default function Home() {
             )}
           </div>
 
+          {/* CAPTCHA Verification Field */}
+          <div className="app-login-field">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+              <label className="app-login-label" htmlFor="login-captcha" style={{ margin: 0 }}>
+                Security Code (CAPTCHA)
+              </label>
+              <button
+                type="button"
+                onClick={fetchCaptcha}
+                disabled={captchaLoading}
+                style={{
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  color: "rgba(255, 255, 255, 0.75)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  cursor: captchaLoading ? "not-allowed" : "pointer",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  transition: "all 0.2s ease",
+                }}
+                title="Reload CAPTCHA image"
+              >
+                <RotateCw
+                  size={12}
+                  style={{
+                    animation: captchaLoading ? "spin 1s linear infinite" : "none",
+                  }}
+                />
+                <span>Reload</span>
+              </button>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <div
+                style={{
+                  background: "#ffffff",
+                  borderRadius: "10px",
+                  padding: "2px 8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: "128px",
+                  height: "46px",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.25)",
+                  position: "relative",
+                  overflow: "hidden",
+                  flexShrink: 0,
+                }}
+              >
+                {captchaImage ? (
+                  <img
+                    src={captchaImage}
+                    alt="CAPTCHA security code"
+                    style={{
+                      maxHeight: "38px",
+                      width: "auto",
+                      display: "block",
+                      opacity: captchaLoading ? 0.35 : 1,
+                      transition: "opacity 0.2s ease",
+                    }}
+                  />
+                ) : (
+                  <span style={{ fontSize: "0.75rem", color: "#666", fontStyle: "italic" }}>
+                    {captchaLoading ? "Loading..." : "Tap Reload"}
+                  </span>
+                )}
+              </div>
+
+              <input
+                id="login-captcha"
+                type="text"
+                className="app-login-input"
+                style={{
+                  flex: 1,
+                  height: "46px",
+                  letterSpacing: "1px",
+                  fontWeight: 600,
+                }}
+                placeholder="Enter Code"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck="false"
+                value={captchaCode}
+                onChange={(e) => setCaptchaCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleLogin(e);
+                }}
+                required
+              />
+            </div>
+          </div>
+
           {/* Error Message */}
           {error && (
             <div className="app-login-error">
@@ -323,6 +433,10 @@ export default function Home() {
         <style dangerouslySetInnerHTML={{__html: `
           .policy-footer-link:hover {
             color: #ffffff !important;
+          }
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
           }
         `}} />
       </div>

@@ -4,11 +4,16 @@ import https from 'https';
 import * as cheerio from 'cheerio';
 import { cookies } from 'next/headers';
 
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: false,
-});
+import {
+  ERP_BASE_URL,
+  ERP_PARENTS_ORIGIN,
+  DEFAULT_USER_AGENT,
+  createHttpsAgent,
+} from '@/lib/erpConfig';
 
-const BASE_URL = 'https://svit-students.accredia.in:8084/index.php';
+const httpsAgent = createHttpsAgent();
+
+const BASE_URL = ERP_BASE_URL;
 
 const cleanText = (value) => value?.replace(/\s+/g, ' ').trim() || '';
 
@@ -151,7 +156,7 @@ export async function GET(request) {
       const href = $(a).attr('href') || '';
 
       if (text.includes('previous') && text.includes('week')) {
-        const params = new URL(href, 'https://svit-students.accredia.in:8084/').searchParams;
+        const params = new URL(href, `${ERP_PARENTS_ORIGIN}/`).searchParams;
         prevWeek = {
           prevstart: params.get('prevstart') || '',
           prevend: params.get('prevend') || '',
@@ -159,7 +164,7 @@ export async function GET(request) {
         };
       }
       if (text.includes('next') && text.includes('week')) {
-        const params = new URL(href, 'https://svit-students.accredia.in:8084/').searchParams;
+        const params = new URL(href, `${ERP_PARENTS_ORIGIN}/`).searchParams;
         nextWeek = {
           nextstart: params.get('nextstart') || '',
           nextend: params.get('nextend') || '',

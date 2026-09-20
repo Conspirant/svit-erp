@@ -5,8 +5,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  turbopack: {
-    root: __dirname,
+  reactStrictMode: false,
+  devIndicators: false,
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.cache = {
+        type: 'memory',
+      };
+    }
+    return config;
   },
 };
 

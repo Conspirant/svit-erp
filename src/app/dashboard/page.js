@@ -3,29 +3,45 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getMergedAttendance, saveSelfLoggedAttendance, filterElectives } from "@/lib/clientApi";
-import { EXAM_DATABASE } from "@/lib/examSchedule";
- 
+import {
+  ShieldCheck,
+  ChevronRight,
+  Copy,
+  Check,
+  Calendar as CalendarIcon,
+  BarChart3,
+  Clock,
+  Calculator,
+  FileText,
+  ShoppingBag,
+  MessageSquare,
+  IdCard as IdCardIcon,
+  Unlock,
+  PenTool,
+  GraduationCap,
+} from "lucide-react";
+import StudentAvatar from "@/components/StudentAvatar";
+import { getMergedAttendance, saveSelfLoggedAttendance } from "@/lib/clientApi";
+
 const toNumber = (value, fallback = 0) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 };
- 
+
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
- 
+
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [timetable, setTimetable] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [dismissExam, setDismissExam] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [electives, setElectives] = useState(null);
-  const [showElectivePrompt, setShowElectivePrompt] = useState(false);
-  const [tempKannada, setTempKannada] = useState("samskrutika");
-  const [tempEsc, setTempEsc] = useState("electricals");
+  const [photo, setPhoto] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [profileExtra, setProfileExtra] = useState(null);
+  const [copiedUsn, setCopiedUsn] = useState(false);
   const router = useRouter();
- 
+
   useEffect(() => {
     const handleUpdate = () => setRefreshKey(prev => prev + 1);
     window.addEventListener("attendanceChanged", handleUpdate);
@@ -33,24 +49,24 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("selected_electives");
-      if (raw) {
-        setElectives(JSON.parse(raw));
-      } else {
-        setShowElectivePrompt(true);
-      }
-    } catch (e) {}
-  }, [refreshKey]);
-
-  useEffect(() => {
     // Show cached data instantly if available
     queueMicrotask(() => {
       try {
         const cachedData = sessionStorage.getItem('dashboard_data');
         const cachedTimetable = sessionStorage.getItem('dashboard_timetable');
+        const savedPhoto = localStorage.getItem('svit_idcard_photo');
+        const isInvalid = savedPhoto && (savedPhoto.toLowerCase().includes("logo") || savedPhoto.toLowerCase().includes("svit"));
+        if (savedPhoto && !isInvalid) {
+          setPhoto(savedPhoto);
+        } else if (isInvalid) {
+          try { localStorage.removeItem('svit_idcard_photo'); } catch {}
+        }
+        const savedId = localStorage.getItem('svit_idcard_student_id');
+        const cachedProf = sessionStorage.getItem('profile_data');
         if (cachedData) setData(JSON.parse(cachedData));
         if (cachedTimetable) setTimetable(JSON.parse(cachedTimetable));
+        if (savedId) setStudentId(savedId);
+        if (cachedProf) setProfileExtra(JSON.parse(cachedProf));
         if (cachedData && cachedTimetable) setLoading(false);
       } catch { }
     });
@@ -79,6 +95,29 @@ export default function Dashboard() {
         }
 
         if (!dashJson.success) setError(dashJson.error || "Failed to load dashboard.");
+
+        // Background fetch photo and profile if missing
+        try {
+          if (!localStorage.getItem('svit_idcard_photo')) {
+            fetch('/api/student/photo').then(r => r.ok ? r.json() : null).then(pJson => {
+              if (pJson?.photo) {
+                const isLogo = pJson.photo.toLowerCase().includes("logo") || pJson.photo.toLowerCase().includes("svit");
+                if (!isLogo) {
+                  setPhoto(pJson.photo);
+                  try { localStorage.setItem('svit_idcard_photo', pJson.photo); } catch {}
+                }
+              }
+            }).catch(() => {});
+          }
+          if (!sessionStorage.getItem('profile_data')) {
+            fetch('/api/student/profile').then(r => r.ok ? r.json() : null).then(prJson => {
+              if (prJson?.success && prJson?.data) {
+                setProfileExtra(prJson.data);
+                try { sessionStorage.setItem('profile_data', JSON.stringify(prJson.data)); } catch {}
+              }
+            }).catch(() => {});
+          }
+        } catch {}
       } catch (err) {
         setError("Could not connect to server.");
       } finally {
@@ -91,14 +130,13 @@ export default function Dashboard() {
 
   const attendance = useMemo(() => {
     if (!data) return [];
-    const merged = getMergedAttendance(data.attendance, data.usn);
-    return filterElectives(merged);
-  }, [data, refreshKey, electives]);
+    return getMergedAttendance(data.attendance, data.usn);
+  }, [data, refreshKey]);
 
   const cie = useMemo(() => {
     if (!data?.cie) return [];
-    return filterElectives(data.cie);
-  }, [data, electives]);
+    return data.cie;
+  }, [data]);
 
   const summary = useMemo(() => {
     const avgAtt = attendance.length > 0
@@ -123,8 +161,8 @@ export default function Dashboard() {
     const dayData = timetable.find(d => d.day.toUpperCase() === todayName);
     if (!dayData) return [];
 
-    const filteredClasses = filterElectives(dayData.classes, (cls) => cls.course);
-    return filteredClasses.map(cls => {
+    const dayClasses = dayData.classes || [];
+    return dayClasses.map(cls => {
       // Find matching attendance
       const courseMatch = attendance.find(a =>
         cls.course.toUpperCase().includes(a.course.toUpperCase()) ||
@@ -158,7 +196,7 @@ export default function Dashboard() {
 
       return { ...cls, attendance: courseMatch, status, diffEnd, diffStart };
     });
-  }, [timetable, attendance, electives]);
+  }, [timetable, attendance]);
 
   const todayDateStr = useMemo(() => {
     if (!timetable) return "";
@@ -176,360 +214,255 @@ export default function Dashboard() {
   }, [timetable]);
 
   const handleSaveAttendance = (courseCode, status, time) => {
-    if (!data?.usn) return;
-    saveSelfLoggedAttendance(data.usn, courseCode, todayDateStr, status, time);
-  };
-  const handleSaveElectives = (kannada, esc) => {
-    const obj = { kannada, esc };
-    try {
-      localStorage.setItem("selected_electives", JSON.stringify(obj));
-      setElectives(obj);
-      setShowElectivePrompt(false);
-      window.dispatchEvent(new Event("attendanceChanged"));
-    } catch (e) {}
-  };
-
-  const registeredExams = useMemo(() => {
-    if (!data) return [];
-    
-    const clean = (c) => c.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    const merged = getMergedAttendance(data.attendance, data.usn);
-    const homepageCourses = filterElectives(merged);
-    
-    const isRegistered = (examCode) => {
-      const normalizedExam = clean(examCode);
-      
-      return homepageCourses.some((registered) => {
-        const normalizedReg = clean(registered.course);
-        
-        if (normalizedReg === normalizedExam) return true;
-        if (normalizedReg.includes(normalizedExam) || normalizedExam.includes(normalizedReg)) return true;
-        
-        const regNoK = normalizedReg.replace(/^([A-Z0-9]{5})K/, "$1");
-        const exNoK = normalizedExam.replace(/^([A-Z0-9]{5})K/, "$1");
-        if (regNoK === exNoK) return true;
-
-        if (registered.courseName && examCode) {
-          const exam = EXAM_DATABASE.find((e) => e.code === examCode);
-          if (exam && exam.title) {
-            const cleanName = (n) => n.toLowerCase().replace(/[^a-z0-9]/g, "");
-            const regName = cleanName(registered.courseName);
-            const exName = cleanName(exam.title);
-            if (regName.includes(exName) || exName.includes(regName)) return true;
-          }
-        }
-
-        return false;
-      });
-    };
-
-    const getSemDigit = (c) => {
-      const withoutLeading = c.substring(1);
-      const match = withoutLeading.match(/\d/);
-      return match ? match[0] : null;
-    };
-
-    const list = EXAM_DATABASE.filter((exam) => {
-      const examCodeClean = clean(exam.code);
-      
-      const match = homepageCourses.find((registered) => {
-        const normalizedReg = clean(registered.course);
-        const regSem = getSemDigit(normalizedReg);
-        const examSem = getSemDigit(examCodeClean);
-        
-        if (regSem && examSem && regSem !== examSem) {
-          return false;
-        }
-        
-        return isRegistered(exam.code);
-      });
-      
-      return !!match;
-    });
-
-    return [...list].sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [data, refreshKey, electives]);
-
-  const getCountdown = (examDateStr) => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const examDate = new Date(examDateStr);
-    examDate.setHours(0, 0, 0, 0);
-    
-    const diffTime = examDate - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return { label: "Today", type: "today" };
-    if (diffDays === 1) return { label: "Tomorrow", type: "tomorrow" };
-    if (diffDays > 1) return { label: `In ${diffDays}d`, type: "upcoming" };
-    return { label: "Done", type: "past" };
+    const targetUsn = data?.usn || profileExtra?.usn;
+    if (!targetUsn) return;
+    saveSelfLoggedAttendance(targetUsn, courseCode, todayDateStr, status, time);
+    setRefreshKey((k) => k + 1);
   };
  
   if (loading) return <div className="center-state"><div className="loader" /></div>;
   if (error) return <div className="center-state"><div className="auth-card" style={{ textAlign: "center" }}><h1 className="title">Oops</h1><p>{error}</p><button onClick={() => router.push("/")} className="button">Retry</button></div></div>;
 
-  const BRANCH_MAP = {
-    "CS": "COMPUTER SCIENCE AND ENGINEERING",
-    "CD": "DATA SCIENCE",
-    "EC": "ELECTRONICS AND COMMUNICATION ENGINEERING",
-    "ME": "MECHANICAL ENGINEERING",
-    "CV": "CIVIL ENGINEERING",
-    "IS": "INFORMATION SCIENCE AND ENGINEERING",
-    "AI": "ARTIFICIAL INTELLIGENCE",
-    "CI": "AI & MACHINE LEARNING",
-    "CSE": "COMPUTER SCIENCE AND ENGINEERING",
-    "CSE(DS)": "DATA SCIENCE",
-    "CSE(AI&ML)": "AI & MACHINE LEARNING",
+  const handleCopyUsn = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const usnToCopy = data?.usn || profileExtra?.usn || "1VA25CD092";
+    if (usnToCopy) {
+      navigator.clipboard.writeText(usnToCopy);
+      setCopiedUsn(true);
+      setTimeout(() => setCopiedUsn(false), 2000);
+    }
   };
 
-  let branchCode = (data?.department || data?.profileData?.department || "").toUpperCase();
+  const BRANCH_MAP = {
+    "CS": "Computer Science & Engg",
+    "CD": "CSE · Data Science",
+    "EC": "Electronics & Communication",
+    "ME": "Mechanical Engineering",
+    "CV": "Civil Engineering",
+    "IS": "Information Science",
+    "AI": "Artificial Intelligence",
+    "CI": "AI & Machine Learning",
+    "CSE": "Computer Science & Engg",
+    "CSE(DS)": "CSE · Data Science",
+    "CSE(AI&ML)": "AI & Machine Learning",
+  };
+
+  const activeUsn = data?.usn || profileExtra?.usn || "1VA25CD092";
+  const activeName = data?.profileName || profileExtra?.name || "Student";
+
+  let branchCode = (data?.department || profileExtra?.department || "").toUpperCase();
   if (branchCode.startsWith("B.E-")) branchCode = branchCode.replace("B.E-", "");
   if (branchCode.startsWith("B.E ")) branchCode = branchCode.replace("B.E ", "");
   
-  const fullBranch = BRANCH_MAP[branchCode] || branchCode;
-  const sem = data?.semester ? `Sem ${data.semester}` : "";
-  const profileLine = [fullBranch ? `B.E - ${fullBranch}` : "", sem].filter(Boolean).join(" · ");
+  const fullBranch = BRANCH_MAP[branchCode] || (branchCode ? `B.E · ${branchCode}` : "CSE · Data Science");
+  const semNum = data?.semester || profileExtra?.semester || "3";
+  const semStr = `Sem ${semNum}`;
+  const secStr = data?.section || "Sec B";
+
+  let batchStr = "2025–2029";
+  if (activeUsn) {
+    const yrMatch = activeUsn.match(/\d{2}/);
+    if (yrMatch) {
+      const startYr = 2000 + parseInt(yrMatch[0], 10);
+      batchStr = `${startYr}–${startYr + 4}`;
+    }
+  }
+
+  const quotaStr = profileExtra?.quota || profileExtra?.categoryalloted || "VTU 2022 Scheme";
+  const activeStudentId = studentId || (activeUsn ? activeUsn.slice(-5) : "25CD092");
 
   return (
     <main className="mobile-app-shell native-home fade-in" style={{ paddingBottom: "100px" }}>
+      {/* Executive Student Profile Card */}
       <section className="home-profile-card" style={{ marginTop: 12 }}>
-        <div className="home-avatar">{data?.profileName?.charAt(0) || "S"}</div>
-        <div>
-          <h2>{data?.profileName || "Student"}</h2>
-          <p>{data?.usn || "Signed In"}</p>
-          <p style={{ marginTop: 4, fontSize: "0.75rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.04em", textTransform: "uppercase" }}>{profileLine || "Student Portal"}</p>
-          <span>{new Date().toLocaleDateString("en-IN", { weekday: "long", month: "long", day: "numeric" })}</span>
+        <div className="home-profile-header-row">
+          <div className="home-profile-badge-verified">
+            <span className="home-profile-pulse-dot" />
+            <ShieldCheck size={13} strokeWidth={2.6} />
+            <span>Verified Student</span>
+          </div>
+          <Link href="/dashboard/idcard" className="home-profile-id-link">
+            <span>Digital ID</span>
+            <ChevronRight size={13} strokeWidth={2.4} />
+          </Link>
+        </div>
+
+        <div className="home-profile-hero">
+          <div className="home-avatar-frame">
+            <div className="home-avatar-inner">
+              <StudentAvatar name={activeName} photo={photo} />
+            </div>
+            <span className="home-avatar-indicator" title="Active enrollment" />
+          </div>
+
+          <div className="home-profile-details">
+            <div className="home-profile-name-row">
+              <h2>{activeName}</h2>
+            </div>
+
+            <div className="home-profile-chips">
+              <button
+                type="button"
+                className="home-profile-chip"
+                onClick={handleCopyUsn}
+                title="Click to copy USN"
+              >
+                <span>{activeUsn}</span>
+                {copiedUsn ? <Check size={11} color="#4ade80" /> : <Copy size={11} />}
+              </button>
+
+              <span className="home-profile-chip accent">
+                ID: {activeStudentId}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Academic Details Matrix */}
+        <div className="home-profile-academic-grid">
+          <div className="home-academic-item">
+            <span>Department</span>
+            <strong>{fullBranch}</strong>
+          </div>
+          <div className="home-academic-item">
+            <span>Semester & Sec</span>
+            <strong>{semStr} · {secStr}</strong>
+          </div>
+          <div className="home-academic-item">
+            <span>Batch & Degree</span>
+            <strong>{batchStr} · B.E</strong>
+          </div>
+          <div className="home-academic-item">
+            <span>Scheme / Quota</span>
+            <strong>{quotaStr}</strong>
+          </div>
+        </div>
+
+        <div className="home-profile-footer">
+          <span className="home-profile-date">
+            <CalendarIcon size={13} strokeWidth={2} style={{ opacity: 0.8 }} />
+            <span>{new Date().toLocaleDateString("en-IN", { weekday: "long", month: "long", day: "numeric" })}</span>
+          </span>
+          <span className="home-profile-scheme">VTU Autonomous</span>
         </div>
       </section>
 
-      {/* Elective Subjects Selector Card */}
-      {showElectivePrompt && (
-        <section className="panel fade-in" style={{ margin: "16px 12px 0", border: "1px solid var(--primary)", background: "rgba(35, 102, 84, 0.03)", boxShadow: "0 4px 20px rgba(35, 102, 84, 0.05)", borderRadius: "14px" }}>
-          <h2 style={{ fontSize: "0.95rem", fontWeight: 850, color: "var(--ink)", marginBottom: "4px" }}>🎒 Configure Your Electives</h2>
-          <p style={{ fontSize: "0.76rem", color: "var(--muted)", marginBottom: "12px", lineHeight: "1.4" }}>
-            Select your elective subjects to clean up your timetable, attendance, and results.
-          </p>
-
-          <div style={{ display: "grid", gap: "10px", marginBottom: "16px" }}>
-            {/* Kannada Selection */}
-            <div style={{ display: "grid", gap: "4px" }}>
-              <label style={{ fontSize: "0.74rem", fontWeight: 750, color: "var(--ink)" }}>Kannada Course</label>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <button
-                  type="button"
-                  onClick={() => setTempKannada("samskrutika")}
-                  style={{
-                    flex: 1,
-                    padding: "8px",
-                    borderRadius: "8px",
-                    fontSize: "0.75rem",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                    background: tempKannada === "samskrutika" ? "var(--primary)" : "var(--surface-soft)",
-                    color: tempKannada === "samskrutika" ? "#fff" : "var(--muted)",
-                    border: tempKannada === "samskrutika" ? "1px solid var(--primary)" : "1px solid var(--line)",
-                    transition: "all 150ms ease"
-                  }}
-                >
-                  Samskrutika
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTempKannada("balake")}
-                  style={{
-                    flex: 1,
-                    padding: "8px",
-                    borderRadius: "8px",
-                    fontSize: "0.75rem",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                    background: tempKannada === "balake" ? "var(--primary)" : "var(--surface-soft)",
-                    color: tempKannada === "balake" ? "#fff" : "var(--muted)",
-                    border: tempKannada === "balake" ? "1px solid var(--primary)" : "1px solid var(--line)",
-                    transition: "all 150ms ease"
-                  }}
-                >
-                  Balake
-                </button>
-              </div>
-            </div>
-
-            {/* ESC Selection */}
-            <div style={{ display: "grid", gap: "4px", marginTop: "4px" }}>
-              <label style={{ fontSize: "0.74rem", fontWeight: 750, color: "var(--ink)" }}>Engineering Elective</label>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <button
-                  type="button"
-                  onClick={() => setTempEsc("electricals")}
-                  style={{
-                    flex: 1,
-                    padding: "8px",
-                    borderRadius: "8px",
-                    fontSize: "0.75rem",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                    background: tempEsc === "electricals" ? "var(--accent)" : "var(--surface-soft)",
-                    color: tempEsc === "electricals" ? "#fff" : "var(--muted)",
-                    border: tempEsc === "electricals" ? "1px solid var(--accent)" : "1px solid var(--line)",
-                    transition: "all 150ms ease"
-                  }}
-                >
-                  Electricals
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTempEsc("building")}
-                  style={{
-                    flex: 1,
-                    padding: "8px",
-                    borderRadius: "8px",
-                    fontSize: "0.75rem",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                    background: tempEsc === "building" ? "var(--accent)" : "var(--surface-soft)",
-                    color: tempEsc === "building" ? "#fff" : "var(--muted)",
-                    border: tempEsc === "building" ? "1px solid var(--accent)" : "1px solid var(--line)",
-                    transition: "all 150ms ease"
-                  }}
-                >
-                  Building Sci.
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => handleSaveElectives(tempKannada, tempEsc)}
-            style={{
-              width: "100%",
-              padding: "10px",
-              background: "var(--primary)",
-              color: "#fff",
-              borderRadius: "10px",
-              fontSize: "0.8rem",
-              fontWeight: 850,
-              cursor: "pointer",
-              border: "none",
-              boxShadow: "0 4px 10px rgba(35, 102, 84, 0.2)",
-              transition: "all 150ms ease"
-            }}
-          >
-            Confirm Electives
-          </button>
-        </section>
-      )}
-
-      {/* Quick Edit Electives Badge (if already configured) */}
-      {!showElectivePrompt && electives && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "16px 12px 0", padding: "10px 14px", background: "var(--surface-soft)", borderRadius: "12px", border: "1px solid var(--line)" }}>
-          <span style={{ fontSize: "0.76rem", color: "var(--muted)", fontWeight: 700 }}>
-            Electives: <strong style={{ color: "var(--primary)" }}>{electives.kannada === "samskrutika" ? "Samskrutika" : "Balake"}</strong> &middot; <strong style={{ color: "var(--accent)" }}>{electives.esc === "electricals" ? "Electricals" : "Building Sci."}</strong>
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowElectivePrompt(true)}
-            style={{ fontSize: "0.74rem", fontWeight: 800, color: "var(--primary)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
-          >
-            Change
-          </button>
-        </div>
-      )}
-
       {/* Quick Stats Strip */}
-      <div className="home-stats-strip" style={{ marginTop: showElectivePrompt || electives ? 16 : 12 }}>
+      <div className="home-stats-strip" style={{ marginTop: 16 }}>
         <div className="home-stat-pill">
           <span>Overall</span>
           <strong>{summary.avgAtt}%</strong>
+          <small>Attendance</small>
         </div>
         <div className="home-stat-pill">
           <span>At Risk</span>
           <strong style={{ color: summary.lowAtt ? "var(--danger)" : "var(--success)" }}>{summary.lowAtt}</strong>
+          <small>{summary.lowAtt ? "Needs ≥ 80%" : "All Good"}</small>
         </div>
         <div className="home-stat-pill">
           <span>Avg CIE</span>
           <strong>{summary.avgCie}</strong>
+          <small>Scale of 50</small>
         </div>
       </div>
-      {/* Upcoming Exams Panel */}
-      {registeredExams.length > 0 && (
-        <section 
-          className="panel fade-in" 
-          style={{ 
-            margin: "16px 12px 0", 
-            border: "1px solid var(--line)", 
-            borderRadius: "14px", 
-            background: "var(--surface)",
-            padding: "16.5px"
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-            <h3 style={{ fontSize: "0.9rem", fontWeight: 850, color: "var(--ink)", margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
-              📋 Upcoming VTU Exams
-            </h3>
-            <Link 
-              href="/dashboard/exams" 
-              style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--primary)", textDecoration: "none" }}
-            >
-              View Full Schedule &rarr;
-            </Link>
-          </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {registeredExams.map((exam, idx) => {
-              const countdown = getCountdown(exam.date);
-              const isToday = countdown.type === "today";
-              const isPast = countdown.type === "past";
-              
-              if (isPast) return null;
+      {/* Today's Schedule - Directly Connected */}
+      <div className="home-schedule-header">
+        <h2>Today&apos;s Schedule</h2>
+        <Link href="/dashboard/timetable">
+          Full week <ChevronRight size={14} />
+        </Link>
+      </div>
 
-              const [y, m, d] = exam.date.split("-");
-              const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-              const formattedDate = `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
+      {todaySchedule && todaySchedule.length > 0 ? (
+        <section className="home-schedule-list">
+          {todaySchedule.map((cls, i) => {
+            const courseCode = (cls.attendance?.course || cls.course).toUpperCase();
+            const officialEntry = cls.attendance?.dates?.find(
+              (d) => !d.isSelfLogged && (d.date === todayDateStr || d.date.replace(/\//g, "-") === todayDateStr)
+            );
+            const selfEntry = cls.attendance?.dates?.find(
+              (d) => d.isSelfLogged && (d.date === todayDateStr || d.date.replace(/\//g, "-") === todayDateStr)
+            );
 
-              return (
-                <div 
-                  key={`${exam.code}-${idx}`}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "10px 12px",
-                    background: isToday ? "rgba(183, 51, 51, 0.04)" : "var(--surface-soft)",
-                    border: isToday ? "1px solid rgba(183, 51, 51, 0.2)" : "1px solid var(--line)",
-                    borderRadius: "10px",
-                    fontSize: "0.8rem"
-                  }}
-                >
-                  <div style={{ minWidth: 0, flex: 1, marginRight: "8px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <strong style={{ color: "var(--ink)", fontWeight: 800 }}>{exam.code}</strong>
-                      <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>• {formattedDate} ({exam.day})</span>
-                    </div>
-                    <div style={{ fontSize: "0.76rem", color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: "2px" }}>
-                      {exam.title}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <span 
-                      style={{ 
-                        fontSize: "0.72rem", 
-                        fontWeight: 900, 
-                        color: isToday ? "var(--danger)" : countdown.type === "tomorrow" ? "var(--warning)" : "var(--primary)",
-                        textTransform: "uppercase" 
-                      }}
-                    >
-                      {countdown.label}
-                    </span>
-                    <div style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: "2px" }}>
-                      9:30 AM
-                    </div>
-                  </div>
+            return (
+              <article className="home-schedule-card" key={i}>
+                <div className="home-schedule-time">
+                  <span>{cls.time.split(" to ")[0]}</span>
+                  {cls.status === "NOW" && <span className="home-now-badge">NOW</span>}
+                  {cls.status === "NEXT" && <span className="home-next-badge">NEXT</span>}
                 </div>
-              );
-            })}
-          </div>
+                <div className="home-schedule-info">
+                  <h3>{cls.course}</h3>
+                  <p>{cls.room ? `${cls.room} · ` : ""}{cls.faculty || "Faculty"}</p>
+                </div>
+                <div className="home-schedule-meta">
+                  {cls.attendance && (
+                    <span className={`home-schedule-pct ${toNumber(cls.attendance.percentage) < 80 ? "risk" : ""}`}>
+                      {cls.attendance.percentage}%
+                    </span>
+                  )}
+                </div>
+
+                {/* Attendance Interactive Logging Widget */}
+                <div className="home-schedule-actions">
+                  {officialEntry ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: officialEntry.status === "Present" ? "var(--success)" : "var(--danger)" }} />
+                      <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 700 }}>
+                        Official Attendance: <strong style={{ color: officialEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{officialEntry.status === "Present" ? "Attended" : "Bunked"}</strong>
+                      </span>
+                    </div>
+                  ) : selfEntry ? (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: selfEntry.status === "Present" ? "var(--success)" : "var(--danger)" }} />
+                        <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 700 }}>
+                          You marked: <strong style={{ color: selfEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{selfEntry.status === "Present" ? "Attended" : "Bunked"}</strong>
+                        </span>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => handleSaveAttendance(courseCode, null)}
+                        style={{ background: "rgba(255,255,255,0.06)", border: "none", color: "var(--muted)", padding: "4px 10px", borderRadius: "8px", fontSize: "0.72rem", fontWeight: 800, cursor: "pointer", transition: "all 150ms ease" }}
+                      >
+                        Undo
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
+                      <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                        Did you attend this class?
+                      </span>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button 
+                          type="button"
+                          onClick={() => handleSaveAttendance(courseCode, "Present", cls.time)}
+                          style={{ flex: 1, padding: "7px 12px", background: "rgba(52, 209, 120, 0.12)", border: "1px solid rgba(52, 209, 120, 0.25)", borderRadius: "10px", color: "var(--success)", fontWeight: 800, fontSize: "0.76rem", cursor: "pointer", transition: "all 150ms ease" }}
+                        >
+                          Yes, Attended
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => handleSaveAttendance(courseCode, "Absent", cls.time)}
+                          style={{ flex: 1, padding: "7px 12px", background: "rgba(255, 91, 104, 0.12)", border: "1px solid rgba(255, 91, 104, 0.25)", borderRadius: "10px", color: "var(--danger)", fontWeight: 800, fontSize: "0.76rem", cursor: "pointer", transition: "all 150ms ease" }}
+                        >
+                          No, Bunked
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </section>
+      ) : (
+        <div className="home-empty-day">
+          <p>No classes scheduled for today.</p>
+          <span style={{ fontSize: "0.78rem", color: "var(--muted)", display: "block", marginTop: 4 }}>Enjoy your day!</span>
+        </div>
       )}
 
       {/* Quick Actions Grid */}
@@ -538,43 +471,63 @@ export default function Dashboard() {
       </div>
       <nav className="home-quick-actions">
         <Link href="/dashboard/attendance" className="home-action-tile">
-          <span className="home-action-icon">📊</span>
+          <span className="home-action-icon-wrap">
+            <BarChart3 size={20} strokeWidth={1.8} />
+          </span>
           <span className="home-action-label">Attendance</span>
         </Link>
         <Link href="/dashboard/timetable" className="home-action-tile">
-          <span className="home-action-icon">📅</span>
+          <span className="home-action-icon-wrap">
+            <Clock size={20} strokeWidth={1.8} />
+          </span>
           <span className="home-action-label">Timetable</span>
         </Link>
         <Link href="/dashboard/bunk" className="home-action-tile">
-          <span className="home-action-icon">🧮</span>
+          <span className="home-action-icon-wrap">
+            <Calculator size={20} strokeWidth={1.8} />
+          </span>
           <span className="home-action-label">Bunk Planner</span>
         </Link>
         <Link href="/dashboard/results" className="home-action-tile">
-          <span className="home-action-icon">📝</span>
+          <span className="home-action-icon-wrap">
+            <FileText size={20} strokeWidth={1.8} />
+          </span>
           <span className="home-action-label">CIE Marks</span>
         </Link>
         <Link href="/dashboard/marketplace" className="home-action-tile">
-          <span className="home-action-icon">🛒</span>
+          <span className="home-action-icon-wrap">
+            <ShoppingBag size={20} strokeWidth={1.8} />
+          </span>
           <span className="home-action-label">Market</span>
         </Link>
         <Link href="/dashboard/connect" className="home-action-tile">
-          <span className="home-action-icon">💬</span>
+          <span className="home-action-icon-wrap">
+            <MessageSquare size={20} strokeWidth={1.8} />
+          </span>
           <span className="home-action-label">Connect</span>
         </Link>
         <Link href="/dashboard/idcard" className="home-action-tile">
-          <span className="home-action-icon">🪪</span>
+          <span className="home-action-icon-wrap">
+            <IdCardIcon size={20} strokeWidth={1.8} />
+          </span>
           <span className="home-action-label">ID Card</span>
         </Link>
         <Link href="/dashboard/unlocked" className="home-action-tile">
-          <span className="home-action-icon">🔓</span>
+          <span className="home-action-icon-wrap">
+            <Unlock size={20} strokeWidth={1.8} />
+          </span>
           <span className="home-action-label">Unlocked</span>
         </Link>
         <Link href="/dashboard/feedback" className="home-action-tile">
-          <span className="home-action-icon">✍️</span>
+          <span className="home-action-icon-wrap">
+            <PenTool size={20} strokeWidth={1.8} />
+          </span>
           <span className="home-action-label">Feedback</span>
         </Link>
         <Link href="/dashboard/exams" className="home-action-tile">
-          <span className="home-action-icon">📋</span>
+          <span className="home-action-icon-wrap">
+            <GraduationCap size={20} strokeWidth={1.8} />
+          </span>
           <span className="home-action-label">Exams</span>
         </Link>
       </nav>

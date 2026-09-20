@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack --disable-source-maps",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -21,7 +21,7 @@
     "axios": "^1.15.2",
     "cheerio": "^1.2.0",
     "lucide-react": "^1.14.0",
-    "next": "16.2.4",
+    "next": "^16.3.5",
     "react": "19.2.4",
     "react-barcode": "^1.6.1",
     "react-dom": "19.2.4"
@@ -30,6 +30,7 @@
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "lightningcss-win32-x64-msvc": "^1.33.0",
     "tailwindcss": "^4"
   }
 }

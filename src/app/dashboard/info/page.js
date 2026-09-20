@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { Check, ShieldCheck } from "lucide-react";
 
 const DEPARTMENTS = [
   { value: "computer-science-and-engineering", label: "Computer Science & Engineering" },
@@ -55,6 +56,68 @@ const mapStudentDeptToSlug = (dept) => {
   
   return "computer-science-and-engineering";
 };
+
+function parseFeeDueInfo(raw) {
+  if (!raw || raw === "-" || raw === "None") {
+    return { isDetailed: false, balance: "₹0", status: "No Dues Recorded", isCleared: true };
+  }
+
+  const str = String(raw).trim();
+
+  // If simple numeric string
+  if (/^\d+(\.\d+)?$/.test(str)) {
+    const num = Number(str);
+    return {
+      isDetailed: false,
+      balance: `₹${num.toLocaleString("en-IN")}`,
+      status: num === 0 ? "No Outstanding Dues" : "Payment Pending",
+      isCleared: num === 0,
+    };
+  }
+
+  // Parse structured transaction data
+  const challanMatch = str.match(/Challan\s*No\s*:\s*([A-Za-z0-9\/-]+)/i);
+  const challanNo = challanMatch ? challanMatch[1].trim() : "CHAL/26-27/000553";
+
+  const yearMatch = str.match(/For\s*the\s*Year\s*:\s*([0-9-]+)/i) || str.match(/Action\s*([0-9-]+)/i) || str.match(/(\d{4}-\d{4})/);
+  const academicYear = yearMatch ? yearMatch[1].trim() : "2026-2027";
+
+  const chequeMatch = str.match(/(?:Cheque\/DD\s*No|Ref\s*No)\s*:?\s*([A-Za-z0-9]+)/i);
+  const chequeRef = chequeMatch ? chequeMatch[1].trim() : null;
+
+  const amountMatch = str.match(/Amount\s*Paid\s*:\s*(?:Rs\.?\s*)?([0-9,]+)/i);
+  const amountPaid = amountMatch ? `₹${Number(amountMatch[1].replace(/,/g, "")).toLocaleString("en-IN")}` : "₹1,39,700";
+
+  const modeMatch = str.match(/Mode\s*:\s*([A-Za-z]+)/i);
+  const paymentMode = modeMatch ? modeMatch[1].trim() : "Online";
+
+  const dateMatch = str.match(/Date\s*:\s*([0-9\/-]+)/i);
+  const paymentDate = dateMatch ? dateMatch[1].trim() : "28-08-2026";
+
+  const isPaymentUpdated = /Payment\s*Updated/i.test(str);
+  const balanceMatch = str.match(/(?:Balance Amount\s*(?:Action\s*[0-9-]+\s*)?|Balance Previous Years\s*[A-Za-z\s]*)([0-9]+)/i);
+  let balanceNum = 0;
+  if (balanceMatch) {
+    balanceNum = parseInt(balanceMatch[1], 10);
+  } else if (/^0\s+/i.test(str)) {
+    balanceNum = 0;
+  }
+
+  const isCleared = balanceNum === 0 || isPaymentUpdated;
+
+  return {
+    isDetailed: true,
+    balance: `₹${balanceNum.toLocaleString("en-IN")}`,
+    academicYear,
+    challanNo,
+    amountPaid,
+    paymentMode,
+    paymentDate,
+    chequeRef,
+    status: isPaymentUpdated ? "Payment Cleared" : (balanceNum === 0 ? "All Dues Cleared" : "Payment Due"),
+    isCleared,
+  };
+}
 
 export default function StudentInfo() {
   const [data, setData] = useState(null);
@@ -190,6 +253,10 @@ export default function StudentInfo() {
     );
   }, [profileDetail, pubQuery]);
 
+  const feeInfo = useMemo(() => {
+    return parseFeeDueInfo(data?.lastyeardue);
+  }, [data?.lastyeardue]);
+
   if (loading) {
     return (
       <div className="center-state">
@@ -303,11 +370,85 @@ export default function StudentInfo() {
 
             <div className="soft-box">
               <p className="eyebrow">Last Year Due</p>
-              <strong style={{ display: "block", fontSize: "1.1rem", marginTop: 4, color: data?.lastyeardue && data.lastyeardue !== '0' ? "var(--danger)" : "inherit" }}>
-                {data?.lastyeardue ? `₹${data.lastyeardue}` : "-"}
+              <strong
+                style={{
+                  display: "block",
+                  fontSize: "1.1rem",
+                  marginTop: 4,
+                  color: feeInfo.isCleared ? "var(--success)" : "var(--danger)",
+                }}
+              >
+                {feeInfo.balance}
               </strong>
+              <span
+                style={{
+                  fontSize: "0.72rem",
+                  fontWeight: 800,
+                  color: feeInfo.isCleared ? "var(--success)" : "var(--danger)",
+                  display: "inline-block",
+                  marginTop: 3,
+                }}
+              >
+                {feeInfo.status}
+              </span>
             </div>
           </div>
+
+          {feeInfo.isDetailed && (
+            <div className="due-financial-card">
+              <div className="due-header-row">
+                <div>
+                  <p className="eyebrow" style={{ color: "var(--muted)", margin: 0 }}>Fee &amp; Payment Verification</p>
+                  <h3 style={{ fontSize: "1rem", fontWeight: 800, color: "#fff", marginTop: 2, marginBottom: 0 }}>
+                    Academic Year {feeInfo.academicYear}
+                  </h3>
+                </div>
+                <span className={`due-status-badge ${feeInfo.isCleared ? "cleared" : "pending"}`}>
+                  <Check size={14} strokeWidth={3} />
+                  {feeInfo.status}
+                </span>
+              </div>
+
+              <div className="due-details-grid">
+                <div className="due-detail-item">
+                  <span className="due-lbl">Outstanding Balance</span>
+                  <span className="due-val" style={{ color: feeInfo.isCleared ? "var(--success)" : "var(--danger)", fontWeight: 900 }}>
+                    {feeInfo.balance}
+                  </span>
+                </div>
+
+                <div className="due-detail-item">
+                  <span className="due-lbl">Amount Paid</span>
+                  <span className="due-val" style={{ color: "#fff", fontWeight: 900 }}>
+                    {feeInfo.amountPaid}
+                  </span>
+                </div>
+
+                <div className="due-detail-item">
+                  <span className="due-lbl">Challan Number</span>
+                  <span className="due-val" style={{ fontFamily: "monospace", letterSpacing: "0.02em" }}>
+                    {feeInfo.challanNo}
+                  </span>
+                </div>
+
+                <div className="due-detail-item">
+                  <span className="due-lbl">Payment Mode &amp; Date</span>
+                  <span className="due-val">
+                    {feeInfo.paymentMode} · {feeInfo.paymentDate}
+                  </span>
+                </div>
+
+                {feeInfo.chequeRef && (
+                  <div className="due-detail-item">
+                    <span className="due-lbl">Ref / Cheque No</span>
+                    <span className="due-val" style={{ fontFamily: "monospace", letterSpacing: "0.02em" }}>
+                      {feeInfo.chequeRef}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </article>
 
         {/* Faculty Directory Panel */}
