@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   reactStrictMode: false,
   devIndicators: false,
+  turbopack: {},
   webpack: (config, { dev }) => {
     if (dev) {
       config.cache = {
