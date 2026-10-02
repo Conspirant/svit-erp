@@ -284,7 +284,9 @@ export async function GET() {
                         const pageText = _$('body').text().replace(/\s+/g, ' ');
                         const presentMatch = _$('.cn-legend .cn-color-green').text().match(/\[(\d+)\]/);
                         const absentMatch = _$('.cn-legend .cn-color-red').text().match(/\[(\d+)\]/);
-                        const stillToGoMatch = pageText.match(/STILL\s+TO\s+GO\s*\[\s*(\d+)\s*\]/i);
+                        const stillLegendMatch = _$('.cn-legend .cn-still, .cn-legend .cn-color-grey, .cn-legend span:contains("Still"), .cn-legend span:contains("STILL")').text().match(/\[(\d+)\]/);
+                        const stillProgressMatch = _$('.sc-progress-bar[title*="Still to go"]').first().attr('title')?.match(/Still to go\s*:\s*(\d+)/i);
+                        const stillToGoMatch = stillLegendMatch || pageText.match(/STILL\s+TO\s+GO\s*\[\s*(\d+)\s*\]/i) || stillProgressMatch;
 
                         const present = presentMatch ? parseInt(presentMatch[1], 10) : readBracketCount(pageText, 'PRESENT');
                         const absent = absentMatch ? parseInt(absentMatch[1], 10) : readBracketCount(pageText, 'ABSENT');
@@ -513,9 +515,14 @@ export async function GET() {
                     return parseD(a.date) - parseD(b.date);
                 });
 
-                const present = uniqueDates.filter(d => d.status === 'Present').length;
-                const absent = uniqueDates.filter(d => d.status === 'Absent').length;
-                const total = present + absent;
+                const parsedPresent = list.reduce((max, curr) => Math.max(max, curr.present || 0), 0);
+                const parsedAbsent = list.reduce((max, curr) => Math.max(max, curr.absent || 0), 0);
+                const parsedTotal = list.reduce((max, curr) => Math.max(max, curr.total || 0), 0);
+                const datePresent = uniqueDates.filter(d => d.status === 'Present').length;
+                const dateAbsent = uniqueDates.filter(d => d.status === 'Absent').length;
+                const present = uniqueDates.length > 0 ? datePresent : parsedPresent;
+                const absent = uniqueDates.length > 0 ? dateAbsent : parsedAbsent;
+                const total = Math.max(present + absent, parsedTotal);
 
                 const maxGaugePct = list.reduce((max, curr) => Math.max(max, curr.percentage || 0), 0);
                 const pct = total > 0 ? Math.round((present / total) * 100) : maxGaugePct;
