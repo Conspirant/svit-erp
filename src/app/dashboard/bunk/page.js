@@ -453,7 +453,7 @@ export default function BunkCalculator() {
     text += `It has only ${count} class${count > 1 ? "es" : ""} scheduled, totaling ${credits} credit${credits > 1 ? "s" : ""}. `;
 
     if (hasLab) {
-      text += "⚠️ Note: It includes a practical laboratory session, which is usually compulsory. However, other days carry significantly higher credits or attendance risks. ";
+      text += "Note: It includes a practical laboratory session, which is usually compulsory. However, other days carry significantly higher credits or attendance risks. ";
     } else {
       text += "Importantly, there are no laboratory sessions on this day, reducing the academic impact. ";
     }
@@ -529,7 +529,7 @@ export default function BunkCalculator() {
             color: activeTab === "manual" ? "#fff" : "var(--muted)",
           }}
         >
-          🧮 Manual Calculator
+          Manual Calculator
         </button>
         <button 
           className={activeTab === "smart" ? "active" : ""} 
@@ -548,7 +548,7 @@ export default function BunkCalculator() {
             color: activeTab === "smart" ? "#fff" : "var(--muted)",
           }}
         >
-          🧠 Smart Planner
+          Smart Planner
         </button>
       </div>
 
@@ -925,21 +925,21 @@ export default function BunkCalculator() {
                     titleColor = "var(--danger)";
                     badgeBg = "rgba(255, 59, 48, 0.12)";
                     badgeText = "var(--danger)";
-                    badgeLabel = "🚨 Critical";
+                    badgeLabel = "Critical";
                   } else if (d.status === "moderate") {
                     borderStyle = isSelected ? "2px solid var(--warning)" : "1.5px solid rgba(186, 100, 41, 0.4)";
                     bgStyle = isSelected ? "rgba(186, 100, 41, 0.05)" : "rgba(186, 100, 41, 0.02)";
                     titleColor = "var(--warning)";
                     badgeBg = "rgba(186, 100, 41, 0.12)";
                     badgeText = "var(--warning)";
-                    badgeLabel = "⚠️ Moderate";
+                    badgeLabel = "Moderate";
                   } else if (d.status === "safe") {
                     borderStyle = isSelected ? "2px solid var(--success)" : "1.5px solid rgba(33, 131, 92, 0.4)";
                     bgStyle = isSelected ? "rgba(33, 131, 92, 0.05)" : "rgba(33, 131, 92, 0.02)";
                     titleColor = "var(--success)";
                     badgeBg = "rgba(33, 131, 92, 0.12)";
                     badgeText = "var(--success)";
-                    badgeLabel = "✅ Safe";
+                    badgeLabel = "Safe";
                   }
 
                   return (
@@ -1007,7 +1007,7 @@ export default function BunkCalculator() {
 
                   {selectedDayDetails.classes.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "24px 0", color: "var(--muted)" }}>
-                      <p style={{ fontSize: "2rem" }}>🎉</p>
+                      <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}><CheckCircle2 size={32} color="var(--success)" /></div>
                       <p style={{ fontSize: "0.82rem", fontWeight: 700, marginTop: "8px" }}>No classes scheduled on this day!</p>
                       <p style={{ fontSize: "0.74rem", opacity: 0.7 }}>Enjoy your break or study at your own pace.</p>
                     </div>

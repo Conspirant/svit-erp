@@ -252,7 +252,7 @@ function PostTaskModal({ profile, onClose, onCreated }) {
           <div className="field">
             <label>Description</label>
             <textarea className="input mk-textarea" value={form.description} onChange={e => set("description", e.target.value)} placeholder="Describe what you need. No phone numbers, UPI IDs, or links allowed." required />
-            <p className="mk-field-hint">⚠️ Contact info is automatically blocked.</p>
+            <p className="mk-field-hint">Personal contact information is automatically filtered for privacy.</p>
           </div>
           <div className="mk-form-row">
             <div className="field">

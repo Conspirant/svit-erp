@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiJson, clearClientSession } from "@/lib/clientApi";
-import { Mail, X, CheckCircle2, AlertCircle, RotateCw } from "lucide-react";
+import { Mail, X, CheckCircle2, AlertCircle, RotateCw, Megaphone } from "lucide-react";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MONTHS = [
@@ -44,6 +44,8 @@ export default function Home() {
   const [forgotHiddenFields, setForgotHiddenFields] = useState(null);
   const [rememberMe, setRememberMe] = useState(true);
   const [savedCreds, setSavedCreds] = useState(null);
+  const [announcement, setAnnouncement] = useState(null);
+  const [showAnnouncement, setShowAnnouncement] = useState(false);
   const router = useRouter();
 
   const fetchCaptcha = useCallback(async () => {
@@ -112,6 +114,18 @@ export default function Home() {
       }
     } catch { }
   }, [fetchCaptcha, parseDobString]);
+
+  useEffect(() => {
+    fetch("/api/announcements", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.announcement?.message) {
+          setAnnouncement(data.announcement);
+          setShowAnnouncement(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const getDob = useCallback(() => {
     if (mode === "dropdown") {
@@ -261,6 +275,18 @@ export default function Home() {
 
   return (
     <main className="app-login-screen">
+      {showAnnouncement && announcement && (
+        <div className="announcement-overlay" role="dialog" aria-modal="true" aria-labelledby="announcement-title">
+          <div className="announcement-modal">
+            <div className="announcement-icon"><Megaphone size={22} /></div>
+            <button className="announcement-close" type="button" onClick={() => setShowAnnouncement(false)} aria-label="Close announcement"><X size={18} /></button>
+            <p className="announcement-kicker">PORTAL ANNOUNCEMENT</p>
+            <h2 id="announcement-title">{announcement.title}</h2>
+            <p className="announcement-copy">{announcement.message}</p>
+            <button className="announcement-ok" type="button" onClick={() => setShowAnnouncement(false)}>Continue to login</button>
+          </div>
+        </div>
+      )}
       <div className="app-login-container fade-in">
         {/* Logo & Branding */}
         <div className="app-login-brand">
@@ -277,7 +303,7 @@ export default function Home() {
           </h1>
           <div className="app-login-divider" />
           <p className="app-login-subtitle">Student ERP</p>
-          <span className="app-login-odd-term-notice">Only for odd term ppl</span>
+          <span className="app-login-odd-term-notice">Academic Session 2024–25 · Odd Semester</span>
         </div>
 
         {/* Login Form Card */}
@@ -501,7 +527,7 @@ export default function Home() {
           {/* Error Message */}
           {error && (
             <div className="app-login-error">
-              <span>⚠</span>
+              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
               <p>{error}</p>
             </div>
           )}

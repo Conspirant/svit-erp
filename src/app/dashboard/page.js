@@ -410,45 +410,45 @@ export default function Dashboard() {
                   {officialEntry ? (
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: officialEntry.status === "Present" ? "var(--success)" : "var(--danger)" }} />
-                      <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 700 }}>
-                        Official Attendance: <strong style={{ color: officialEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{officialEntry.status === "Present" ? "Attended" : "Bunked"}</strong>
+                      <span style={{ fontSize: "0.76rem", color: "var(--muted)", fontWeight: 600 }}>
+                        Official Record: <strong style={{ color: officialEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{officialEntry.status === "Present" ? "Attended" : "Absent"}</strong>
                       </span>
                     </div>
                   ) : selfEntry ? (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: selfEntry.status === "Present" ? "var(--success)" : "var(--danger)" }} />
-                        <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 700 }}>
-                          You marked: <strong style={{ color: selfEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{selfEntry.status === "Present" ? "Attended" : "Bunked"}</strong>
+                        <span style={{ fontSize: "0.76rem", color: "var(--muted)", fontWeight: 600 }}>
+                          Self-Logged: <strong style={{ color: selfEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{selfEntry.status === "Present" ? "Attended" : "Absent"}</strong>
                         </span>
                       </div>
                       <button 
                         type="button"
                         onClick={() => handleSaveAttendance(courseCode, null)}
-                        style={{ background: "rgba(255,255,255,0.06)", border: "none", color: "var(--muted)", padding: "4px 10px", borderRadius: "8px", fontSize: "0.72rem", fontWeight: 800, cursor: "pointer", transition: "all 150ms ease" }}
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--line)", color: "var(--muted)", padding: "3px 8px", borderRadius: "6px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer", transition: "all 150ms ease" }}
                       >
                         Undo
                       </button>
                     </div>
                   ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
-                      <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                        Did you attend this class?
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
+                      <span style={{ fontSize: "0.7rem", color: "var(--muted)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                        Session attendance
                       </span>
                       <div style={{ display: "flex", gap: "8px" }}>
                         <button 
                           type="button"
                           onClick={() => handleSaveAttendance(courseCode, "Present", cls.time)}
-                          style={{ flex: 1, padding: "7px 12px", background: "rgba(52, 209, 120, 0.12)", border: "1px solid rgba(52, 209, 120, 0.25)", borderRadius: "10px", color: "var(--success)", fontWeight: 800, fontSize: "0.76rem", cursor: "pointer", transition: "all 150ms ease" }}
+                          style={{ flex: 1, padding: "6px 12px", background: "var(--success-soft)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "8px", color: "var(--success)", fontWeight: 600, fontSize: "0.76rem", cursor: "pointer", transition: "all 150ms ease" }}
                         >
-                          Yes, Attended
+                          Mark Present
                         </button>
                         <button 
                           type="button"
                           onClick={() => handleSaveAttendance(courseCode, "Absent", cls.time)}
-                          style={{ flex: 1, padding: "7px 12px", background: "rgba(255, 91, 104, 0.12)", border: "1px solid rgba(255, 91, 104, 0.25)", borderRadius: "10px", color: "var(--danger)", fontWeight: 800, fontSize: "0.76rem", cursor: "pointer", transition: "all 150ms ease" }}
+                          style={{ flex: 1, padding: "6px 12px", background: "rgba(255, 255, 255, 0.04)", border: "1px solid var(--line)", borderRadius: "8px", color: "var(--muted)", fontWeight: 600, fontSize: "0.76rem", cursor: "pointer", transition: "all 150ms ease" }}
                         >
-                          No, Bunked
+                          Mark Absent
                         </button>
                       </div>
                     </div>

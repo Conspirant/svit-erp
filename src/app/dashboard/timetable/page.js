@@ -297,7 +297,7 @@ export default function Timetable() {
       </section>
 
       <div className="notice" style={{ marginTop: 18, background: "var(--warning-soft)", color: "var(--warning)", border: "1px solid rgba(167,105,19,0.18)", fontSize: "0.82rem", lineHeight: 1.55 }}>
-        <strong>⚠ Heads up:</strong> The official SVIT ERP portal does not include selective / elective subjects in the timetable data. Because of this, our system may not be able to fetch or display them either. Sorry for the inconvenience — we can only show what the ERP gives us!
+        <strong>Academic Note:</strong> Elective subjects are scheduled at departmental level and may not be mirrored in the central ERP timetable feed.
       </div>
     </main>
   );

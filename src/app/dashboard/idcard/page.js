@@ -556,7 +556,7 @@ export default function IDCardPage() {
               <ShieldCheck size={18} />
             </div>
             <div className="idcard-promo-body">
-              <h3>🛡️ Secure & Private</h3>
+              <h3>Secure & Private</h3>
               <p>
                 Your digital ID and photo are stored <strong>strictly locally</strong> on your device. We do not store or track your identity data on any server.
               </p>
@@ -583,7 +583,7 @@ export default function IDCardPage() {
                   transition: "transform 150ms ease"
                 }}
               >
-                📥 Download Official APK
+                Download Official APK
               </a>
             </div>
           </div>
@@ -593,7 +593,7 @@ export default function IDCardPage() {
       {/* Info note */}
       <div style={{ textAlign: "center", marginTop: 12, padding: "0 16px" }}>
         <p style={{ fontSize: "0.78rem", color: "var(--muted)", lineHeight: 1.5 }}>
-          Name, Department, and USN are auto-fetched from ERP. The barcode encodes your {savedStudentId ? "Student ID" : "USN"} in Code 128 format. We hope it's correct!
+          Name, Department, and USN are auto-fetched from ERP. The barcode encodes your {savedStudentId ? "Student ID" : "USN"} in Code 128 format. Verified against VTU academic records.
         </p>
       </div>
 

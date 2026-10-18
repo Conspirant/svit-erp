@@ -166,9 +166,9 @@ export default function FeedbackPage() {
   };
 
   const ratingOptions = [
-    { label: "Excellent 🌟", desc: "Best option for top ratings (Default)" },
-    { label: "Very Good 👍", desc: "Solid positive feedback" },
-    { label: "Good 🙂", desc: "Satisfactory feedback" },
+    { label: "Excellent", desc: "Highest evaluation tier (Default)" },
+    { label: "Very Good", desc: "Above-average evaluation" },
+    { label: "Good", desc: "Satisfactory evaluation" },
   ];
 
   if (loading) {
