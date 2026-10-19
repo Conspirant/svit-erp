@@ -181,7 +181,11 @@ export async function GET(request) {
     });
 
   } catch (error) {
-    console.error('Timetable Scraper Error:', error.message);
-    return NextResponse.json({ error: 'Failed to fetch timetable data' }, { status: 500 });
+    console.error('Timetable Scraper Error:', error.message, error.response?.status, error.response?.data);
+    return NextResponse.json({ 
+      error: 'Failed to fetch timetable data',
+      details: error.message,
+      status: error.response?.status,
+    }, { status: 500 });
   }
 }
