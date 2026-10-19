@@ -145,11 +145,16 @@ export default {
       let totalLength = 0;
 
       while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        if (value) {
-          chunks.push(value);
-          totalLength += value.length;
+        try {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value) {
+            chunks.push(value);
+            totalLength += value.length;
+          }
+        } catch (readErr) {
+          // Socket was closed by remote server (Connection: close)
+          break;
         }
       }
 
