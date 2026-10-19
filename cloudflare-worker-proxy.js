@@ -127,8 +127,15 @@ export default {
         httpRequest += `Content-Length: ${bodyBytes.byteLength}\r\n`;
       }
 
+      if (!request.headers.get('accept')) {
+        httpRequest += `Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8\r\n`;
+      }
+      if (!request.headers.get('user-agent')) {
+        httpRequest += `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36\r\n`;
+      }
+
       httpRequest += `Accept-Encoding: identity\r\n`;
-      httpRequest += `Connection: close\r\n\r\n`;
+      httpRequest += `Connection: keep-alive\r\n\r\n`;
 
       const encoder = new TextEncoder();
       await writer.write(encoder.encode(httpRequest));
