@@ -43,7 +43,7 @@ export async function GET(request) {
     const nextEnd = searchParams.get('nextend');
     const j = searchParams.get('j');
 
-    let url = `${BASE_URL}?option=com_studentdashboard&controller=studentdashboard&task=timetable`;
+    let url = resolveErpUrl(`${BASE_URL}?option=com_studentdashboard&controller=studentdashboard&task=timetable`);
 
     if (weekType === 'prev' && prevStart && prevEnd) {
       url += `&j=${j || ''}&prevstart=${prevStart}&prevend=${prevEnd}&type=prev`;
@@ -53,8 +53,9 @@ export async function GET(request) {
 
     const res = await axios.get(url, {
       httpsAgent,
+      timeout: 15000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': DEFAULT_USER_AGENT,
         'Cookie': sessionCookie,
       },
     });
