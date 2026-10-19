@@ -23,7 +23,10 @@ export function createHttpsAgent(options = {}) {
 
 export function resolveErpUrl(path) {
   if (!path) return ERP_BASE_URL;
-  if (/^https?:\/\//i.test(path)) return path;
+  if (/^https?:\/\//i.test(path)) {
+    // If the path already has Accredia origin, rewrite it to use ERP_ROOT_ORIGIN
+    return path.replace(/^https?:\/\/svit-students\.accredia\.in:8084/i, ERP_ROOT_ORIGIN);
+  }
 
   const clean = path.replace(/^\.?\//, '');
   if (clean.startsWith('parents/')) {
