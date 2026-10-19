@@ -4675,12 +4675,12 @@ body {
 }
 
 .app-login-logo {
-  width: 80px;
-  height: 80px;
+  width: min(100%, 340px);
+  height: auto;
+  aspect-ratio: 1024 / 263;
   object-fit: contain;
-  border-radius: 16px;
-  margin-bottom: 14px;
-  filter: none;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
 }
 
 .app-login-title {
@@ -4981,9 +4981,9 @@ body {
   }
 
   .app-login-logo {
-    width: 72px;
-    height: 72px;
-    margin-bottom: 12px;
+    width: min(100%, 280px);
+    height: auto;
+    margin-bottom: 10px;
   }
 
   .app-login-title {

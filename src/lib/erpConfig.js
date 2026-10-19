@@ -10,8 +10,11 @@ export const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) App
 export function createHttpsAgent(options = {}) {
   return new https.Agent({
     rejectUnauthorized: false,
-    keepAlive: false,
-    maxSockets: 10,
+    keepAlive: true,
+    keepAliveMsecs: 30000,
+    maxSockets: 25,
+    maxFreeSockets: 10,
+    timeout: 30000,
     ...options,
   });
 }

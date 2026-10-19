@@ -292,15 +292,12 @@ export default function Home() {
         <div className="app-login-brand">
           <Image
             className="app-login-logo"
-            src="/svit-logo-v3.png"
-            alt="SVIT logo"
-            width={120}
-            height={120}
+            src="/svit-header-logo.png"
+            alt="Sai Vidya Institute of Technology"
+            width={320}
+            height={82}
             priority
           />
-          <h1 className="app-login-title" style={{ fontSize: "1.35rem", textAlign: "center", lineHeight: "1.2" }}>
-            SAI VIDYA INSTITUTE OF TECHNOLOGY
-          </h1>
           <div className="app-login-divider" />
           <p className="app-login-subtitle">Student ERP</p>
           <span className="app-login-odd-term-notice">Academic Session 2024–25 · Odd Semester</span>

@@ -10,16 +10,43 @@ import {
 
 const httpsAgent = createHttpsAgent();
 
+async function fetchWithRetry(fn, retries = 2, delayMs = 600) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 export async function GET() {
   try {
+    const commonHeaders = {
+      'User-Agent': DEFAULT_USER_AGENT,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
+      'Sec-Fetch-User': '?1',
+    };
+
     // 1. Fetch the parent portal login page to start a new PHP session and extract CSRF tokens
-    const initialRes = await axios.get(ERP_BASE_URL, {
-      httpsAgent,
-      timeout: 12000,
-      headers: {
-        'User-Agent': DEFAULT_USER_AGENT,
-      },
-    });
+    const initialRes = await fetchWithRetry(() =>
+      axios.get(ERP_BASE_URL, {
+        httpsAgent,
+        timeout: 20000,
+        headers: commonHeaders,
+      })
+    );
 
     const cookiesArray = initialRes.headers['set-cookie'];
     let sessionCookie = cookiesArray ? cookiesArray.map((c) => c.split(';')[0]).join('; ') : '';
@@ -40,7 +67,6 @@ export async function GET() {
     });
 
     if (!csrfTokenName) {
-      console.warn('Could not locate 32-char CSRF token, searching all hidden fields with value 1');
       $('input[type="hidden"][value="1"]').each((_, el) => {
         const name = $(el).attr('name');
         if (name && name.length === 32) csrfTokenName = name;
@@ -48,16 +74,22 @@ export async function GET() {
     }
 
     // 2. Fetch the CAPTCHA image using the newly created session cookie
-    const captchaRes = await axios.get(`${ERP_CAPTCHA_URL}?rand=${Date.now()}`, {
-      httpsAgent,
-      timeout: 12000,
-      responseType: 'arraybuffer',
-      headers: {
-        'User-Agent': DEFAULT_USER_AGENT,
-        'Cookie': sessionCookie,
-        'Referer': ERP_BASE_URL,
-      },
-    });
+    const captchaRes = await fetchWithRetry(() =>
+      axios.get(`${ERP_CAPTCHA_URL}?rand=${Date.now()}`, {
+        httpsAgent,
+        timeout: 20000,
+        responseType: 'arraybuffer',
+        headers: {
+          ...commonHeaders,
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          'Sec-Fetch-Dest': 'image',
+          'Sec-Fetch-Mode': 'no-cors',
+          'Sec-Fetch-Site': 'same-origin',
+          'Cookie': sessionCookie,
+          'Referer': ERP_BASE_URL,
+        },
+      })
+    );
 
     // Merge any updated cookies from the captcha response
     if (captchaRes.headers['set-cookie']) {
