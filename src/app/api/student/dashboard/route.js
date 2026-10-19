@@ -272,22 +272,21 @@ export async function GET() {
             });
         }
 
-        // Helper to process promises with a concurrency limit
-        const pLimit = async (items, limit, fn) => {
+        // Helper to process promises sequentially with a slight delay between calls
+        const pLimit = async (items, delayMs = 150, fn) => {
             const results = [];
-            const executing = [];
             for (const item of items) {
-                const p = Promise.resolve().then(() => fn(item));
-                results.push(p);
-                if (limit <= items.length) {
-                    const e = p.then(() => executing.splice(executing.indexOf(e), 1));
-                    executing.push(e);
-                    if (executing.length >= limit) {
-                        await Promise.race(executing);
-                    }
+                try {
+                    const res = await fn(item);
+                    results.push({ status: 'fulfilled', value: res });
+                } catch (err) {
+                    results.push({ status: 'rejected', reason: err });
+                }
+                if (delayMs > 0) {
+                    await new Promise(r => setTimeout(r, delayMs));
                 }
             }
-            return Promise.allSettled(results);
+            return results;
         };
 
         // Fetch Detailed Attendance with concurrency of 3 and 10s per-request timeout

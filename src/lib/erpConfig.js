@@ -13,10 +13,10 @@ export function createHttpsAgent(options = {}) {
   return new https.Agent({
     rejectUnauthorized: false,
     keepAlive: true,
-    keepAliveMsecs: 30000,
-    maxSockets: 25,
-    maxFreeSockets: 10,
-    timeout: 30000,
+    keepAliveMsecs: 60000,
+    maxSockets: 3,        // Limit concurrent open sockets to 3
+    maxFreeSockets: 2,
+    timeout: 25000,
     ...options,
   });
 }
