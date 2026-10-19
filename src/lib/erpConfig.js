@@ -1,9 +1,11 @@
 import https from 'https';
 
-export const ERP_ROOT_ORIGIN = 'https://svit-students.accredia.in:8084';
-export const ERP_PARENTS_ORIGIN = 'https://svit-students.accredia.in:8084/parents';
-export const ERP_BASE_URL = 'https://svit-students.accredia.in:8084/parents/index.php';
-export const ERP_CAPTCHA_URL = 'https://svit-students.accredia.in:8084/parents/templates/contineoReg/captcha/get_captcha.php';
+const RAW_ROOT_ORIGIN = (process.env.ERP_GATEWAY_URL || 'https://svit-students.accredia.in:8084').replace(/\/+$/, '');
+
+export const ERP_ROOT_ORIGIN = RAW_ROOT_ORIGIN;
+export const ERP_PARENTS_ORIGIN = `${RAW_ROOT_ORIGIN}/parents`;
+export const ERP_BASE_URL = `${RAW_ROOT_ORIGIN}/parents/index.php`;
+export const ERP_CAPTCHA_URL = `${RAW_ROOT_ORIGIN}/parents/templates/contineoReg/captcha/get_captcha.php`;
 
 export const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 
