@@ -123,7 +123,7 @@ export async function GET() {
     return NextResponse.json({ success: true, photo: '' });
 
   } catch (error) {
-    console.error('Photo Scraper Error:', error.message);
-    return NextResponse.json({ error: 'Failed to fetch photo' }, { status: 500 });
+    console.warn('Photo Scraper Non-fatal Error:', error.message);
+    return NextResponse.json({ success: true, photo: '' });
   }
 }

@@ -161,14 +161,49 @@ export default function StudentInfo() {
         }
 
         const json = await res.json();
-        if (json.success) {
-          setData(json.data);
-          try { sessionStorage.setItem('profile_data', JSON.stringify(json.data)); } catch { }
+        let profile = json?.success ? json.data : null;
+
+        // Fallback: If fee-based profile returned empty, supplement with dashboard_data cache
+        try {
+          const dashCache = sessionStorage.getItem('dashboard_data');
+          if (dashCache) {
+            const parsedDash = JSON.parse(dashCache);
+            if (!profile || !profile.name || !profile.usn) {
+              profile = {
+                ...(profile || {}),
+                name: profile?.name || parsedDash.profileName || "",
+                usn: profile?.usn || parsedDash.usn || "",
+                department: profile?.department || parsedDash.department || "",
+                semester: profile?.semester || parsedDash.semester || "",
+              };
+            }
+          }
+        } catch { }
+
+        if (profile) {
+          setData(profile);
+          try { sessionStorage.setItem('profile_data', JSON.stringify(profile)); } catch { }
         } else {
           setError(json.error || "Failed to load profile data.");
         }
       } catch (err) {
-        setError("Could not connect to the ERP server.");
+        // Even on network error, try reading dashboard_data
+        try {
+          const dashCache = sessionStorage.getItem('dashboard_data');
+          if (dashCache) {
+            const parsedDash = JSON.parse(dashCache);
+            setData({
+              name: parsedDash.profileName || "",
+              usn: parsedDash.usn || "",
+              department: parsedDash.department || "",
+              semester: parsedDash.semester || "",
+            });
+          } else {
+            setError("Could not connect to the ERP server.");
+          }
+        } catch {
+          setError("Could not connect to the ERP server.");
+        }
       } finally {
         setLoading(false);
       }
