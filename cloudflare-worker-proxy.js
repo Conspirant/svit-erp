@@ -84,10 +84,10 @@ export default {
     }
 
     try {
-      // 3. Open raw TLS-secured TCP socket to port 8084 with half-open enabled
+      // 3. Open raw TLS-secured TCP socket to port 8084
       const socket = connect(
         { hostname: TARGET_HOST, port: TARGET_PORT },
-        { secureTransport: 'on', allowHalfOpen: true }
+        { secureTransport: 'on', allowHalfOpen: false }
       );
 
       const writer = socket.writable.getWriter();
@@ -137,25 +137,19 @@ export default {
         await writer.write(new Uint8Array(bodyBytes));
       }
 
-      // Half-close writing stream cleanly to signal EOF to Apache without aborting readable
-      await writer.close();
+      writer.releaseLock();
 
-      // Read response from the socket
+      // Read all bytes from the socket
       const reader = socket.readable.getReader();
       const chunks = [];
       let totalLength = 0;
 
       while (true) {
-        try {
-          const { value, done } = await reader.read();
-          if (done) break;
-          if (value) {
-            chunks.push(value);
-            totalLength += value.length;
-          }
-        } catch (readErr) {
-          // If socket closed at EOF, finish reading
-          break;
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+          chunks.push(value);
+          totalLength += value.length;
         }
       }
 

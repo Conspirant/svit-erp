@@ -184,7 +184,7 @@ export async function GET() {
         const sessionCookie = cookieStrings.join('; ');
 
         const dashboardUrlCookie = cookieStore.get('dashboard_url');
-        const targetUrl = dashboardUrlCookie ? dashboardUrlCookie.value : BASE_URL;
+        const targetUrl = resolveErpUrl(dashboardUrlCookie ? dashboardUrlCookie.value : BASE_URL);
 
         if (!sessionCookie) {
             return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
@@ -194,7 +194,7 @@ export async function GET() {
             httpsAgent,
             timeout: 15000,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'User-Agent': DEFAULT_USER_AGENT,
                 'Cookie': sessionCookie,
             },
         });
@@ -656,6 +656,9 @@ export async function GET() {
 
     } catch (error) {
         console.error('Dashboard Scraper Error:', error.message);
-        return NextResponse.json({ error: 'Failed to fetch dashboard data' }, { status: 500 });
+        return NextResponse.json({
+            error: 'Failed to fetch dashboard data',
+            details: error.message
+        }, { status: 500 });
     }
 }
