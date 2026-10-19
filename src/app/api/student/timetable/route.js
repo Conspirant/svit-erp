@@ -43,6 +43,9 @@ export async function GET(request) {
     const nextEnd = searchParams.get('nextend');
     const j = searchParams.get('j');
 
+    const dashboardUrlCookie = cookieStore.get('dashboard_url');
+    const refererUrl = dashboardUrlCookie ? resolveErpUrl(dashboardUrlCookie.value) : ERP_BASE_URL;
+
     let url = resolveErpUrl(`${BASE_URL}?option=com_studentdashboard&controller=studentdashboard&task=timetable`);
 
     if (weekType === 'prev' && prevStart && prevEnd) {
@@ -57,6 +60,7 @@ export async function GET(request) {
       headers: {
         'User-Agent': DEFAULT_USER_AGENT,
         'Cookie': sessionCookie,
+        'Referer': refererUrl,
       },
     });
 
