@@ -272,13 +272,36 @@ export async function GET() {
             });
         }
 
-        // Fetch Detailed Attendance asynchronously
+        // Helper to process promises with a concurrency limit
+        const pLimit = async (items, limit, fn) => {
+            const results = [];
+            const executing = [];
+            for (const item of items) {
+                const p = Promise.resolve().then(() => fn(item));
+                results.push(p);
+                if (limit <= items.length) {
+                    const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+                    executing.push(e);
+                    if (executing.length >= limit) {
+                        await Promise.race(executing);
+                    }
+                }
+            }
+            return Promise.allSettled(results);
+        };
+
+        // Fetch Detailed Attendance with concurrency of 3 and 10s per-request timeout
         if (attendanceLinks.length > 0) {
             try {
-                const detailedRequests = attendanceLinks.map(linkObj =>
+                const detailedResultsSettled = await pLimit(attendanceLinks, 3, (linkObj) =>
                     axios.get(linkObj.url, {
                         httpsAgent,
-                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Cookie': sessionCookie }
+                        timeout: 10000,
+                        headers: {
+                            'User-Agent': DEFAULT_USER_AGENT,
+                            'Cookie': sessionCookie,
+                            'Referer': ERP_BASE_URL,
+                        }
                     }).then(res => {
                         const _$ = cheerio.load(res.data);
                         const pageText = _$('body').text().replace(/\s+/g, ' ');
@@ -299,7 +322,7 @@ export async function GET() {
                             if (cols.length >= 4) {
                                 dates.push({
                                     date: _$(cols[1]).text().trim(),
-                                    time: _$(cols[2]).text().trim().replace(/\\s+/g, ' '),
+                                    time: _$(cols[2]).text().trim().replace(/\s+/g, ' '),
                                     status: 'Present'
                                 });
                             }
@@ -310,7 +333,7 @@ export async function GET() {
                             if (cols.length >= 4) {
                                 dates.push({
                                     date: _$(cols[1]).text().trim(),
-                                    time: _$(cols[2]).text().trim().replace(/\\s+/g, ' '),
+                                    time: _$(cols[2]).text().trim().replace(/\s+/g, ' '),
                                     status: 'Absent'
                                 });
                             }
@@ -328,10 +351,9 @@ export async function GET() {
                     }).catch(() => null)
                 );
 
-                const detailedResults = await Promise.all(detailedRequests);
-
                 // Merge into stats.attendance
-                detailedResults.forEach(detail => {
+                detailedResultsSettled.forEach(settled => {
+                    const detail = settled.status === 'fulfilled' ? settled.value : null;
                     if (detail) {
                         const match = stats.attendance.find(a => a.course === detail.course);
                         if (match) {
@@ -359,15 +381,21 @@ export async function GET() {
 
         if (cieLinks.length > 0) {
             try {
-                const cieRequests = cieLinks.map((linkObj) =>
+                const cieDetailsSettled = await pLimit(cieLinks, 3, (linkObj) =>
                     axios.get(linkObj.url, {
                         httpsAgent,
-                        timeout: 15000,
-                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Cookie': sessionCookie }
+                        timeout: 10000,
+                        headers: {
+                            'User-Agent': DEFAULT_USER_AGENT,
+                            'Cookie': sessionCookie,
+                            'Referer': ERP_BASE_URL,
+                        }
                     }).then((detailRes) => parseCieDetailPage(detailRes.data, linkObj)).catch(() => null)
                 );
 
-                const cieDetails = await Promise.all(cieRequests);
+                const cieDetails = cieDetailsSettled
+                    .filter(s => s.status === 'fulfilled' && s.value)
+                    .map(s => s.value);
                 cieDetails.filter(Boolean).forEach((detail) => {
                     const existing = stats.cie.find((item) => item.course === detail.course);
                     if (existing) {

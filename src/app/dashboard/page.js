@@ -78,23 +78,38 @@ export default function Dashboard() {
           fetch("/api/student/timetable")
         ]);
 
-        if (dashRes.status === 401 || ttRes.status === 401) {
+        // Only redirect to login if explicitly unauthorized (401)
+        if (dashRes.status === 401 && ttRes.status === 401) {
           router.push("/");
           return;
         }
 
-        const [dashJson, ttJson] = await Promise.all([dashRes.json(), ttRes.json()]);
+        let dashJson = null;
+        let ttJson = null;
+        try {
+          if (dashRes.ok) dashJson = await dashRes.json();
+        } catch { }
+        try {
+          if (ttRes.ok) ttJson = await ttRes.json();
+        } catch { }
 
-        if (dashJson.success) {
+        if (dashJson?.success) {
           setData(dashJson.data);
           try { sessionStorage.setItem('dashboard_data', JSON.stringify(dashJson.data)); } catch { }
+        } else if (dashRes.status !== 401) {
+          // If 500 occurred but we have cached data, keep showing cached data with a warning
+          const cached = sessionStorage.getItem('dashboard_data');
+          if (cached) {
+            setData(JSON.parse(cached));
+          } else {
+            setError(dashJson?.error || "ERP server is busy. Retrying in background...");
+          }
         }
-        if (ttJson.success) {
+
+        if (ttJson?.success) {
           setTimetable(ttJson.data);
           try { sessionStorage.setItem('dashboard_timetable', JSON.stringify(ttJson.data)); } catch { }
         }
-
-        if (!dashJson.success) setError(dashJson.error || "Failed to load dashboard.");
 
         // Background fetch photo and profile if missing
         try {

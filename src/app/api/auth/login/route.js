@@ -132,18 +132,12 @@ export async function POST(request) {
       validateStatus: (status) => status >= 200 && status < 400,
     });
 
-    const loginCookies = loginRes.headers['set-cookie'];
-    const finalCookie = loginCookies
-      ? loginCookies.map((c) => c.split(';')[0]).join('; ')
-      : sessionCookie;
-
     const redirectLocation = loginRes.headers.location;
 
     // Check if the server rendered an error on the page
     if (loginRes.status === 200) {
       const responseText = typeof loginRes.data === 'string' ? loginRes.data : '';
 
-      // Check for CAPTCHA specific error
       if (
         responseText.includes('captchaErrorModal') ||
         responseText.toLowerCase().includes('invalid captcha') ||
@@ -178,6 +172,24 @@ export async function POST(request) {
       }
     }
 
+    // Collect all cookies: merge original sessionCookie and any new cookies from login response
+    const cookieMap = new Map();
+    if (sessionCookie) {
+      sessionCookie.split(';').forEach((part) => {
+        const [k, ...v] = part.split('=');
+        if (k && v.length) cookieMap.set(k.trim(), v.join('=').trim());
+      });
+    }
+
+    const loginCookies = loginRes.headers['set-cookie'];
+    if (loginCookies) {
+      loginCookies.forEach((c) => {
+        const first = c.split(';')[0];
+        const [k, ...v] = first.split('=');
+        if (k && v.length) cookieMap.set(k.trim(), v.join('=').trim());
+      });
+    }
+
     // Set the cookie in Next.js response so the user's browser holds the ERP session
     const response = NextResponse.json({ success: true, message: 'Logged in successfully' });
 
@@ -198,24 +210,18 @@ export async function POST(request) {
       });
     }
 
-    // Parse the actual PHPSESSID or relevant cookies and set them
-    if (finalCookie) {
-      const cookieParts = finalCookie.split(';');
-      cookieParts.forEach((part) => {
-        const [name, ...rest] = part.split('=');
-        if (name && rest.length > 0) {
-          response.cookies.set({
-            name: name.trim(),
-            value: rest.join('=').trim(),
-            httpOnly: true,
-            sameSite: 'lax',
-            secure: process.env.NODE_ENV === 'production',
-            path: '/',
-            maxAge: 60 * 60 * 24, // 1 day
-          });
-        }
+    // Save all merged cookies into client response cookies
+    cookieMap.forEach((val, key) => {
+      response.cookies.set({
+        name: key,
+        value: val,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: 60 * 60 * 24, // 1 day
       });
-    }
+    });
 
     setSessionIdentity(response, { usn: username });
     return response;
