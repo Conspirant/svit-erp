@@ -144,6 +144,7 @@ export default {
       const chunks = [];
       let totalLength = 0;
 
+      let readerError = null;
       while (true) {
         try {
           const { value, done } = await reader.read();
@@ -153,7 +154,7 @@ export default {
             totalLength += value.length;
           }
         } catch (readErr) {
-          // Socket closed by remote server on EOF (Connection: close)
+          readerError = readErr.message;
           break;
         }
       }
@@ -180,7 +181,16 @@ export default {
       }
 
       if (headerBoundary === -1) {
-        return new Response('Invalid ERP HTTP response', { status: 502 });
+        return new Response(JSON.stringify({
+          error: 'Invalid ERP HTTP response',
+          receivedBytes: totalLength,
+          chunksCount: chunks.length,
+          readerError,
+          previewText: new TextDecoder().decode(allBytes.subarray(0, 100)),
+        }), { 
+          status: 502,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
       }
 
       const rawHeaders = new TextDecoder().decode(allBytes.subarray(0, headerBoundary));
