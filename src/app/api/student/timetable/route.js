@@ -43,10 +43,7 @@ export async function GET(request) {
     const nextEnd = searchParams.get('nextend');
     const j = searchParams.get('j');
 
-    const dashboardUrlCookie = cookieStore.get('dashboard_url');
-    const refererUrl = dashboardUrlCookie ? resolveErpUrl(dashboardUrlCookie.value) : ERP_BASE_URL;
-
-    let url = resolveErpUrl(`${BASE_URL}?option=com_studentdashboard&controller=studentdashboard&task=timetable`);
+    let url = `${BASE_URL}?option=com_studentdashboard&controller=studentdashboard&task=timetable`;
 
     if (weekType === 'prev' && prevStart && prevEnd) {
       url += `&j=${j || ''}&prevstart=${prevStart}&prevend=${prevEnd}&type=prev`;
@@ -56,11 +53,9 @@ export async function GET(request) {
 
     const res = await axios.get(url, {
       httpsAgent,
-      timeout: 15000,
       headers: {
-        'User-Agent': DEFAULT_USER_AGENT,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Cookie': sessionCookie,
-        'Referer': refererUrl,
       },
     });
 
@@ -185,11 +180,7 @@ export async function GET(request) {
     });
 
   } catch (error) {
-    console.error('Timetable Scraper Error:', error.message, error.response?.status, error.response?.data);
-    return NextResponse.json({ 
-      error: 'Failed to fetch timetable data',
-      details: error.message,
-      status: error.response?.status,
-    }, { status: 500 });
+    console.error('Timetable Scraper Error:', error.message);
+    return NextResponse.json({ error: 'Failed to fetch timetable data' }, { status: 500 });
   }
 }

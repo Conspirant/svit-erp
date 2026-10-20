@@ -184,7 +184,7 @@ export async function GET() {
         const sessionCookie = cookieStrings.join('; ');
 
         const dashboardUrlCookie = cookieStore.get('dashboard_url');
-        const targetUrl = resolveErpUrl(dashboardUrlCookie ? dashboardUrlCookie.value : BASE_URL);
+        const targetUrl = dashboardUrlCookie ? dashboardUrlCookie.value : BASE_URL;
 
         if (!sessionCookie) {
             return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
@@ -194,7 +194,7 @@ export async function GET() {
             httpsAgent,
             timeout: 15000,
             headers: {
-                'User-Agent': DEFAULT_USER_AGENT,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Cookie': sessionCookie,
             },
         });
@@ -272,21 +272,22 @@ export async function GET() {
             });
         }
 
-        // Helper to process promises sequentially with a slight delay between calls
-        const pLimit = async (items, delayMs = 150, fn) => {
+        // Helper to process promises with a concurrency limit
+        const pLimit = async (items, limit, fn) => {
             const results = [];
+            const executing = [];
             for (const item of items) {
-                try {
-                    const res = await fn(item);
-                    results.push({ status: 'fulfilled', value: res });
-                } catch (err) {
-                    results.push({ status: 'rejected', reason: err });
-                }
-                if (delayMs > 0) {
-                    await new Promise(r => setTimeout(r, delayMs));
+                const p = Promise.resolve().then(() => fn(item));
+                results.push(p);
+                if (limit <= items.length) {
+                    const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+                    executing.push(e);
+                    if (executing.length >= limit) {
+                        await Promise.race(executing);
+                    }
                 }
             }
-            return results;
+            return Promise.allSettled(results);
         };
 
         // Fetch Detailed Attendance with concurrency of 3 and 10s per-request timeout
@@ -655,9 +656,6 @@ export async function GET() {
 
     } catch (error) {
         console.error('Dashboard Scraper Error:', error.message);
-        return NextResponse.json({
-            error: 'Failed to fetch dashboard data',
-            details: error.message
-        }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to fetch dashboard data' }, { status: 500 });
     }
 }

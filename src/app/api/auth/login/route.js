@@ -11,29 +11,6 @@ import {
 
 const httpsAgent = createHttpsAgent();
 
-/** Retry wrapper for transient 5xx / network errors from the CF gateway */
-async function fetchWithRetry(fn, retries = 2, delayMs = 800) {
-  let lastErr;
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const res = await fn();
-      // Retry on gateway-level failures (520/521/522/523/524)
-      if (res.status >= 520 && res.status <= 524 && attempt < retries) {
-        lastErr = new Error(`Gateway returned ${res.status}`);
-        await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)));
-        continue;
-      }
-      return res;
-    } catch (err) {
-      lastErr = err;
-      if (attempt < retries) {
-        await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)));
-      }
-    }
-  }
-  throw lastErr;
-}
-
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -85,14 +62,13 @@ export async function POST(request) {
 
     // If we have no session cookie from captcha, fetch the login page as fallback
     if (!sessionCookie || !csrfTokenName) {
-      const initialRes = await fetchWithRetry(() => axios.get(ERP_BASE_URL, {
+      const initialRes = await axios.get(ERP_BASE_URL, {
         httpsAgent,
         timeout: 15000,
         headers: {
           'User-Agent': DEFAULT_USER_AGENT,
         },
-        validateStatus: (s) => s < 500 || s >= 530,
-      }));
+      });
 
       const cookiesArray = initialRes.headers['set-cookie'];
       sessionCookie = cookiesArray ? cookiesArray.map((c) => c.split(';')[0]).join('; ') : '';
@@ -143,7 +119,7 @@ export async function POST(request) {
     if (returnToken) formData.append('return', returnToken);
     formData.append(csrfTokenName, '1');
 
-    const loginRes = await fetchWithRetry(() => axios.post(ERP_BASE_URL, formData.toString(), {
+    const loginRes = await axios.post(ERP_BASE_URL, formData.toString(), {
       httpsAgent,
       timeout: 15000,
       headers: {
@@ -153,8 +129,8 @@ export async function POST(request) {
         'Referer': ERP_BASE_URL,
       },
       maxRedirects: 0,
-      validateStatus: (status) => (status >= 200 && status < 400) || (status >= 520 && status <= 524),
-    }));
+      validateStatus: (status) => status >= 200 && status < 400,
+    });
 
     const redirectLocation = loginRes.headers.location;
 
