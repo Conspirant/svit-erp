@@ -1,5 +1,5 @@
 "use client";
- 
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -59,12 +59,12 @@ export default function Dashboard() {
         if (savedPhoto && !isInvalid) {
           setPhoto(savedPhoto);
         } else if (isInvalid) {
-          try { localStorage.removeItem('svit_idcard_photo'); } catch {}
+          try { localStorage.removeItem('svit_idcard_photo'); } catch { }
         }
         const savedId = localStorage.getItem('svit_idcard_student_id');
         const cachedProf = sessionStorage.getItem('profile_data');
         if (cachedData) setData(JSON.parse(cachedData));
-        if (cachedTimetable) { try { const p = JSON.parse(cachedTimetable); setTimetable(Array.isArray(p) ? p : (p?.timetable || [])); } catch {} }
+        if (cachedTimetable) { try { const p = JSON.parse(cachedTimetable); setTimetable(Array.isArray(p) ? p : (p?.timetable || [])); } catch { } }
         if (savedId) setStudentId(savedId);
         if (cachedProf) setProfileExtra(JSON.parse(cachedProf));
         if (cachedData && cachedTimetable) setLoading(false);
@@ -101,7 +101,7 @@ export default function Dashboard() {
             const isLogo = dashJson.data.photoUrl.toLowerCase().includes("logo") || dashJson.data.photoUrl.toLowerCase().includes("svit");
             if (!isLogo) {
               setPhoto(dashJson.data.photoUrl);
-              try { localStorage.setItem('svit_idcard_photo', dashJson.data.photoUrl); } catch {}
+              try { localStorage.setItem('svit_idcard_photo', dashJson.data.photoUrl); } catch { }
             }
           }
 
@@ -112,10 +112,10 @@ export default function Dashboard() {
               .then((detJson) => {
                 if (detJson?.success && detJson.data) {
                   setData(detJson.data);
-                  try { sessionStorage.setItem('dashboard_data', JSON.stringify(detJson.data)); } catch {}
+                  try { sessionStorage.setItem('dashboard_data', JSON.stringify(detJson.data)); } catch { }
                 }
               })
-              .catch(() => {});
+              .catch(() => { });
           }
         } else if (dashRes.status !== 401) {
           // If 500 occurred but we have cached data, keep showing cached data with a warning
@@ -141,20 +141,20 @@ export default function Dashboard() {
                 const isLogo = pJson.photo.toLowerCase().includes("logo") || pJson.photo.toLowerCase().includes("svit");
                 if (!isLogo) {
                   setPhoto(pJson.photo);
-                  try { localStorage.setItem('svit_idcard_photo', pJson.photo); } catch {}
+                  try { localStorage.setItem('svit_idcard_photo', pJson.photo); } catch { }
                 }
               }
-            }).catch(() => {});
+            }).catch(() => { });
           }
           if (!sessionStorage.getItem('profile_data')) {
             fetch('/api/student/profile').then(r => r.ok ? r.json() : null).then(prJson => {
               if (prJson?.success && prJson?.data) {
                 setProfileExtra(prJson.data);
-                try { sessionStorage.setItem('profile_data', JSON.stringify(prJson.data)); } catch {}
+                try { sessionStorage.setItem('profile_data', JSON.stringify(prJson.data)); } catch { }
               }
-            }).catch(() => {});
+            }).catch(() => { });
           }
-        } catch {}
+        } catch { }
       } catch (err) {
         setError("Could not connect to server.");
       } finally {
@@ -180,7 +180,7 @@ export default function Dashboard() {
       ? Math.round(attendance.reduce((sum, item) => sum + toNumber(item.percentage), 0) / attendance.length)
       : 0;
     const lowAtt = attendance.filter(item => toNumber(item.percentage) < 80).length;
-    
+
     const validCie = cie.filter(item => toNumber(item.marks) > 0);
     const avgCie = validCie.length > 0
       ? Math.round((validCie.reduce((sum, item) => sum + toNumber(item.marks), 0) / validCie.length) * 10) / 10
@@ -257,7 +257,7 @@ export default function Dashboard() {
     saveSelfLoggedAttendance(targetUsn, courseCode, todayDateStr, status, time);
     setRefreshKey((k) => k + 1);
   };
- 
+
   if (loading) return <div className="center-state"><div className="loader" /></div>;
   if (error) return <div className="center-state"><div className="auth-card" style={{ textAlign: "center" }}><h1 className="title">Oops</h1><p>{error}</p><button onClick={() => router.push("/")} className="button">Retry</button></div></div>;
 
@@ -292,7 +292,7 @@ export default function Dashboard() {
   let branchCode = (data?.department || profileExtra?.department || "").toUpperCase();
   if (branchCode.startsWith("B.E-")) branchCode = branchCode.replace("B.E-", "");
   if (branchCode.startsWith("B.E ")) branchCode = branchCode.replace("B.E ", "");
-  
+
   const fullBranch = BRANCH_MAP[branchCode] || (branchCode ? `B.E · ${branchCode}` : "CSE · Data Science");
   const semNum = data?.semester || profileExtra?.semester || "3";
   const semStr = `Sem ${semNum}`;
@@ -469,7 +469,7 @@ export default function Dashboard() {
                           Self-Logged: <strong style={{ color: selfEntry.status === "Present" ? "var(--success)" : "var(--danger)" }}>{selfEntry.status === "Present" ? "Attended" : "Absent"}</strong>
                         </span>
                       </div>
-                      <button 
+                      <button
                         type="button"
                         onClick={() => handleSaveAttendance(courseCode, null)}
                         style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--line)", color: "var(--muted)", padding: "3px 8px", borderRadius: "6px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer", transition: "all 150ms ease" }}
@@ -483,14 +483,14 @@ export default function Dashboard() {
                         Session attendance
                       </span>
                       <div style={{ display: "flex", gap: "8px" }}>
-                        <button 
+                        <button
                           type="button"
                           onClick={() => handleSaveAttendance(courseCode, "Present", cls.time)}
                           style={{ flex: 1, padding: "6px 12px", background: "var(--success-soft)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "8px", color: "var(--success)", fontWeight: 600, fontSize: "0.76rem", cursor: "pointer", transition: "all 150ms ease" }}
                         >
                           Mark Present
                         </button>
-                        <button 
+                        <button
                           type="button"
                           onClick={() => handleSaveAttendance(courseCode, "Absent", cls.time)}
                           style={{ flex: 1, padding: "6px 12px", background: "rgba(255, 255, 255, 0.04)", border: "1px solid var(--line)", borderRadius: "8px", color: "var(--muted)", fontWeight: 600, fontSize: "0.76rem", cursor: "pointer", transition: "all 150ms ease" }}
