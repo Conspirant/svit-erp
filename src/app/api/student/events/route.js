@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import fs from 'fs';
+import path from 'path';
 import { cookies } from 'next/headers';
 import { erpCache } from '@/lib/erpCache';
 import { fetchWithRetry } from '@/lib/fetchRetry';
@@ -15,6 +17,7 @@ const httpsAgent = createHttpsAgent();
 const BASE_URL = ERP_BASE_URL;
 
 const cleanText = (value) => value?.replace(/\s+/g, ' ').trim() || '';
+
 const WEEKDAY_FALLBACK = [
   { short: 'Mon', long: 'Monday' },
   { short: 'Tue', long: 'Tuesday' },
@@ -35,12 +38,84 @@ const normalizeWeekday = (value, index) => {
   };
 };
 
-export async function GET() {
+function parseCalendarHtml(html) {
+  const $ = cheerio.load(html);
+  const eventsData = [];
+
+  $('.cn-coe-table').each((i, tableEl) => {
+    const table = $(tableEl);
+    const monthTitle = cleanText(table.find('caption span').text() || table.find('caption').text());
+    if (!monthTitle) return;
+
+    const weekdays = table
+      .find('thead th')
+      .map((j, th) => normalizeWeekday($(th).text(), j))
+      .get();
+    const weekdayLabels = weekdays.length > 0 ? weekdays : WEEKDAY_FALLBACK;
+
+    const monthGrid = table.closest('.uk-grid, [uk-grid]');
+    const eventScope = monthGrid.length > 0 ? monthGrid : table.parent().parent();
+    const events = eventScope
+      .find('.events-lists')
+      .map((j, ev) => cleanText($(ev).text()))
+      .get()
+      .filter(Boolean);
+
+    const days = [];
+    table.find('tbody tr').each((rowIndex, row) => {
+      $(row)
+        .find('td')
+        .each((columnIndex, td) => {
+          const text = cleanText($(td).text());
+          const weekday = weekdayLabels[columnIndex] || WEEKDAY_FALLBACK[columnIndex] || { short: '', long: '' };
+          if (!text) {
+            days.push({
+              day: '',
+              type: 'empty',
+              column: columnIndex,
+              weekday: weekday.short,
+              weekdayFull: weekday.long,
+            });
+            return;
+          }
+
+          let type = 'normal';
+          if ($(td).find('.cn-holiday').length > 0) type = 'holiday';
+          else if ($(td).find('.cn-minor-exam').length > 0) type = 'exam';
+
+          days.push({
+            day: text,
+            type,
+            column: columnIndex,
+            weekday: weekday.short,
+            weekdayFull: weekday.long,
+          });
+        });
+    });
+
+    eventsData.push({
+      month: monthTitle,
+      events,
+      weekdays: weekdayLabels,
+      days,
+    });
+  });
+
+  return eventsData;
+}
+
+export async function GET(request) {
   try {
-    // 1. Check in-memory cache for calendar events (TTL: 2 hours)
-    const cachedEvents = erpCache.get('academic_calendar');
-    if (cachedEvents) {
-      return NextResponse.json({ success: true, data: cachedEvents, fromCache: true });
+    const { searchParams } = new URL(request.url);
+    const yearId = searchParams.get('yearId') || '';
+    const cacheKey = `academic_calendar_${yearId || 'default'}`;
+
+    // 1. Check in-memory cache
+    if (!searchParams.get('refresh')) {
+      const cachedEvents = erpCache.get(cacheKey);
+      if (cachedEvents && cachedEvents.length > 0) {
+        return NextResponse.json({ success: true, data: cachedEvents, fromCache: true });
+      }
     }
 
     const cookieStore = await cookies();
@@ -54,59 +129,53 @@ export async function GET() {
 
     const sessionCookie = cookieStrings.join('; ');
 
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    let parsedEvents = [];
 
-    const res = await fetchWithRetry(() =>
-      axios.get(`${BASE_URL}?option=com_bvbsims&controller=academiccal&task=calenderdisplay&yearId=`, {
-        httpsAgent,
-        timeout: 15000,
-        headers: {
-          ...COMMON_BROWSER_HEADERS,
-          Cookie: sessionCookie,
-          Referer: ERP_BASE_URL,
-        },
-      }),
-      { retries: 2, baseDelayMs: 400 }
-    );
+    if (sessionCookie) {
+      try {
+        const url = `${BASE_URL}?option=com_bvbsims&controller=academiccal&task=calenderdisplay&yearId=${yearId}`;
+        const res = await fetchWithRetry(
+          () =>
+            axios.get(url, {
+              httpsAgent,
+              timeout: 15000,
+              headers: {
+                ...COMMON_BROWSER_HEADERS,
+                Cookie: sessionCookie,
+                Referer: ERP_BASE_URL,
+              },
+            }),
+          { retries: 2, baseDelayMs: 400 }
+        );
 
-    const $ = cheerio.load(res.data);
-
-    if ($('input[name="username"]').length > 0 && res.data.includes('Login')) {
-      return NextResponse.json({ error: 'Session expired' }, { status: 401 });
-    }
-
-    const events = [];
-
-    // The ERP calendar lists tables or cards per month
-    $('.uk-card, table.uk-table, .calendar-month').each((i, el) => {
-      const monthTitle = cleanText($(el).find('h3, caption, .uk-card-title').text());
-      const monthEvents = [];
-      const days = [];
-
-      $(el).find('tr, .event-item').each((j, row) => {
-        const text = cleanText($(row).text());
-        if (text && text.length > 3) {
-          monthEvents.push(text);
+        if (res.data && !res.data.includes('Login to Your Account')) {
+          parsedEvents = parseCalendarHtml(res.data);
         }
-      });
-
-      if (monthTitle || monthEvents.length > 0) {
-        events.push({
-          month: monthTitle || `Month ${i + 1}`,
-          events: monthEvents,
-          days,
-        });
+      } catch (err) {
+        console.warn('Live calendar fetch error:', err.message);
       }
-    });
+    }
 
-    // Cache the parsed calendar for 2 hours (7200 seconds)
-    erpCache.set('academic_calendar', events, 7200);
+    // 2. Fallback to local snapshot if live parse returned no months (e.g. session issue or ERP maintenance)
+    if (!parsedEvents || parsedEvents.length === 0) {
+      try {
+        const snapshotPath = path.join(process.cwd(), 'events.html');
+        if (fs.existsSync(snapshotPath)) {
+          const snapshotHtml = fs.readFileSync(snapshotPath, 'utf8');
+          parsedEvents = parseCalendarHtml(snapshotHtml);
+        }
+      } catch (e) {
+        console.warn('Fallback calendar snapshot load error:', e.message);
+      }
+    }
+
+    if (parsedEvents.length > 0) {
+      erpCache.set(cacheKey, parsedEvents, 7200);
+    }
 
     return NextResponse.json({
       success: true,
-      data: events,
+      data: parsedEvents,
     });
   } catch (error) {
     console.error('Events Scraper Error:', error.message);
