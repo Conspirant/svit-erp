@@ -8,6 +8,7 @@ export default function AdminMessagesPage() {
   const [title, setTitle] = useState("Important notice");
   const [message, setMessage] = useState("");
   const [active, setActive] = useState(true);
+  const [dismissOnce, setDismissOnce] = useState(false);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
@@ -22,6 +23,7 @@ export default function AdminMessagesPage() {
       setTitle(data.announcement.title);
       setMessage(data.announcement.message);
       setActive(data.announcement.is_active);
+      setDismissOnce(Boolean(data.announcement.dismiss_once));
     }
   }
 
@@ -33,7 +35,7 @@ export default function AdminMessagesPage() {
     const response = await fetch("/api/announcements", {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-key": key },
-      body: JSON.stringify({ title, message, is_active: active }),
+      body: JSON.stringify({ title, message, is_active: active, dismiss_once: dismissOnce }),
     });
     const data = await response.json();
     if (!response.ok) return setStatus(data.error || "Could not save message.");
@@ -59,6 +61,7 @@ export default function AdminMessagesPage() {
         <label>Announcement title<input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} required /></label>
         <label>Message<textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={7} maxLength={5000} placeholder="Type your announcement here…" required /></label>
         <label className="admin-message-check"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Show this message on the login page</label>
+        <label className="admin-message-check"><input type="checkbox" checked={dismissOnce} onChange={(e) => setDismissOnce(e.target.checked)} /> Stop showing after user dismisses it once</label>
         <div className="admin-message-actions"><button type="submit">Publish message</button><button type="button" className="admin-message-secondary" onClick={hide}>Hide current message</button></div>
       </form>
       {status && <p className="admin-message-status">{status}</p>}

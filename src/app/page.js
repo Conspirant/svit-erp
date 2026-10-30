@@ -121,11 +121,32 @@ export default function Home() {
       .then((data) => {
         if (data.announcement?.message) {
           setAnnouncement(data.announcement);
-          setShowAnnouncement(true);
+          if (data.announcement.dismiss_once) {
+            const dismissKey = `svit_announcement_dismissed_${data.announcement.id || data.announcement.updated_at || 'portal'}`;
+            try {
+              if (localStorage.getItem(dismissKey) !== "true") {
+                setShowAnnouncement(true);
+              }
+            } catch {
+              setShowAnnouncement(true);
+            }
+          } else {
+            setShowAnnouncement(true);
+          }
         }
       })
       .catch(() => {});
   }, []);
+
+  const handleDismissAnnouncement = useCallback(() => {
+    setShowAnnouncement(false);
+    if (announcement?.dismiss_once) {
+      const dismissKey = `svit_announcement_dismissed_${announcement.id || announcement.updated_at || 'portal'}`;
+      try {
+        localStorage.setItem(dismissKey, "true");
+      } catch {}
+    }
+  }, [announcement]);
 
   const getDob = useCallback(() => {
     if (mode === "dropdown") {
@@ -279,11 +300,11 @@ export default function Home() {
         <div className="announcement-overlay" role="dialog" aria-modal="true" aria-labelledby="announcement-title">
           <div className="announcement-modal">
             <div className="announcement-icon"><Megaphone size={22} /></div>
-            <button className="announcement-close" type="button" onClick={() => setShowAnnouncement(false)} aria-label="Close announcement"><X size={18} /></button>
+            <button className="announcement-close" type="button" onClick={handleDismissAnnouncement} aria-label="Close announcement"><X size={18} /></button>
             <p className="announcement-kicker">PORTAL ANNOUNCEMENT</p>
             <h2 id="announcement-title">{announcement.title}</h2>
             <p className="announcement-copy">{announcement.message}</p>
-            <button className="announcement-ok" type="button" onClick={() => setShowAnnouncement(false)}>Continue to login</button>
+            <button className="announcement-ok" type="button" onClick={handleDismissAnnouncement}>Continue to login</button>
           </div>
         </div>
       )}

@@ -32,7 +32,26 @@ export async function GET() {
     .maybeSingle();
 
   if (error) return NextResponse.json({ announcement: null, error: error.message }, { status: 500 });
-  return NextResponse.json({ announcement: data || null });
+  if (!data) return NextResponse.json({ announcement: null });
+
+  let cleanMessage = data.message || "";
+  let dismissOnce = false;
+
+  if (cleanMessage.includes("<!--[dismiss_once:true]-->")) {
+    dismissOnce = true;
+    cleanMessage = cleanMessage.replace(/\s*<!--\[dismiss_once:true\]-->/g, "").trim();
+  } else if (cleanMessage.includes("<!--[dismiss_once:false]-->")) {
+    dismissOnce = false;
+    cleanMessage = cleanMessage.replace(/\s*<!--\[dismiss_once:false\]-->/g, "").trim();
+  }
+
+  return NextResponse.json({
+    announcement: {
+      ...data,
+      message: cleanMessage,
+      dismiss_once: dismissOnce,
+    },
+  });
 }
 
 export async function PUT(request) {
@@ -40,18 +59,29 @@ export async function PUT(request) {
 
   const body = await request.json();
   const title = String(body.title || "Announcement").trim().slice(0, 120);
-  const message = String(body.message || "").trim().slice(0, 5000);
+  let rawMessage = String(body.message || "").trim().slice(0, 5000);
   const isActive = body.is_active !== false;
-  if (!message) return NextResponse.json({ error: "Message cannot be empty." }, { status: 400 });
+  const dismissOnce = Boolean(body.dismiss_once);
+
+  if (!rawMessage) return NextResponse.json({ error: "Message cannot be empty." }, { status: 400 });
+
+  rawMessage = rawMessage.replace(/\s*<!--\[dismiss_once:(?:true|false)\]-->/g, "").trim();
+  const storedMessage = dismissOnce ? `${rawMessage}\n\n<!--[dismiss_once:true]-->` : rawMessage;
 
   const { data, error } = await database
     .from("portal_announcements")
-    .upsert({ singleton_key: "portal", title, message, is_active: isActive, updated_at: new Date().toISOString() }, { onConflict: "singleton_key" })
+    .upsert({ singleton_key: "portal", title, message: storedMessage, is_active: isActive, updated_at: new Date().toISOString() }, { onConflict: "singleton_key" })
     .select("id, title, message, is_active, updated_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ announcement: data });
+  return NextResponse.json({
+    announcement: {
+      ...data,
+      message: rawMessage,
+      dismiss_once: dismissOnce,
+    },
+  });
 }
 
 export async function DELETE(request) {

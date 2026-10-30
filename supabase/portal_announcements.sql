@@ -4,8 +4,11 @@ create table if not exists public.portal_announcements (
   title text not null default 'Important notice',
   message text not null,
   is_active boolean not null default true,
+  dismiss_once boolean not null default false,
   updated_at timestamptz not null default now()
 );
+
+alter table public.portal_announcements add column if not exists dismiss_once boolean not null default false;
 
 alter table public.portal_announcements enable row level security;
 create policy "Anyone can read active portal announcement"
