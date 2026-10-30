@@ -3430,7 +3430,7 @@ body {
 .mobile-app-content>.page-shell {
   width: min(1180px, 100%);
   padding-top: 0;
-  padding-bottom: 18px;
+  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 }
 
 .mobile-app-content>.page-shell>.app-header,
@@ -4971,7 +4971,7 @@ body {
 
 .dashboard-home-view {
   width: 100%;
-  padding-bottom: 24px;
+  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ── Mobile refinements ── */
