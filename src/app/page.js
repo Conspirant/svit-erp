@@ -316,7 +316,7 @@ export default function Home() {
             src="/svit-header-logo.png"
             alt="Sai Vidya Institute of Technology"
             width={320}
-            height={82}
+            height={107}
             priority
           />
           <div className="app-login-divider" />
