@@ -7,9 +7,11 @@ import https from 'https';
 import {
   ERP_BASE_URL,
   DEFAULT_USER_AGENT,
+  COMMON_BROWSER_HEADERS,
   createHttpsAgent,
   resolveErpUrl,
 } from '@/lib/erpConfig';
+import { fetchWithRetry } from '@/lib/fetchRetry';
 
 const httpsAgent = createHttpsAgent();
 
@@ -17,17 +19,20 @@ const BASE_URL = ERP_BASE_URL;
 const cleanText = (value) => value?.replace(/\s+/g, ' ').trim() || '';
 
 async function fetchPage(url, sessionCookie) {
-  const res = await axios.get(url, {
-    httpsAgent,
-    timeout: 12000,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Cookie': sessionCookie,
-    },
-    maxRedirects: 3,
-    validateStatus: () => true,
-  });
-  return res;
+  return await fetchWithRetry(() =>
+    axios.get(url, {
+      httpsAgent,
+      timeout: 12000,
+      headers: {
+        ...COMMON_BROWSER_HEADERS,
+        Cookie: sessionCookie,
+        Referer: ERP_BASE_URL,
+      },
+      maxRedirects: 3,
+      validateStatus: () => true,
+    }),
+    { retries: 2, baseDelayMs: 400 }
+  );
 }
 
 function isLoginPage($, html) {

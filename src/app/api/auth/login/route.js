@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { setSessionIdentity } from '@/lib/authSession';
+import { erpCache } from '@/lib/erpCache';
 import {
   ERP_BASE_URL,
   DEFAULT_USER_AGENT,
@@ -223,6 +224,7 @@ export async function POST(request) {
       });
     });
 
+    try { erpCache.delete(`dash_full_${username}`); erpCache.delete(`dash_details_${username}`); } catch {}
     setSessionIdentity(response, { usn: username });
     return response;
   } catch (error) {

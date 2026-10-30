@@ -2,18 +2,18 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import https from 'https';
-import { setSessionIdentity } from '@/lib/authSession';
-
+import { setSessionIdentity, getSessionUsn } from '@/lib/authSession';
+import { erpCache } from '@/lib/erpCache';
+import { fetchWithRetry, pLimitPool } from '@/lib/fetchRetry';
 import {
     ERP_BASE_URL,
     DEFAULT_USER_AGENT,
+    COMMON_BROWSER_HEADERS,
     createHttpsAgent,
     resolveErpUrl,
 } from '@/lib/erpConfig';
 
 const httpsAgent = createHttpsAgent();
-
 const BASE_URL = ERP_BASE_URL;
 
 const readBracketCount = (text, label) => {
@@ -169,12 +169,15 @@ const extractCourseName = ($, courseCode) => {
     return cleanText(tooltipName);
 };
 
-export async function GET() {
+export async function GET(request) {
     try {
+        const { searchParams } = new URL(request.url);
+        // mode: 'fast' (immediate 1st render), 'details' (full subpages), or 'auto' (fast if no cache, full if cached)
+        const mode = searchParams.get('mode') || (searchParams.get('quick') ? 'fast' : (searchParams.get('details') ? 'details' : 'auto'));
+
         const cookieStore = await cookies();
         const cookieStrings = [];
 
-        // Reconstruct the cookie string
         cookieStore.getAll().forEach((cookie) => {
             if (cookie.name !== 'dashboard_url') {
                 cookieStrings.push(`${cookie.name}=${cookie.value}`);
@@ -182,22 +185,42 @@ export async function GET() {
         });
 
         const sessionCookie = cookieStrings.join('; ');
-
         const dashboardUrlCookie = cookieStore.get('dashboard_url');
-        const targetUrl = dashboardUrlCookie ? dashboardUrlCookie.value : BASE_URL;
+        const targetUrl = resolveErpUrl(dashboardUrlCookie ? dashboardUrlCookie.value : BASE_URL);
 
         if (!sessionCookie) {
             return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
         }
 
-        const res = await axios.get(targetUrl, {
-            httpsAgent,
-            timeout: 15000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Cookie': sessionCookie,
-            },
-        });
+        const knownUsn = getSessionUsn(cookieStore);
+
+        // 1. Check if we already have the fully detailed stats in memory cache
+        if (knownUsn) {
+            const cachedFull = erpCache.get(`dash_full_${knownUsn}`);
+            if (cachedFull && mode !== 'refresh') {
+                return NextResponse.json({
+                    success: true,
+                    data: cachedFull,
+                    fromCache: true,
+                    hasDetails: true,
+                    isPartial: false,
+                });
+            }
+        }
+
+        // 2. Fetch the primary dashboard page via fetchWithRetry (handles 520-524, 429, socket resets)
+        const res = await fetchWithRetry(() =>
+            axios.get(targetUrl, {
+                httpsAgent,
+                timeout: 15000,
+                headers: {
+                    ...COMMON_BROWSER_HEADERS,
+                    Cookie: sessionCookie,
+                    Referer: ERP_BASE_URL,
+                },
+            }),
+            { retries: 2, baseDelayMs: 500 }
+        );
 
         const $ = cheerio.load(res.data);
 
@@ -207,13 +230,22 @@ export async function GET() {
         }
 
         const stats = {
-            profileName: $('h3.profile-name, .user-name').text().trim() || 'Student',
+            profileName: $('h3.profile-name, .user-name, .cn-user-name').first().text().trim() || 'Student',
             pageTitle: $('title').text().trim(),
-            // Extract generic tables to find attendance/marks
             tablesData: [],
-            // Grab all text from potential metric cards
-            metrics: []
+            metrics: [],
+            photoUrl: '',
         };
+
+        // Extract student photo if present on dashboard
+        const imgSelectors = ['.cn-user-avatar img', '.profile-photo img', '.user-photo img', '.uk-cover img', '.avatar img'];
+        for (const sel of imgSelectors) {
+            const src = $(sel).first().attr('src');
+            if (src && !src.toLowerCase().includes('logo') && !src.toLowerCase().includes('svit')) {
+                stats.photoUrl = resolveErpUrl(src);
+                break;
+            }
+        }
 
         const attendanceLinks = [];
         const cieLinks = [];
@@ -226,10 +258,8 @@ export async function GET() {
                 $(row).find('th, td').each((k, cell) => {
                     rowData.push($(cell).text().trim().replace(/\s+/g, ' '));
 
-                    // Extract attendance link if present
                     const link = $(cell).find('a').attr('href');
                     if (link && link.includes('task=attendencelist')) {
-                        // Course code is usually the first td
                         const cells = $(row).find('td');
                         const courseCode = cleanText(cells.first().text());
                         const courseName = cleanText(cells.eq(1).text());
@@ -256,10 +286,10 @@ export async function GET() {
 
         const scripts = $('script').map((i, el) => $(el).html()).get();
 
-        const attendanceScript = scripts.find(s => s && s.includes('type: "gauge"'));
+        const attendanceScript = scripts.find((s) => s && s.includes('type: "gauge"'));
         if (attendanceScript) {
             const matches = [...attendanceScript.matchAll(/\[\s*"([^"]+)"\s*,\s*([0-9.]+)\s*\]/g)];
-            matches.forEach(m => {
+            matches.forEach((m) => {
                 stats.attendance.push({
                     course: m[1],
                     courseName: courseNames.get(m[1]) || '',
@@ -267,43 +297,119 @@ export async function GET() {
                     present: 0,
                     absent: 0,
                     total: 0,
-                    stillToGo: 0
+                    stillToGo: 0,
+                    dates: [],
                 });
             });
         }
 
-        // Helper to process promises with a concurrency limit
-        const pLimit = async (items, limit, fn) => {
-            const results = [];
-            const executing = [];
-            for (const item of items) {
-                const p = Promise.resolve().then(() => fn(item));
-                results.push(p);
-                if (limit <= items.length) {
-                    const e = p.then(() => executing.splice(executing.indexOf(e), 1));
-                    executing.push(e);
-                    if (executing.length >= limit) {
-                        await Promise.race(executing);
-                    }
-                }
-            }
-            return Promise.allSettled(results);
-        };
+        const cieScript = scripts.find((s) => s && s.includes('type: "bar"'));
+        if (cieScript) {
+            const matches = [...cieScript.matchAll(/\[\s*"([^"]+)"\s*,\s*([0-9.]+)\s*\]/g)];
+            matches.forEach((m) => {
+                stats.cie.push({
+                    course: m[1],
+                    courseName: courseNames.get(m[1]) || '',
+                    marks: parseFloat(m[2]),
+                    maxMarks: null,
+                    breakdown: emptyBreakdown(),
+                });
+            });
+        }
 
-        // Fetch Detailed Attendance with concurrency of 3 and 10s per-request timeout
+        // Student Info
+        const fullPageText = $('body').text().replace(/\s+/g, ' ');
+        const usnMatch = fullPageText.match(/USN\s*:\s*(1[a-z0-9]{9})/i) || fullPageText.match(/(1[a-z]{2}\d{2}[a-z]{2}\d{3})/i);
+        stats.usn = usnMatch ? usnMatch[1].toUpperCase() : (knownUsn || '');
+
+        let department = '';
+        const deptMatch = fullPageText.match(/Department\s*:\s*(.*?)(?=Semester|Category|Quota|$)/i);
+        if (deptMatch) {
+            department = deptMatch[1].trim();
+        } else {
+            const headerMatch = fullPageText.match(/([A-Za-z.\-]+)\s*,\s*SEM\s*0?\d+/i);
+            if (headerMatch) department = headerMatch[1].trim();
+        }
+        stats.department = department;
+
+        const semMatch = fullPageText.match(/Semester\s*:\s*(\d+)/i) || fullPageText.match(/SEM\s*0?(\d+)/i);
+        stats.semester = semMatch ? semMatch[1] : '';
+
+        const secMatch = fullPageText.match(/SEC\s*([A-Z0-9]+)/i) || fullPageText.match(/Section\s*:\s*([A-Z0-9]+)/i);
+        stats.section = secMatch ? secMatch[1].trim() : '';
+
+        const headerDetailMatch = fullPageText.match(/([A-Za-z.\-]+)\s*,\s*SEM\s*0?(\d+)\s*,?\s*SEC\s*([A-Z0-9]+)?/i);
+        if (headerDetailMatch) {
+            if (!stats.department) stats.department = headerDetailMatch[1].trim();
+            if (!stats.semester) stats.semester = headerDetailMatch[2].trim();
+            if (!stats.section && headerDetailMatch[3]) stats.section = headerDetailMatch[3].trim();
+        }
+
+        if (stats.profileName === 'Student') {
+            const possibleNames = $('h1, h2, h3, h4, .uk-h3, .uk-h4').map((i, el) => $(el).text().trim()).get();
+            const goodName = possibleNames.find((n) => n.length > 3 && n.length < 30 && !n.includes('Welcome') && !n.includes('Contineo'));
+            if (goodName) stats.profileName = goodName;
+        }
+
+        $('.uk-card, .panel, .widget').each((i, el) => {
+            stats.metrics.push($(el).text().replace(/\s+/g, ' ').trim());
+        });
+
+        // 3. Check if cached sub-page details already exist in memory for this USN
+        const cachedDetails = stats.usn ? erpCache.get(`dash_details_${stats.usn}`) : null;
+        if (cachedDetails) {
+            if (cachedDetails.attendance && cachedDetails.attendance.length > 0) {
+                stats.attendance = cachedDetails.attendance;
+            }
+            if (cachedDetails.cie && cachedDetails.cie.length > 0) {
+                stats.cie = cachedDetails.cie;
+            }
+            const response = NextResponse.json({
+                success: true,
+                data: stats,
+                hasDetails: true,
+                isPartial: false,
+                fromCache: true,
+            });
+            setSessionIdentity(response, { usn: stats.usn, name: stats.profileName });
+            return response;
+        }
+
+        // 4. If mode is 'fast', return immediate base data right away (< 800ms)!
+        // This gives the user an instantaneous UI render upon login.
+        if (mode === 'fast') {
+            const response = NextResponse.json({
+                success: true,
+                data: stats,
+                hasDetails: false,
+                isPartial: true,
+                attendanceLinksCount: attendanceLinks.length,
+                cieLinksCount: cieLinks.length,
+            });
+            setSessionIdentity(response, { usn: stats.usn, name: stats.profileName });
+            return response;
+        }
+
+        // 5. Scrape Sub-Pages with Controlled Concurrency Pool (concurrency: 3) & Keep-Alive
+        // This replaces the old 25-second sequential loop with a ~3 second parallel pool
+        // that handles rate limiting with adaptive backoff retries.
         if (attendanceLinks.length > 0) {
             try {
-                const detailedResultsSettled = await pLimit(attendanceLinks, 3, (linkObj) =>
-                    axios.get(linkObj.url, {
-                        httpsAgent,
-                        timeout: 10000,
-                        headers: {
-                            'User-Agent': DEFAULT_USER_AGENT,
-                            'Cookie': sessionCookie,
-                            'Referer': ERP_BASE_URL,
-                        }
-                    }).then(res => {
-                        const _$ = cheerio.load(res.data);
+                const detailedResultsSettled = await pLimitPool(attendanceLinks, 3, (linkObj) =>
+                    fetchWithRetry(
+                        () =>
+                            axios.get(linkObj.url, {
+                                httpsAgent,
+                                timeout: 8000,
+                                headers: {
+                                    ...COMMON_BROWSER_HEADERS,
+                                    Cookie: sessionCookie,
+                                    Referer: ERP_BASE_URL,
+                                },
+                            }),
+                        { retries: 2, baseDelayMs: 400 }
+                    ).then((detailRes) => {
+                        const _$ = cheerio.load(detailRes.data);
                         const pageText = _$('body').text().replace(/\s+/g, ' ');
                         const presentMatch = _$('.cn-legend .cn-color-green').text().match(/\[(\d+)\]/);
                         const absentMatch = _$('.cn-legend .cn-color-red').text().match(/\[(\d+)\]/);
@@ -323,7 +429,7 @@ export async function GET() {
                                 dates.push({
                                     date: _$(cols[1]).text().trim(),
                                     time: _$(cols[2]).text().trim().replace(/\s+/g, ' '),
-                                    status: 'Present'
+                                    status: 'Present',
                                 });
                             }
                         });
@@ -334,7 +440,7 @@ export async function GET() {
                                 dates.push({
                                     date: _$(cols[1]).text().trim(),
                                     time: _$(cols[2]).text().trim().replace(/\s+/g, ' '),
-                                    status: 'Absent'
+                                    status: 'Absent',
                                 });
                             }
                         });
@@ -351,11 +457,10 @@ export async function GET() {
                     }).catch(() => null)
                 );
 
-                // Merge into stats.attendance
-                detailedResultsSettled.forEach(settled => {
+                detailedResultsSettled.forEach((settled) => {
                     const detail = settled.status === 'fulfilled' ? settled.value : null;
                     if (detail) {
-                        const match = stats.attendance.find(a => a.course === detail.course);
+                        const match = stats.attendance.find((a) => a.course === detail.course);
                         if (match) {
                             match.present = detail.present;
                             match.absent = detail.absent;
@@ -363,6 +468,8 @@ export async function GET() {
                             match.stillToGo = detail.stillToGo;
                             match.courseName = detail.courseName || match.courseName;
                             match.dates = detail.dates;
+                        } else {
+                            stats.attendance.push(detail);
                         }
                     }
                 });
@@ -371,31 +478,28 @@ export async function GET() {
             }
         }
 
-        const cieScript = scripts.find(s => s && s.includes('type: "bar"'));
-        if (cieScript) {
-            const matches = [...cieScript.matchAll(/\[\s*"([^"]+)"\s*,\s*([0-9.]+)\s*\]/g)];
-            matches.forEach(m => {
-                stats.cie.push({ course: m[1], courseName: courseNames.get(m[1]) || '', marks: parseFloat(m[2]) });
-            });
-        }
-
         if (cieLinks.length > 0) {
             try {
-                const cieDetailsSettled = await pLimit(cieLinks, 3, (linkObj) =>
-                    axios.get(linkObj.url, {
-                        httpsAgent,
-                        timeout: 10000,
-                        headers: {
-                            'User-Agent': DEFAULT_USER_AGENT,
-                            'Cookie': sessionCookie,
-                            'Referer': ERP_BASE_URL,
-                        }
-                    }).then((detailRes) => parseCieDetailPage(detailRes.data, linkObj)).catch(() => null)
+                const cieDetailsSettled = await pLimitPool(cieLinks, 3, (linkObj) =>
+                    fetchWithRetry(
+                        () =>
+                            axios.get(linkObj.url, {
+                                httpsAgent,
+                                timeout: 8000,
+                                headers: {
+                                    ...COMMON_BROWSER_HEADERS,
+                                    Cookie: sessionCookie,
+                                    Referer: ERP_BASE_URL,
+                                },
+                            }),
+                        { retries: 2, baseDelayMs: 400 }
+                    ).then((detailRes) => parseCieDetailPage(detailRes.data, linkObj)).catch(() => null)
                 );
 
                 const cieDetails = cieDetailsSettled
-                    .filter(s => s.status === 'fulfilled' && s.value)
-                    .map(s => s.value);
+                    .filter((s) => s.status === 'fulfilled' && s.value)
+                    .map((s) => s.value);
+
                 cieDetails.filter(Boolean).forEach((detail) => {
                     const existing = stats.cie.find((item) => item.course === detail.course);
                     if (existing) {
@@ -412,97 +516,14 @@ export async function GET() {
             }
         }
 
-        // Extract detailed CIE table data (IA1, IA2, Lab1/Lab2 or Assign1/Assign2, Final IA, Attendance)
-        // The ERP page has per-subject tables with values like: 39/40 | - | - | - | 24/50 | 100%
-        try {
-            $('table').each((i, table) => {
-                const headers = [];
-                $(table).find('th').each((j, th) => {
-                    headers.push(normalizeHeader($(th).text()));
-                });
-
-                // Check if this table has CIE-related headers
-                const hasIA = headers.some(h => h.includes('IA1') || h.includes('IA2') || h.includes('FINAL IA'));
-                if (!hasIA) return;
-
-                // Find the subject name from the closest heading or caption
-                let subjectText = '';
-                const prevHeading = $(table).prevAll('h1, h2, h3, h4, h5').first();
-                if (prevHeading.length) {
-                    subjectText = prevHeading.text().trim();
-                } else {
-                    const parentCaption = $(table).closest('.uk-card, .panel, section').find('h1, h2, h3, h4, h5, caption').first();
-                    if (parentCaption.length) subjectText = parentCaption.text().trim();
-                }
-
-                // Extract course code from subject text, e.g., "QUANTUM PHYSICS AND APPLICATIONS( 1BPHYS202)"
-                const codeMatch = subjectText.match(/\(\s*([A-Z0-9]+)\s*\)/i);
-                const courseCode = codeMatch ? codeMatch[1].toUpperCase() : '';
-                const subjectName = subjectText.replace(/\(\s*[A-Z0-9]+\s*\)/i, '').trim();
-
-                $(table).find('tbody tr, tr').each((j, row) => {
-                    const cells = $(row).find('td');
-                    if (cells.length < 2) return;
-
-                    // Map each cell to its header
-                    const rowData = {};
-                    cells.each((k, cell) => {
-                        const header = headers[k] || '';
-                        const value = cleanText($(cell).text());
-                        if (header) rowData[header] = value;
-                    });
-
-                    // Build detailed breakdown
-                    const breakdown = {
-                        ia1: parseMarks(rowData['IA1'] || rowData['IA 1']),
-                        ia2: parseMarks(rowData['IA2'] || rowData['IA 2']),
-                        lab1: parseMarks(rowData['LAB1'] || rowData['LAB 1']),
-                        lab2: parseMarks(rowData['LAB2'] || rowData['LAB 2']),
-                        assign1: parseMarks(rowData['ASSIGN1'] || rowData['ASSIGN 1'] || rowData['ASSIGNMENT1'] || rowData['ASSIGNMENT 1']),
-                        assign2: parseMarks(rowData['ASSIGN2'] || rowData['ASSIGN 2'] || rowData['ASSIGNMENT2'] || rowData['ASSIGNMENT 2']),
-                        finalIA: parseMarks(rowData['FINAL IA'] || rowData['FINALIA']),
-                        attendance: rowData['ATTENDANCE'] || '',
-                    };
-
-                    // Find matching CIE entry and attach breakdown, or create new entry
-                    if (courseCode) {
-                        const existing = stats.cie.find(c => c.course === courseCode);
-                        if (existing) {
-                            if (!hasBreakdownMarks(existing.breakdown)) existing.breakdown = breakdown;
-                            existing.maxMarks = existing.maxMarks ?? breakdown.finalIA.max;
-                            existing.courseName = existing.courseName || subjectName;
-                        } else {
-                            stats.cie.push({
-                                course: courseCode,
-                                courseName: subjectName,
-                                marks: breakdown.finalIA.obtained ?? 0,
-                                maxMarks: breakdown.finalIA.max,
-                                breakdown,
-                            });
-                        }
-                    } else if (stats.cie.length > 0) {
-                        // If no course code found in heading, try matching by index
-                        const unmatched = stats.cie.filter(c => !c.breakdown);
-                        if (unmatched.length > 0) {
-                            unmatched[0].breakdown = breakdown;
-                        }
-                    }
-                });
-            });
-        } catch (e) {
-            console.error('CIE table scraping error:', e.message);
-        }
-
-        // Deduplicate & merge duplicate attendance and CIE entries (Teacher mishap preventer)
+        // Deduplicate & merge duplicate attendance entries
         if (stats.attendance && stats.attendance.length > 0) {
             const finalAttendance = [];
             const attMap = new Map();
 
-            stats.attendance.forEach(item => {
+            stats.attendance.forEach((item) => {
                 const key = item.course.toUpperCase();
-                if (!attMap.has(key)) {
-                    attMap.set(key, []);
-                }
+                if (!attMap.has(key)) attMap.set(key, []);
                 attMap.get(key).push(item);
             });
 
@@ -510,23 +531,16 @@ export async function GET() {
                 const allDates = [];
                 let maxStillToGo = 0;
                 let courseName = '';
-                
-                list.forEach(item => {
-                    if (item.dates) {
-                        allDates.push(...item.dates);
-                    }
-                    if (item.stillToGo > maxStillToGo) {
-                        maxStillToGo = item.stillToGo;
-                    }
-                    if (item.courseName && !courseName) {
-                        courseName = item.courseName;
-                    }
+
+                list.forEach((item) => {
+                    if (item.dates) allDates.push(...item.dates);
+                    if (item.stillToGo > maxStillToGo) maxStillToGo = item.stillToGo;
+                    if (item.courseName && !courseName) courseName = item.courseName;
                 });
 
-                // Deduplicate dates by date + time
                 const seenDates = new Set();
                 const uniqueDates = [];
-                allDates.forEach(d => {
+                allDates.forEach((d) => {
                     const key = `${d.date}_${d.time}`;
                     if (!seenDates.has(key)) {
                         seenDates.add(key);
@@ -534,7 +548,6 @@ export async function GET() {
                     }
                 });
 
-                // Sort dates chronologically
                 uniqueDates.sort((a, b) => {
                     const parseD = (d) => {
                         const p = d.split('-');
@@ -546,8 +559,8 @@ export async function GET() {
                 const parsedPresent = list.reduce((max, curr) => Math.max(max, curr.present || 0), 0);
                 const parsedAbsent = list.reduce((max, curr) => Math.max(max, curr.absent || 0), 0);
                 const parsedTotal = list.reduce((max, curr) => Math.max(max, curr.total || 0), 0);
-                const datePresent = uniqueDates.filter(d => d.status === 'Present').length;
-                const dateAbsent = uniqueDates.filter(d => d.status === 'Absent').length;
+                const datePresent = uniqueDates.filter((d) => d.status === 'Present').length;
+                const dateAbsent = uniqueDates.filter((d) => d.status === 'Absent').length;
                 const present = uniqueDates.length > 0 ? datePresent : parsedPresent;
                 const absent = uniqueDates.length > 0 ? dateAbsent : parsedAbsent;
                 const total = Math.max(present + absent, parsedTotal);
@@ -563,7 +576,7 @@ export async function GET() {
                     absent,
                     total,
                     stillToGo: maxStillToGo,
-                    dates: uniqueDates
+                    dates: uniqueDates,
                 });
             }
             stats.attendance = finalAttendance;
@@ -573,11 +586,9 @@ export async function GET() {
             const finalCie = [];
             const cieMap = new Map();
 
-            stats.cie.forEach(item => {
+            stats.cie.forEach((item) => {
                 const key = item.course.toUpperCase();
-                if (!cieMap.has(key)) {
-                    cieMap.set(key, []);
-                }
+                if (!cieMap.has(key)) cieMap.set(key, []);
                 cieMap.get(key).push(item);
             });
 
@@ -592,68 +603,30 @@ export async function GET() {
                         bestEntry = item;
                     }
                 }
-                
+
                 finalCie.push({
                     ...bestEntry,
                     course: courseKey,
-                    courseName: bestEntry.courseName || courseNames.get(courseKey) || courseKey
+                    courseName: bestEntry.courseName || courseNames.get(courseKey) || courseKey,
                 });
             }
             stats.cie = finalCie;
         }
 
-        // Try to get profile name
-        stats.profileName = $('.cn-user-name, .profile-name').first().text().trim() || 'Student';
-        // Fallback if the name is in a specific div (often inside a user profile block)
-        if (stats.profileName === 'Student') {
-            const possibleNames = $('h1, h2, h3, h4, .uk-h3, .uk-h4').map((i, el) => $(el).text().trim()).get();
-            // Try to guess which one is the name (usually all caps or camel case, not long sentences)
-            const goodName = possibleNames.find(n => n.length > 3 && n.length < 30 && !n.includes('Welcome') && !n.includes('Contineo'));
-            if (goodName) stats.profileName = goodName;
+        // Cache the parsed details and full stats in memory
+        if (stats.usn) {
+            erpCache.set(`dash_details_${stats.usn}`, { attendance: stats.attendance, cie: stats.cie }, 900);
+            erpCache.set(`dash_full_${stats.usn}`, stats, 900);
         }
 
-        // Extract Student Info
-        const fullPageText = $('body').text().replace(/\s+/g, ' ');
-        const usnMatch = fullPageText.match(/USN\s*:\s*(1[a-z0-9]{9})/i) || fullPageText.match(/(1[a-z]{2}\d{2}[a-z]{2}\d{3})/i);
-        if (usnMatch) stats.usn = usnMatch[1].toUpperCase();
-        else stats.usn = '';
-
-        let department = '';
-        const deptMatch = fullPageText.match(/Department\s*:\s*(.*?)(?=Semester|Category|Quota|$)/i);
-        if (deptMatch) {
-            department = deptMatch[1].trim();
-        } else {
-            // Fallback to the header text pattern e.g., "B.E-CD, SEM 02, SEC F"
-            const headerMatch = fullPageText.match(/([A-Za-z.\-]+)\s*,\s*SEM\s*0?\d+/i);
-            if (headerMatch) {
-                department = headerMatch[1].trim();
-            }
-        }
-        stats.department = department;
-
-        const semMatch = fullPageText.match(/Semester\s*:\s*(\d+)/i) || fullPageText.match(/SEM\s*0?(\d+)/i);
-        if (semMatch) stats.semester = semMatch[1];
-        else stats.semester = '';
-
-        const secMatch = fullPageText.match(/SEC\s*([A-Z0-9]+)/i) || fullPageText.match(/Section\s*:\s*([A-Z0-9]+)/i);
-        stats.section = secMatch ? secMatch[1].trim() : '';
-
-        const headerDetailMatch = fullPageText.match(/([A-Za-z.\-]+)\s*,\s*SEM\s*0?(\d+)\s*,?\s*SEC\s*([A-Z0-9]+)?/i);
-        if (headerDetailMatch) {
-            if (!stats.department) stats.department = headerDetailMatch[1].trim();
-            if (!stats.semester) stats.semester = headerDetailMatch[2].trim();
-            if (!stats.section && headerDetailMatch[3]) stats.section = headerDetailMatch[3].trim();
-        }
-
-        // Try to find generic metric cards or panels
-        $('.uk-card, .panel, .widget').each((i, el) => {
-            stats.metrics.push($(el).text().replace(/\s+/g, ' ').trim());
+        const response = NextResponse.json({
+            success: true,
+            data: stats,
+            hasDetails: true,
+            isPartial: false,
         });
-
-        const response = NextResponse.json({ success: true, data: stats, rawHtmlLength: res.data.length });
         setSessionIdentity(response, { usn: stats.usn, name: stats.profileName });
         return response;
-
     } catch (error) {
         console.error('Dashboard Scraper Error:', error.message);
         return NextResponse.json({ error: 'Failed to fetch dashboard data' }, { status: 500 });

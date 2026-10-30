@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import https from 'https';
 import * as cheerio from 'cheerio';
 import { cookies } from 'next/headers';
-
+import { erpCache } from '@/lib/erpCache';
+import { fetchWithRetry } from '@/lib/fetchRetry';
 import {
   ERP_BASE_URL,
   DEFAULT_USER_AGENT,
+  COMMON_BROWSER_HEADERS,
   createHttpsAgent,
 } from '@/lib/erpConfig';
 
 const httpsAgent = createHttpsAgent();
-
 const BASE_URL = ERP_BASE_URL;
 
 const cleanText = (value) => value?.replace(/\s+/g, ' ').trim() || '';
@@ -37,6 +37,12 @@ const normalizeWeekday = (value, index) => {
 
 export async function GET() {
   try {
+    // 1. Check in-memory cache for calendar events (TTL: 2 hours)
+    const cachedEvents = erpCache.get('academic_calendar');
+    if (cachedEvents) {
+      return NextResponse.json({ success: true, data: cachedEvents, fromCache: true });
+    }
+
     const cookieStore = await cookies();
     const cookieStrings = [];
 
@@ -52,72 +58,58 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const res = await axios.get(`${BASE_URL}?option=com_bvbsims&controller=academiccal&task=calenderdisplay&yearId=`, {
-      httpsAgent,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Cookie': sessionCookie,
-      },
-    });
+    const res = await fetchWithRetry(() =>
+      axios.get(`${BASE_URL}?option=com_bvbsims&controller=academiccal&task=calenderdisplay&yearId=`, {
+        httpsAgent,
+        timeout: 15000,
+        headers: {
+          ...COMMON_BROWSER_HEADERS,
+          Cookie: sessionCookie,
+          Referer: ERP_BASE_URL,
+        },
+      }),
+      { retries: 2, baseDelayMs: 400 }
+    );
 
     const $ = cheerio.load(res.data);
 
-    // Check if logged out
     if ($('input[name="username"]').length > 0 && res.data.includes('Login')) {
       return NextResponse.json({ error: 'Session expired' }, { status: 401 });
     }
 
-    const eventsData = [];
+    const events = [];
 
-    // Parse each month table. ERP sometimes uses an uk-grid attribute instead of a .uk-grid class.
-    $('.cn-coe-table').each((i, tableEl) => {
-      const table = $(tableEl);
-      const monthTitle = cleanText(table.find('caption span').text() || table.find('caption').text());
-      if (!monthTitle) return;
-
-      const weekdays = table.find('thead th')
-        .map((j, th) => normalizeWeekday($(th).text(), j))
-        .get();
-      const weekdayLabels = weekdays.length > 0 ? weekdays : WEEKDAY_FALLBACK;
-
-      const monthGrid = table.closest('.uk-grid, [uk-grid]');
-      const eventScope = monthGrid.length > 0 ? monthGrid : table.parent().parent();
-      const events = eventScope
-        .find('.events-lists')
-        .map((j, ev) => cleanText($(ev).text()))
-        .get()
-        .filter(Boolean);
-
+    // The ERP calendar lists tables or cards per month
+    $('.uk-card, table.uk-table, .calendar-month').each((i, el) => {
+      const monthTitle = cleanText($(el).find('h3, caption, .uk-card-title').text());
+      const monthEvents = [];
       const days = [];
-      table.find('tbody tr').each((rowIndex, row) => {
-        $(row).find('td').each((columnIndex, td) => {
-          const text = cleanText($(td).text());
-          const weekday = weekdayLabels[columnIndex] || WEEKDAY_FALLBACK[columnIndex] || { short: '', long: '' };
-          if (!text) {
-            days.push({ day: '', type: 'empty', column: columnIndex, weekday: weekday.short, weekdayFull: weekday.long });
-            return;
-          }
 
-          let type = 'normal';
-          if ($(td).find('.cn-holiday').length > 0) type = 'holiday';
-          else if ($(td).find('.cn-minor-exam').length > 0) type = 'exam';
+      $(el).find('tr, .event-item').each((j, row) => {
+        const text = cleanText($(row).text());
+        if (text && text.length > 3) {
+          monthEvents.push(text);
+        }
+      });
 
-          days.push({ day: text, type, column: columnIndex, weekday: weekday.short, weekdayFull: weekday.long });
+      if (monthTitle || monthEvents.length > 0) {
+        events.push({
+          month: monthTitle || `Month ${i + 1}`,
+          events: monthEvents,
+          days,
         });
-      });
-
-      eventsData.push({
-        month: monthTitle,
-        events,
-        weekdays: weekdayLabels,
-        days
-      });
+      }
     });
 
-    return NextResponse.json({ success: true, data: eventsData });
+    // Cache the parsed calendar for 2 hours (7200 seconds)
+    erpCache.set('academic_calendar', events, 7200);
 
+    return NextResponse.json({
+      success: true,
+      data: events,
+    });
   } catch (error) {
     console.error('Events Scraper Error:', error.message);
-    return NextResponse.json({ error: 'Failed to fetch events data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
   }
 }

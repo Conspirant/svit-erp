@@ -1,25 +1,35 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import https from 'https';
 import * as cheerio from 'cheerio';
 import { cookies } from 'next/headers';
-
+import { getSessionUsn } from '@/lib/authSession';
+import { erpCache } from '@/lib/erpCache';
+import { fetchWithRetry } from '@/lib/fetchRetry';
 import {
   ERP_BASE_URL,
   DEFAULT_USER_AGENT,
+  COMMON_BROWSER_HEADERS,
   createHttpsAgent,
   resolveErpUrl,
 } from '@/lib/erpConfig';
 
 const httpsAgent = createHttpsAgent();
-
 const BASE_URL = ERP_BASE_URL;
 
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const cookieStrings = [];
+    const knownUsn = getSessionUsn(cookieStore);
 
+    // 1. Check if we already have the photo in memory cache from dashboard
+    if (knownUsn) {
+      const cachedDash = erpCache.get(`dash_full_${knownUsn}`);
+      if (cachedDash?.photoUrl) {
+        return NextResponse.json({ success: true, photo: cachedDash.photoUrl, fromCache: true });
+      }
+    }
+
+    const cookieStrings = [];
     cookieStore.getAll().forEach((cookie) => {
       if (cookie.name !== 'dashboard_url') {
         cookieStrings.push(`${cookie.name}=${cookie.value}`);
@@ -27,33 +37,32 @@ export async function GET() {
     });
 
     const sessionCookie = cookieStrings.join('; ');
-
     if (!sessionCookie) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get the dashboard page which contains the student photo
-    const dashUrl = cookieStore.get('dashboard_url')?.value || `${BASE_URL}?option=com_studentdashboard&controller=studentdashboard&task=dashboard`;
+    const rawDashUrl = cookieStore.get('dashboard_url')?.value;
+    const dashUrl = rawDashUrl ? resolveErpUrl(rawDashUrl) : `${BASE_URL}?option=com_studentdashboard&controller=studentdashboard&task=dashboard`;
 
-    const res = await axios.get(dashUrl, {
-      httpsAgent,
-      timeout: 15000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Cookie': sessionCookie,
-      },
-    });
+    const res = await fetchWithRetry(() =>
+      axios.get(dashUrl, {
+        httpsAgent,
+        timeout: 10000,
+        headers: {
+          ...COMMON_BROWSER_HEADERS,
+          Cookie: sessionCookie,
+          Referer: ERP_BASE_URL,
+        },
+      }),
+      { retries: 2, baseDelayMs: 400 }
+    );
 
     const $ = cheerio.load(res.data);
-
     if ($('input[name="username"]').length > 0 && res.data.includes('Login')) {
       return NextResponse.json({ error: 'Session expired' }, { status: 401 });
     }
 
-    // Try to find student photo - common patterns in ERP portals
     let photoUrl = '';
-
-    // Look for profile image in common selectors
     const imgSelectors = [
       '.cn-user-avatar img',
       '.profile-photo img',
@@ -76,7 +85,6 @@ export async function GET() {
       }
     }
 
-    // Fallback: find any img with src containing 'photo', 'profile', 'student', 'avatar', or 'upload'
     if (!photoUrl) {
       $('img').each((i, el) => {
         const src = $(el).attr('src') || '';
@@ -86,44 +94,21 @@ export async function GET() {
           !lower.includes('logo') && !lower.includes('banner') && !lower.includes('header') && !lower.includes('brand')
         ) {
           photoUrl = src;
-          return false; // break
+          return false;
         }
       });
     }
 
-    // If photoUrl is relative, make it absolute
     if (photoUrl) {
       photoUrl = resolveErpUrl(photoUrl);
     }
 
-    // If we found a photo URL, proxy it back as base64 to avoid CORS
-    if (photoUrl) {
-      try {
-        const photoRes = await axios.get(photoUrl, {
-          httpsAgent,
-          timeout: 10000,
-          responseType: 'arraybuffer',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Cookie': sessionCookie,
-          },
-        });
-
-        const contentType = photoRes.headers['content-type'] || 'image/jpeg';
-        const base64 = Buffer.from(photoRes.data).toString('base64');
-        const dataUrl = `data:${contentType};base64,${base64}`;
-
-        return NextResponse.json({ success: true, photo: dataUrl });
-      } catch (e) {
-        // Photo download failed, return without photo
-        return NextResponse.json({ success: true, photo: '' });
-      }
-    }
-
-    return NextResponse.json({ success: true, photo: '' });
-
+    return NextResponse.json({
+      success: true,
+      photo: photoUrl || null,
+    });
   } catch (error) {
-    console.warn('Photo Scraper Non-fatal Error:', error.message);
-    return NextResponse.json({ success: true, photo: '' });
+    console.error('Photo scraper error:', error.message);
+    return NextResponse.json({ error: 'Failed to fetch photo' }, { status: 500 });
   }
 }

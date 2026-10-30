@@ -7,11 +7,8 @@ import fs from 'fs';
 import path from 'path';
 
 const debugLog = (msg) => {
-  try {
-    const logPath = 'c:\\Users\\risha\\OneDrive\\Desktop\\svit-erp-main\\scratch\\feedback_debug.log';
-    fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
-  } catch (e) {
-    console.error('Failed to write debug log:', e);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[feedback] ${msg}`);
   }
 };
 

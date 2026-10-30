@@ -64,7 +64,7 @@ export default function Dashboard() {
         const savedId = localStorage.getItem('svit_idcard_student_id');
         const cachedProf = sessionStorage.getItem('profile_data');
         if (cachedData) setData(JSON.parse(cachedData));
-        if (cachedTimetable) setTimetable(JSON.parse(cachedTimetable));
+        if (cachedTimetable) { try { const p = JSON.parse(cachedTimetable); setTimetable(Array.isArray(p) ? p : (p?.timetable || [])); } catch {} }
         if (savedId) setStudentId(savedId);
         if (cachedProf) setProfileExtra(JSON.parse(cachedProf));
         if (cachedData && cachedTimetable) setLoading(false);
@@ -74,7 +74,7 @@ export default function Dashboard() {
     const fetchAll = async () => {
       try {
         const [dashRes, ttRes] = await Promise.all([
-          fetch("/api/student/dashboard"),
+          fetch("/api/student/dashboard?mode=fast"),
           fetch("/api/student/timetable")
         ]);
 
@@ -96,6 +96,27 @@ export default function Dashboard() {
         if (dashJson?.success) {
           setData(dashJson.data);
           try { sessionStorage.setItem('dashboard_data', JSON.stringify(dashJson.data)); } catch { }
+
+          if (dashJson.data?.photoUrl && !localStorage.getItem('svit_idcard_photo')) {
+            const isLogo = dashJson.data.photoUrl.toLowerCase().includes("logo") || dashJson.data.photoUrl.toLowerCase().includes("svit");
+            if (!isLogo) {
+              setPhoto(dashJson.data.photoUrl);
+              try { localStorage.setItem('svit_idcard_photo', dashJson.data.photoUrl); } catch {}
+            }
+          }
+
+          // If the fast response is partial, enrich subpages (attendance dates & CIE breakdown) in the background
+          if (dashJson.isPartial) {
+            fetch("/api/student/dashboard?mode=details")
+              .then((r) => (r.ok ? r.json() : null))
+              .then((detJson) => {
+                if (detJson?.success && detJson.data) {
+                  setData(detJson.data);
+                  try { sessionStorage.setItem('dashboard_data', JSON.stringify(detJson.data)); } catch {}
+                }
+              })
+              .catch(() => {});
+          }
         } else if (dashRes.status !== 401) {
           // If 500 occurred but we have cached data, keep showing cached data with a warning
           const cached = sessionStorage.getItem('dashboard_data');
@@ -107,8 +128,9 @@ export default function Dashboard() {
         }
 
         if (ttJson?.success) {
-          setTimetable(ttJson.data);
-          try { sessionStorage.setItem('dashboard_timetable', JSON.stringify(ttJson.data)); } catch { }
+          const list = Array.isArray(ttJson.data) ? ttJson.data : (ttJson.data?.timetable || []);
+          setTimetable(list);
+          try { sessionStorage.setItem('dashboard_timetable', JSON.stringify(list)); } catch { }
         }
 
         // Background fetch photo and profile if missing
@@ -168,12 +190,13 @@ export default function Dashboard() {
 
   // Today's schedule logic
   const todaySchedule = useMemo(() => {
-    if (!timetable) return null;
+    const list = Array.isArray(timetable) ? timetable : (Array.isArray(timetable?.timetable) ? timetable.timetable : null);
+    if (!list) return null;
     const now = new Date();
     const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
     const todayName = dayNames[now.getDay()];
 
-    const dayData = timetable.find(d => d.day.toUpperCase() === todayName);
+    const dayData = list.find(d => d?.day && d.day.toUpperCase() === todayName);
     if (!dayData) return [];
 
     const dayClasses = dayData.classes || [];
@@ -284,7 +307,16 @@ export default function Dashboard() {
     }
   }
 
-  const quotaStr = profileExtra?.quota || profileExtra?.categoryalloted || "VTU 2022 Scheme";
+  let defaultScheme = "VTU 2025 Scheme";
+  if (activeUsn) {
+    const yrMatch = activeUsn.match(/\d{2}/);
+    if (yrMatch) {
+      const yr = parseInt(yrMatch[0], 10);
+      defaultScheme = `VTU 20${yr >= 25 ? '25' : yr >= 22 ? '22' : '18'} Scheme`;
+    }
+  }
+
+  const quotaStr = profileExtra?.quota || profileExtra?.categoryalloted || defaultScheme;
   const activeStudentId = studentId || (activeUsn ? activeUsn.slice(-5) : "25CD092");
 
   return (

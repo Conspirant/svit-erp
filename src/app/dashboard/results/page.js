@@ -279,6 +279,17 @@ export default function ResultsPage() {
         if (!alive) return;
         setData(json.data);
         try { sessionStorage.setItem("dashboard_data", JSON.stringify(json.data)); } catch { }
+
+        if (json.isPartial) {
+          apiFetch("/api/student/dashboard?mode=details")
+            .then((detJson) => {
+              if (alive && detJson?.data) {
+                setData(detJson.data);
+                try { sessionStorage.setItem("dashboard_data", JSON.stringify(detJson.data)); } catch { }
+              }
+            })
+            .catch(() => {});
+        }
       })
       .catch((err) => alive && setError(err.message || "Could not load results."))
       .finally(() => alive && setLoading(false));

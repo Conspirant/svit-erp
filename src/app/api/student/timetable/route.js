@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import https from 'https';
 import * as cheerio from 'cheerio';
 import { cookies } from 'next/headers';
-
+import { getSessionUsn } from '@/lib/authSession';
+import { erpCache } from '@/lib/erpCache';
+import { fetchWithRetry } from '@/lib/fetchRetry';
 import {
   ERP_BASE_URL,
-  ERP_PARENTS_ORIGIN,
   DEFAULT_USER_AGENT,
+  COMMON_BROWSER_HEADERS,
   createHttpsAgent,
+  resolveErpUrl,
 } from '@/lib/erpConfig';
 
 const httpsAgent = createHttpsAgent();
-
 const BASE_URL = ERP_BASE_URL;
 
 const cleanText = (value) => value?.replace(/\s+/g, ' ').trim() || '';
@@ -43,6 +44,17 @@ export async function GET(request) {
     const nextEnd = searchParams.get('nextend');
     const j = searchParams.get('j');
 
+    const knownUsn = getSessionUsn(cookieStore);
+    const cacheKey = `tt_${knownUsn || 'anon'}_${weekType || 'curr'}_${prevStart || ''}_${nextStart || ''}`;
+
+    // Return cached timetable if available
+    const cachedEntry = erpCache.get(cacheKey);
+    if (cachedEntry && !searchParams.get('refresh')) {
+      const dataArr = Array.isArray(cachedEntry) ? cachedEntry : (cachedEntry.timetable || []);
+      const navObj = cachedEntry.navigation || { prevWeek: null, nextWeek: null };
+      return NextResponse.json({ success: true, data: dataArr, navigation: navObj, fromCache: true });
+    }
+
     let url = `${BASE_URL}?option=com_studentdashboard&controller=studentdashboard&task=timetable`;
 
     if (weekType === 'prev' && prevStart && prevEnd) {
@@ -51,13 +63,21 @@ export async function GET(request) {
       url += `&j=${j || '1'}&nextstart=${nextStart}&nextend=${nextEnd}&type=next`;
     }
 
-    const res = await axios.get(url, {
-      httpsAgent,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Cookie': sessionCookie,
-      },
-    });
+    const dashboardUrlCookie = cookieStore.get('dashboard_url');
+    const refererUrl = dashboardUrlCookie ? resolveErpUrl(dashboardUrlCookie.value) : ERP_BASE_URL;
+
+    const res = await fetchWithRetry(() =>
+      axios.get(url, {
+        httpsAgent,
+        timeout: 15000,
+        headers: {
+          ...COMMON_BROWSER_HEADERS,
+          Cookie: sessionCookie,
+          Referer: refererUrl,
+        },
+      }),
+      { retries: 2, baseDelayMs: 400 }
+    );
 
     const $ = cheerio.load(res.data);
 
@@ -68,24 +88,14 @@ export async function GET(request) {
     const timetable = [];
     const dayNames = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
-    // The ERP structure: each day has its own <table> with a <caption> containing:
-    //   "Timetable" text + <span>DayName</span> + <span>DD-MM-YYYY</span>
-    // Table columns: Time | Course Code and Course Name | Faculty 1 Optional Faculty 2 | Room No | Batch
-    //
-    // There's also a large wrapper table (Table 0) that contains everything — skip it.
-    // The real per-day tables have exactly 5 header columns.
-
     $('table').each((i, table) => {
-      // Check for proper 5-column header
       const headerCells = [];
       $(table).find('thead tr th, tr:first-child th').each((j, th) => {
         headerCells.push(cleanText($(th).text()).toLowerCase());
       });
 
-      // Must have exactly 5 columns with 'time' to be a real timetable table
       if (headerCells.length !== 5 || !headerCells[0].includes('time')) return;
 
-      // Extract day and date from <caption>
       let dayLabel = '';
       let dateLabel = '';
 
@@ -96,58 +106,67 @@ export async function GET(request) {
           dayLabel = cleanText($(spans[0]).text()).toUpperCase();
           dateLabel = cleanText($(spans[1]).text());
         } else if (spans.length === 1) {
-          dayLabel = cleanText($(spans[0]).text()).toUpperCase();
-        }
-        // Fallback: parse the full caption text
-        if (!dayLabel) {
-          const capText = cleanText(caption.text());
-          for (const dn of dayNames) {
-            if (capText.toUpperCase().includes(dn)) {
-              dayLabel = dn;
-              break;
-            }
+          const text = cleanText($(spans[0]).text());
+          const match = text.match(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s*(\d{2}-\d{2}-\d{4})/i);
+          if (match) {
+            dayLabel = match[1].toUpperCase();
+            dateLabel = match[2];
           }
-          const dateMatch = capText.match(/(\d{2}[.\-\/]\d{2}[.\-\/]\d{4})/);
-          if (dateMatch) dateLabel = dateMatch[1];
         }
       }
 
-      // Parse data rows (skip the header row)
+      if (!dayLabel) {
+        const capText = cleanText(caption.text()).toUpperCase();
+        for (const dn of dayNames) {
+          if (capText.includes(dn)) {
+            dayLabel = dn;
+            const dm = capText.match(/(\d{2}-\d{2}-\d{4})/);
+            if (dm) dateLabel = dm[1];
+            break;
+          }
+        }
+      }
+
       const rows = [];
-      $(table).find('tr').each((k, tr) => {
-        if ($(tr).find('th').length > 0) return; // skip header
+      $(table).find('tbody tr').each((j, row) => {
+        const cells = $(row).find('td');
+        if (cells.length < 5) return;
 
-        const cols = $(tr).find('td');
-        if (cols.length < 3) return;
+        const time = cleanText($(cells[0]).text());
+        const course = cleanText($(cells[1]).text());
+        const faculty = cleanText($(cells[2]).text());
+        const room = cleanText($(cells[3]).text());
+        const batch = cleanText($(cells[4]).text());
 
-        const time = cleanText($(cols[0]).text());
-        const course = cleanText($(cols[1]).text());
+        let courseCode = '';
+        let courseName = course;
+        const codeMatch = course.match(/^([A-Z0-9_]+)\s*-\s*(.+)$/i);
+        if (codeMatch) {
+          courseCode = codeMatch[1].trim();
+          courseName = codeMatch[2].trim();
+        }
 
-        if (!time || !course) return;
-        // Skip if it looks like a header row accidentally
-        if (time.toLowerCase() === 'time') return;
-
-        const faculty = cols.length > 2 ? cleanText($(cols[2]).text()) : '';
-        const room = cols.length > 3 ? cleanText($(cols[3]).text()) : '';
-        const batch = cols.length > 4 ? cleanText($(cols[4]).text()) : '';
-
-        rows.push({ time, course, faculty, room, batch });
+        if (time) {
+          rows.push({
+            time,
+            course: courseName,
+            courseCode,
+            faculty,
+            room,
+            batch,
+          });
+        }
       });
 
       if (rows.length > 0) {
         timetable.push({
-          day: dayLabel || `DAY ${timetable.length + 1}`,
-          date: dateLabel || '',
+          day: dayLabel || `DAY_${timetable.length + 1}`,
+          date: dateLabel,
           classes: rows,
         });
       }
     });
 
-    // Sort by day order
-    const dayOrder = Object.fromEntries(dayNames.map((d, i) => [d, i]));
-    timetable.sort((a, b) => (dayOrder[a.day] ?? 99) - (dayOrder[b.day] ?? 99));
-
-    // Extract Previous/Next week navigation links
     let prevWeek = null;
     let nextWeek = null;
 
@@ -155,32 +174,38 @@ export async function GET(request) {
       const text = cleanText($(a).text()).toLowerCase();
       const href = $(a).attr('href') || '';
 
-      if (text.includes('previous') && text.includes('week')) {
-        const params = new URL(href, `${ERP_PARENTS_ORIGIN}/`).searchParams;
-        prevWeek = {
-          prevstart: params.get('prevstart') || '',
-          prevend: params.get('prevend') || '',
-          j: params.get('j') || '',
-        };
+      if (text.includes('previous') && (text.includes('week') || href.includes('type=prev'))) {
+        try {
+          const params = new URL(href, ERP_BASE_URL).searchParams;
+          prevWeek = {
+            prevstart: params.get('prevstart') || '',
+            prevend: params.get('prevend') || '',
+            j: params.get('j') || '',
+          };
+        } catch {}
       }
-      if (text.includes('next') && text.includes('week')) {
-        const params = new URL(href, `${ERP_PARENTS_ORIGIN}/`).searchParams;
-        nextWeek = {
-          nextstart: params.get('nextstart') || '',
-          nextend: params.get('nextend') || '',
-          j: params.get('j') || '1',
-        };
+      if (text.includes('next') && (text.includes('week') || href.includes('type=next'))) {
+        try {
+          const params = new URL(href, ERP_BASE_URL).searchParams;
+          nextWeek = {
+            nextstart: params.get('nextstart') || '',
+            nextend: params.get('nextend') || '',
+            j: params.get('j') || '1',
+          };
+        } catch {}
       }
     });
+
+    const navigation = { prevWeek, nextWeek };
+    erpCache.set(cacheKey, { timetable, navigation }, 1800);
 
     return NextResponse.json({
       success: true,
       data: timetable,
-      navigation: { prevWeek, nextWeek },
+      navigation,
     });
-
   } catch (error) {
     console.error('Timetable Scraper Error:', error.message);
-    return NextResponse.json({ error: 'Failed to fetch timetable data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch timetable' }, { status: 500 });
   }
 }

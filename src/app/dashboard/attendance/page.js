@@ -318,6 +318,17 @@ export default function AttendancePage() {
         try { sessionStorage.setItem("dashboard_data", JSON.stringify(dashJson.data)); } catch { }
         try { if (ttJson.data) sessionStorage.setItem("dashboard_timetable", JSON.stringify(ttJson.data)); } catch { }
         try { if (evJson.data) sessionStorage.setItem("events_data", JSON.stringify(evJson.data)); } catch { }
+
+        if (dashJson.isPartial) {
+          apiFetch("/api/student/dashboard?mode=details")
+            .then((detJson) => {
+              if (alive && detJson?.data) {
+                setData(detJson.data);
+                try { sessionStorage.setItem("dashboard_data", JSON.stringify(detJson.data)); } catch { }
+              }
+            })
+            .catch(() => {});
+        }
       })
       .catch((err) => alive && setError(err.message || "Could not load attendance."))
       .finally(() => alive && setLoading(false));
