@@ -321,7 +321,6 @@ export default function Home() {
           />
           <div className="app-login-divider" />
           <p className="app-login-subtitle">Student ERP</p>
-          <span className="app-login-odd-term-notice">Academic Session 2024–25 · Odd Semester</span>
         </div>
 
         {/* Login Form Card */}
