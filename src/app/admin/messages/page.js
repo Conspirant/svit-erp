@@ -50,7 +50,7 @@ export default function AdminMessagesPage() {
 
   return <main className="admin-message-page">
     <div className="admin-message-card">
-      <Link href="/admin/navigation" className="admin-message-back">← Admin tools</Link>
+      <Link href="/" className="admin-message-back">← Back to Portal</Link>
       <p className="admin-message-eyebrow">PORTAL COMMUNICATIONS</p>
       <h1>Login announcement</h1>
       <p className="admin-message-intro">Write the message that visitors see when they open the portal.</p>

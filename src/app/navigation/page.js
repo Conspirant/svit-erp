@@ -238,26 +238,6 @@ export default function StudentCampusNavigationPage() {
               {copiedLink ? <IconCheck size={14} color="#10b981" /> : <IconShare size={14} />}
               {copiedLink ? "Link Copied!" : "Share Route"}
             </button>
-
-            <Link
-              href="/admin/navigation"
-              style={{
-                padding: "8px 14px",
-                borderRadius: "10px",
-                background: "rgba(59, 130, 246, 0.15)",
-                border: "1px solid rgba(59, 130, 246, 0.3)",
-                color: "#60a5fa",
-                fontSize: "0.8rem",
-                fontWeight: 700,
-                textDecoration: "none",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              <IconLock size={14} />
-              Admin Studio
-            </Link>
           </div>
         </div>
       </header>
