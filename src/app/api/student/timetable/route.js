@@ -85,6 +85,10 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Session expired' }, { status: 401 });
     }
 
+    // Retrieve student's registered courses from memory cache to map course names to official course codes
+    const cachedDash = knownUsn ? erpCache.get(`dash_full_${knownUsn}`) : null;
+    const registeredCourses = cachedDash ? [...(cachedDash.attendance || []), ...(cachedDash.cie || [])] : [];
+
     const timetable = [];
     const dayNames = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
@@ -140,10 +144,31 @@ export async function GET(request) {
 
         let courseCode = '';
         let courseName = course;
-        const codeMatch = course.match(/^([A-Z0-9_]+)\s*-\s*(.+)$/i);
-        if (codeMatch) {
-          courseCode = codeMatch[1].trim();
-          courseName = codeMatch[2].trim();
+
+        // Pattern 1: Hyphen format: "1BCS302_CSE(DS) - OBJECT ORIENTED PROGRAMMING"
+        const dashMatch = course.match(/^([0-9][A-Z0-9_]+(?:\([A-Z0-9_]+\))?)\s*-\s*(.+)$/i);
+        // Pattern 2: Alphanumeric code with digits at start: "1BCS302_CSE(DS) OBJECT ORIENTED..."
+        const spaceMatch = course.match(/^([0-9][A-Z0-9_]+(?:\([A-Z0-9_]+\))?)\s+(.+)$/i);
+
+        if (dashMatch && /\d/.test(dashMatch[1])) {
+          courseCode = dashMatch[1].trim();
+          courseName = dashMatch[2].trim();
+        } else if (spaceMatch && /\d/.test(spaceMatch[1])) {
+          courseCode = spaceMatch[1].trim();
+          courseName = spaceMatch[2].trim();
+        }
+
+        // If course code is missing, resolve it by matching against student's registered subjects
+        if (!courseCode && registeredCourses.length > 0) {
+          const normCourse = courseName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          for (const reg of registeredCourses) {
+            const regName = (reg.courseName || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (regName && (regName === normCourse || regName.includes(normCourse) || normCourse.includes(regName))) {
+              courseCode = reg.course;
+              if (reg.courseName) courseName = reg.courseName;
+              break;
+            }
+          }
         }
 
         if (time) {

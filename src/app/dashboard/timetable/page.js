@@ -6,19 +6,68 @@ import { useRouter } from "next/navigation";
 
 const DAY_ORDER = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
-function parseCourse(raw) {
-  if (!raw) return { code: '', name: '' };
-  const dashIdx = raw.indexOf(' - ');
-  if (dashIdx > 0 && dashIdx < 30) {
-    return { code: raw.slice(0, dashIdx).trim(), name: raw.slice(dashIdx + 3).trim() };
+function parseClassCourse(cls, courseMap = {}) {
+  const raw = (typeof cls === 'string' ? cls : cls?.course || '').trim();
+  let explicitCode = (typeof cls === 'object' ? cls?.courseCode || '' : '').trim();
+  let code = explicitCode;
+  let name = raw;
+
+  // 1. Hyphen format with digits: "1BCS302_CSE(DS) - OBJECT ORIENTED PROGRAMMING..."
+  const dashMatch = raw.match(/^([0-9][A-Z0-9_]+(?:\([A-Z0-9_]+\))?)\s*-\s*(.+)$/i);
+  if (dashMatch && /\d/.test(dashMatch[1])) {
+    code = dashMatch[1].trim();
+    name = dashMatch[2].trim();
+  } else {
+    // 2. Space separated alphanumeric code with digits: "1BCS302_CSE(DS) OBJECT..."
+    const spaceMatch = raw.match(/^([0-9][A-Z0-9_]+(?:\([A-Z0-9_]+\))?)\s+(.+)$/i);
+    if (spaceMatch && /\d/.test(spaceMatch[1])) {
+      code = spaceMatch[1].trim();
+      name = spaceMatch[2].trim();
+    }
   }
-  const spaceMatch = raw.match(/^([A-Z0-9_]+(?:PHYCYCLE)?)\s+(.+)$/i);
-  if (spaceMatch) return { code: spaceMatch[1], name: spaceMatch[2] };
-  return { code: raw, name: '' };
+
+  // 3. If code is still missing, lookup in student's registered course map
+  if (!code && courseMap) {
+    const normName = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    for (const [k, v] of Object.entries(courseMap)) {
+      const normK = k.replace(/[^A-Z0-9]/g, '');
+      if (normK && (normK === normName || normK.includes(normName) || normName.includes(normK))) {
+        if (/\d/.test(v)) {
+          code = v;
+        } else if (/\d/.test(k)) {
+          code = k;
+          if (v && v.length > name.length) name = v;
+        }
+        break;
+      }
+    }
+  }
+
+  if (!name && code) name = code;
+  return { code, name };
 }
 
 export default function Timetable() {
   const [data, setData] = useState(null);
+
+  const courseMap = useMemo(() => {
+    try {
+      const raw = sessionStorage.getItem('dashboard_data');
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      const map = {};
+      const list = [...(parsed.attendance || []), ...(parsed.cie || [])];
+      list.forEach((item) => {
+        if (item.course && item.courseName) {
+          map[item.course.toUpperCase()] = item.courseName;
+          map[item.courseName.toUpperCase()] = item.course;
+        }
+      });
+      return map;
+    } catch {
+      return {};
+    }
+  }, []);
   const [nav, setNav] = useState({ prevWeek: null, nextWeek: null });
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
@@ -241,13 +290,13 @@ export default function Timetable() {
                   </thead>
                   <tbody>
                     {dayData.classes.map((cls, idx) => {
-                      const { code, name } = parseCourse(cls.course);
+                      const { code, name } = parseClassCourse(cls, courseMap);
                       return (
                         <tr key={idx}>
                           <td className="tt-cell-time">{cls.time}</td>
                           <td>
-                            <strong className="tt-code">{code}</strong>
-                            {name && <span className="tt-cname">{name}</span>}
+                            <strong className="tt-code">{name || code}</strong>
+                            {code && name && code !== name && <span className="tt-cname">{code}</span>}
                           </td>
                           <td className="tt-cell-faculty">{cls.faculty || "—"}</td>
                           <td>{cls.room || "—"}</td>
@@ -268,19 +317,34 @@ export default function Timetable() {
               {/* Mobile cards */}
               <div className="tt-mobile-only">
                 {dayData.classes.map((cls, idx) => {
-                  const { code, name } = parseCourse(cls.course);
+                  const { code, name } = parseClassCourse(cls, courseMap);
                   return (
                     <div className="tt-card" key={idx}>
                       <div className="tt-card-top">
                         <span className="tt-card-time">{cls.time}</span>
                         <div className="tt-card-badges">
+                          {code && (
+                            <span
+                              className="tt-card-batch"
+                              style={{
+                                background: "rgba(59, 130, 246, 0.12)",
+                                color: "var(--primary, #3b82f6)",
+                                border: "1px solid rgba(59, 130, 246, 0.25)",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {code}
+                            </span>
+                          )}
                           {cls.room && <span className="tt-card-room">{cls.room}</span>}
                           {cls.batch && <span className="tt-card-batch">{cls.batch}</span>}
                         </div>
                       </div>
                       <div className="tt-card-course">
-                        <strong>{code}</strong>
-                        {name && <span>{name}</span>}
+                        <strong>{name || code}</strong>
+                        {code && name && code !== name && (
+                          <span style={{ color: "var(--muted)", fontSize: "0.78rem", fontWeight: 600 }}>{code}</span>
+                        )}
                       </div>
                       {cls.faculty && <div className="tt-card-faculty">{cls.faculty}</div>}
                     </div>
