@@ -169,64 +169,47 @@ const extractCourseName = ($, courseCode) => {
     return cleanText(tooltipName);
 };
 
-export async function GET(request) {
-    try {
-        const { searchParams } = new URL(request.url);
-        // mode: 'fast' (immediate 1st render), 'details' (full subpages), or 'auto' (fast if no cache, full if cached)
-        const mode = searchParams.get('mode') || (searchParams.get('quick') ? 'fast' : (searchParams.get('details') ? 'details' : 'auto'));
-
-        const cookieStore = await cookies();
-        const cookieStrings = [];
-
-        cookieStore.getAll().forEach((cookie) => {
-            if (cookie.name !== 'dashboard_url') {
-                cookieStrings.push(`${cookie.name}=${cookie.value}`);
-            }
-        });
-
-        const sessionCookie = cookieStrings.join('; ');
-        const dashboardUrlCookie = cookieStore.get('dashboard_url');
-        const targetUrl = resolveErpUrl(dashboardUrlCookie ? dashboardUrlCookie.value : BASE_URL);
-
-        if (!sessionCookie) {
-            return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+export async function scrapeStudentDashboard({
+    sessionCookie,
+    targetUrl,
+    knownUsn,
+    forceRefresh = false,
+    includeCieDetails = false,
+}) {
+    if (knownUsn && !forceRefresh) {
+        const cachedFull = erpCache.get(`dash_full_${knownUsn}`);
+        if (cachedFull) {
+            return { data: cachedFull, fromCache: true };
         }
+    }
 
-        const knownUsn = getSessionUsn(cookieStore);
-
-        // 1. Check if we already have the fully detailed stats in memory cache
-        if (knownUsn) {
+    const flightKey = `dash_flight_${knownUsn || 'session'}`;
+    return await erpCache.coalesce(flightKey, async () => {
+        if (knownUsn && !forceRefresh) {
             const cachedFull = erpCache.get(`dash_full_${knownUsn}`);
-            if (cachedFull && mode !== 'refresh') {
-                return NextResponse.json({
-                    success: true,
-                    data: cachedFull,
-                    fromCache: true,
-                    hasDetails: true,
-                    isPartial: false,
-                });
+            if (cachedFull) {
+                return { data: cachedFull, fromCache: true };
             }
         }
 
-        // 2. Fetch the primary dashboard page via fetchWithRetry (handles 520-524, 429, socket resets)
         const res = await fetchWithRetry(() =>
             axios.get(targetUrl, {
                 httpsAgent,
-                timeout: 15000,
+                timeout: 12000,
                 headers: {
                     ...COMMON_BROWSER_HEADERS,
                     Cookie: sessionCookie,
                     Referer: ERP_BASE_URL,
                 },
             }),
-            { retries: 2, baseDelayMs: 500 }
+            { retries: 2, baseDelayMs: 400 }
         );
 
         const $ = cheerio.load(res.data);
 
         // Check if we are actually logged in
         if ($('form#login-form').length > 0 || res.data.includes('Login to Your Account')) {
-            return NextResponse.json({ error: 'Session expired or not logged in' }, { status: 401 });
+            throw new Error('Session expired or not logged in');
         }
 
         const stats = {
@@ -322,6 +305,15 @@ export async function GET(request) {
         const usnMatch = fullPageText.match(/USN\s*:\s*(1[a-z0-9]{9})/i) || fullPageText.match(/(1[a-z]{2}\d{2}[a-z]{2}\d{3})/i);
         stats.usn = usnMatch ? usnMatch[1].toUpperCase() : (knownUsn || '');
 
+        // Extract official below 80% legend if present in HTML (e.g. <span class="uk-label cn-attend cn-color-red">4 below 80%</span>)
+        let officialBelow80 = null;
+        const legendRedText = $('.cn-att-legend .cn-color-red, .cn-legend .cn-color-red, span.cn-color-red').text().trim();
+        const below80Match = legendRedText.match(/(\d+)\s*below\s*80%/i) || fullPageText.match(/(\d+)\s*below\s*80%/i);
+        if (below80Match) {
+            officialBelow80 = parseInt(below80Match[1], 10);
+        }
+        stats.officialBelow80 = officialBelow80;
+
         let department = '';
         const deptMatch = fullPageText.match(/Department\s*:\s*(.*?)(?=Semester|Category|Quota|$)/i);
         if (deptMatch) {
@@ -355,59 +347,23 @@ export async function GET(request) {
             stats.metrics.push($(el).text().replace(/\s+/g, ' ').trim());
         });
 
-        // 3. Check if cached sub-page details already exist in memory for this USN
-        const cachedDetails = stats.usn ? erpCache.get(`dash_details_${stats.usn}`) : null;
-        if (cachedDetails) {
-            if (cachedDetails.attendance && cachedDetails.attendance.length > 0) {
-                stats.attendance = cachedDetails.attendance;
-            }
-            if (cachedDetails.cie && cachedDetails.cie.length > 0) {
-                stats.cie = cachedDetails.cie;
-            }
-            const response = NextResponse.json({
-                success: true,
-                data: stats,
-                hasDetails: true,
-                isPartial: false,
-                fromCache: true,
-            });
-            setSessionIdentity(response, { usn: stats.usn, name: stats.profileName });
-            return response;
-        }
-
-        // 4. If mode is 'fast', return immediate base data right away (< 800ms)!
-        // This gives the user an instantaneous UI render upon login.
-        if (mode === 'fast') {
-            const response = NextResponse.json({
-                success: true,
-                data: stats,
-                hasDetails: false,
-                isPartial: true,
-                attendanceLinksCount: attendanceLinks.length,
-                cieLinksCount: cieLinks.length,
-            });
-            setSessionIdentity(response, { usn: stats.usn, name: stats.profileName });
-            return response;
-        }
-
-        // 5. Scrape Sub-Pages with Controlled Concurrency Pool (concurrency: 3) & Keep-Alive
-        // This replaces the old 25-second sequential loop with a ~3 second parallel pool
-        // that handles rate limiting with adaptive backoff retries.
+        // 3. Scrape Attendance Sub-Pages with High-Speed Parallel Pool (concurrency: 6) & Keep-Alive
+        // With Keep-Alive HTTP sockets, fetching 7-9 attendance links takes ~1.2s total!
         if (attendanceLinks.length > 0) {
             try {
-                const detailedResultsSettled = await pLimitPool(attendanceLinks, 3, (linkObj) =>
+                const detailedResultsSettled = await pLimitPool(attendanceLinks, 6, (linkObj) =>
                     fetchWithRetry(
                         () =>
                             axios.get(linkObj.url, {
                                 httpsAgent,
-                                timeout: 8000,
+                                timeout: 7000,
                                 headers: {
                                     ...COMMON_BROWSER_HEADERS,
                                     Cookie: sessionCookie,
                                     Referer: ERP_BASE_URL,
                                 },
                             }),
-                        { retries: 2, baseDelayMs: 400 }
+                        { retries: 2, baseDelayMs: 300 }
                     ).then((detailRes) => {
                         const _$ = cheerio.load(detailRes.data);
                         const pageText = _$('body').text().replace(/\s+/g, ' ');
@@ -460,7 +416,11 @@ export async function GET(request) {
                 detailedResultsSettled.forEach((settled) => {
                     const detail = settled.status === 'fulfilled' ? settled.value : null;
                     if (detail) {
-                        const match = stats.attendance.find((a) => a.course === detail.course);
+                        const match = stats.attendance.find((a) =>
+                            a.course.toUpperCase() === detail.course.toUpperCase() ||
+                            a.course.toUpperCase().startsWith(detail.course.toUpperCase()) ||
+                            detail.course.toUpperCase().startsWith(a.course.toUpperCase())
+                        );
                         if (match) {
                             match.present = detail.present;
                             match.absent = detail.absent;
@@ -478,45 +438,7 @@ export async function GET(request) {
             }
         }
 
-        if (cieLinks.length > 0) {
-            try {
-                const cieDetailsSettled = await pLimitPool(cieLinks, 3, (linkObj) =>
-                    fetchWithRetry(
-                        () =>
-                            axios.get(linkObj.url, {
-                                httpsAgent,
-                                timeout: 8000,
-                                headers: {
-                                    ...COMMON_BROWSER_HEADERS,
-                                    Cookie: sessionCookie,
-                                    Referer: ERP_BASE_URL,
-                                },
-                            }),
-                        { retries: 2, baseDelayMs: 400 }
-                    ).then((detailRes) => parseCieDetailPage(detailRes.data, linkObj)).catch(() => null)
-                );
-
-                const cieDetails = cieDetailsSettled
-                    .filter((s) => s.status === 'fulfilled' && s.value)
-                    .map((s) => s.value);
-
-                cieDetails.filter(Boolean).forEach((detail) => {
-                    const existing = stats.cie.find((item) => item.course === detail.course);
-                    if (existing) {
-                        existing.courseName = detail.courseName || existing.courseName;
-                        existing.marks = detail.marks;
-                        existing.maxMarks = detail.maxMarks;
-                        existing.breakdown = detail.breakdown;
-                    } else {
-                        stats.cie.push(detail);
-                    }
-                });
-            } catch (e) {
-                console.error('Failed to fetch detailed CIE:', e.message);
-            }
-        }
-
-        // Deduplicate & merge duplicate attendance entries
+        // Deduplicate & calculate exact attendance metrics
         if (stats.attendance && stats.attendance.length > 0) {
             const finalAttendance = [];
             const attMap = new Map();
@@ -582,6 +504,49 @@ export async function GET(request) {
             stats.attendance = finalAttendance;
         }
 
+        // Only scrape detailed CIE breakdown if explicitly requested
+        if (includeCieDetails && cieLinks.length > 0) {
+            try {
+                const cieDetailsSettled = await pLimitPool(cieLinks, 4, (linkObj) =>
+                    fetchWithRetry(
+                        () =>
+                            axios.get(linkObj.url, {
+                                httpsAgent,
+                                timeout: 7000,
+                                headers: {
+                                    ...COMMON_BROWSER_HEADERS,
+                                    Cookie: sessionCookie,
+                                    Referer: ERP_BASE_URL,
+                                },
+                            }),
+                        { retries: 2, baseDelayMs: 300 }
+                    ).then((detailRes) => parseCieDetailPage(detailRes.data, linkObj)).catch(() => null)
+                );
+
+                const cieDetails = cieDetailsSettled
+                    .filter((s) => s.status === 'fulfilled' && s.value)
+                    .map((s) => s.value);
+
+                cieDetails.filter(Boolean).forEach((detail) => {
+                    const existing = stats.cie.find((item) =>
+                        item.course.toUpperCase() === detail.course.toUpperCase() ||
+                        item.course.toUpperCase().startsWith(detail.course.toUpperCase()) ||
+                        detail.course.toUpperCase().startsWith(item.course.toUpperCase())
+                    );
+                    if (existing) {
+                        existing.courseName = detail.courseName || existing.courseName;
+                        existing.marks = detail.marks;
+                        existing.maxMarks = detail.maxMarks;
+                        existing.breakdown = detail.breakdown;
+                    } else {
+                        stats.cie.push(detail);
+                    }
+                });
+            } catch (e) {
+                console.error('Failed to fetch detailed CIE:', e.message);
+            }
+        }
+
         if (stats.cie && stats.cie.length > 0) {
             const finalCie = [];
             const cieMap = new Map();
@@ -619,16 +584,56 @@ export async function GET(request) {
             erpCache.set(`dash_full_${stats.usn}`, stats, 900);
         }
 
+        return { data: stats, fromCache: false };
+    });
+}
+
+export async function GET(request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const mode = searchParams.get('mode') || (searchParams.get('quick') ? 'fast' : (searchParams.get('details') ? 'details' : 'auto'));
+
+        const cookieStore = await cookies();
+        const cookieStrings = [];
+
+        cookieStore.getAll().forEach((cookie) => {
+            if (cookie.name !== 'dashboard_url') {
+                cookieStrings.push(`${cookie.name}=${cookie.value}`);
+            }
+        });
+
+        const sessionCookie = cookieStrings.join('; ');
+        const dashboardUrlCookie = cookieStore.get('dashboard_url');
+        const targetUrl = resolveErpUrl(dashboardUrlCookie ? dashboardUrlCookie.value : BASE_URL);
+
+        if (!sessionCookie) {
+            return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+        }
+
+        const knownUsn = getSessionUsn(cookieStore);
+
+        const result = await scrapeStudentDashboard({
+            sessionCookie,
+            targetUrl,
+            knownUsn,
+            forceRefresh: mode === 'refresh',
+            includeCieDetails: mode === 'details',
+        });
+
         const response = NextResponse.json({
             success: true,
-            data: stats,
+            data: result.data,
+            fromCache: result.fromCache,
             hasDetails: true,
             isPartial: false,
         });
-        setSessionIdentity(response, { usn: stats.usn, name: stats.profileName });
+        setSessionIdentity(response, { usn: result.data?.usn || knownUsn, name: result.data?.profileName });
         return response;
     } catch (error) {
         console.error('Dashboard Scraper Error:', error.message);
+        if (error.message.includes('Session expired') || error.message.includes('Not authenticated')) {
+            return NextResponse.json({ error: 'Session expired or not logged in' }, { status: 401 });
+        }
         return NextResponse.json({ error: 'Failed to fetch dashboard data' }, { status: 500 });
     }
 }

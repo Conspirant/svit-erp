@@ -3,6 +3,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { setSessionIdentity } from '@/lib/authSession';
 import { erpCache } from '@/lib/erpCache';
+import { scrapeStudentDashboard } from '@/app/api/student/dashboard/route';
 import {
   ERP_BASE_URL,
   DEFAULT_USER_AGENT,
@@ -224,7 +225,20 @@ export async function POST(request) {
       });
     });
 
-    try { erpCache.delete(`dash_full_${username}`); erpCache.delete(`dash_details_${username}`); } catch {}
+    const cookieString = Array.from(cookieMap.entries())
+      .map(([k, v]) => `${k}=${v}`)
+      .join('; ');
+    const initialTargetUrl = resolveErpUrl(redirectLocation || ERP_BASE_URL);
+
+    // Warm up student dashboard and real attendance immediately in background
+    scrapeStudentDashboard({
+      sessionCookie: cookieString,
+      targetUrl: initialTargetUrl,
+      knownUsn: username,
+      forceRefresh: true,
+      includeCieDetails: false,
+    }).catch((e) => console.warn('Background dashboard pre-warm error:', e.message));
+
     setSessionIdentity(response, { usn: username });
     return response;
   } catch (error) {

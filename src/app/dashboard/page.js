@@ -74,7 +74,7 @@ export default function Dashboard() {
     const fetchAll = async () => {
       try {
         const [dashRes, ttRes] = await Promise.all([
-          fetch("/api/student/dashboard?mode=fast"),
+          fetch("/api/student/dashboard"),
           fetch("/api/student/timetable")
         ]);
 
@@ -113,6 +113,7 @@ export default function Dashboard() {
                 if (detJson?.success && detJson.data) {
                   setData(detJson.data);
                   try { sessionStorage.setItem('dashboard_data', JSON.stringify(detJson.data)); } catch { }
+                  window.dispatchEvent(new Event("attendanceChanged"));
                 }
               })
               .catch(() => { });
@@ -176,17 +177,30 @@ export default function Dashboard() {
   }, [data]);
 
   const summary = useMemo(() => {
-    const avgAtt = attendance.length > 0
-      ? Math.round(attendance.reduce((sum, item) => sum + toNumber(item.percentage), 0) / attendance.length)
-      : 0;
-    const lowAtt = attendance.filter(item => toNumber(item.percentage) < 80).length;
+    // 1. Calculate courses below 80% (at risk)
+    const calculatedLowAtt = attendance.filter(item => toNumber(item.percentage) < 80).length;
+    // If ERP explicitly reported an official at-risk legend and calculated was 0 (unverified gauge), prioritize official
+    const lowAtt = (calculatedLowAtt === 0 && data?.officialBelow80 !== undefined && data?.officialBelow80 !== null)
+      ? data.officialBelow80
+      : calculatedLowAtt;
+
+    // 2. Weighted overall attendance (total present / total conducted)
+    const totalPresent = attendance.reduce((sum, item) => sum + toNumber(item.present, 0), 0);
+    const totalConducted = attendance.reduce((sum, item) => sum + toNumber(item.total, 0), 0);
+
+    let avgAtt = 0;
+    if (totalConducted > 0) {
+      avgAtt = Math.round((totalPresent / totalConducted) * 100);
+    } else if (attendance.length > 0) {
+      avgAtt = Math.round(attendance.reduce((sum, item) => sum + toNumber(item.percentage), 0) / attendance.length);
+    }
 
     const validCie = cie.filter(item => toNumber(item.marks) > 0);
     const avgCie = validCie.length > 0
       ? Math.round((validCie.reduce((sum, item) => sum + toNumber(item.marks), 0) / validCie.length) * 10) / 10
       : 0;
     return { avgAtt, lowAtt, avgCie };
-  }, [attendance, cie]);
+  }, [attendance, cie, data]);
 
   // Today's schedule logic
   const todaySchedule = useMemo(() => {
