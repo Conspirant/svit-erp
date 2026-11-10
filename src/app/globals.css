@@ -6814,3 +6814,165 @@ select:focus {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.22);
 }
+
+/* =========================================================================
+   STEP 2: EXECUTIVE MINIMALIST APP SHELL & COMMAND CENTER POLISH
+   ========================================================================= */
+
+/* Soothing OLED Topbar: Glassmorphism without glare */
+.mobile-topbar {
+  background: rgba(14, 17, 23, 0.82) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border-bottom: 1px solid var(--line) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+  padding: 12px 18px !important;
+}
+
+.mobile-title-block h1 {
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--ink) !important;
+}
+
+.mobile-title-block span {
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: var(--primary) !important;
+}
+
+/* Floating Ergonomic Bottom Nav */
+.mobile-bottom-nav {
+  background: rgba(18, 22, 30, 0.88) !important;
+  backdrop-filter: blur(20px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+  border: 1px solid var(--line-strong) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+  border-radius: 24px !important;
+  padding: 6px 4px !important;
+}
+
+.mobile-nav-item {
+  color: var(--muted) !important;
+  transition: all 0.2s var(--ease-spring) !important;
+  font-weight: 600 !important;
+}
+
+.mobile-nav-item.active {
+  color: var(--primary) !important;
+}
+
+.mobile-nav-item.active .mobile-nav-icon {
+  background: rgba(56, 189, 248, 0.12) !important;
+  border-radius: 12px !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Executive Student Profile Card */
+.home-profile-card {
+  background: linear-gradient(180deg, #161b24 0%, #11141c 100%) !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--shadow-lg) !important;
+  padding: 22px !important;
+}
+
+.home-profile-badge-verified {
+  background: rgba(16, 185, 129, 0.08) !important;
+  border: 1px solid rgba(16, 185, 129, 0.22) !important;
+  color: #34d399 !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  padding: 4px 10px !important;
+  border-radius: 20px !important;
+}
+
+.home-profile-pulse-dot {
+  background: #10b981 !important;
+  box-shadow: 0 0 8px #10b981 !important;
+}
+
+.home-avatar-frame {
+  border-color: rgba(56, 189, 248, 0.3) !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08) !important;
+}
+
+.home-profile-name-row h2 {
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+  color: #ffffff !important;
+}
+
+.home-profile-chip {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: var(--ink-secondary) !important;
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 4px 8px !important;
+}
+
+.home-profile-academic-grid {
+  background: rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  padding: 12px 14px !important;
+  gap: 12px !important;
+}
+
+.home-academic-item span {
+  font-size: 0.65rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  color: var(--muted) !important;
+}
+
+.home-academic-item strong {
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  color: var(--ink) !important;
+}
+
+/* Quick Stats Metric Pills */
+.home-stats-strip {
+  gap: 10px !important;
+}
+
+.home-stat-pill {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 14px !important;
+  padding: 14px 12px !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: transform 0.2s var(--ease-spring), border-color 0.2s ease !important;
+}
+
+.home-stat-pill:hover {
+  border-color: var(--line-strong) !important;
+  transform: translateY(-2px) !important;
+}
+
+.home-stat-pill span {
+  font-size: 0.68rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  font-weight: 600 !important;
+  color: var(--muted) !important;
+}
+
+.home-stat-pill strong {
+  font-size: 1.55rem !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.home-stat-pill small {
+  font-size: 0.72rem !important;
+  color: var(--ink-tertiary) !important;
+}
