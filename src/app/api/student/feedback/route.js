@@ -597,64 +597,99 @@ export async function GET(request) {
     const feedbackTypes = [];
     const seenIds = new Set();
 
-    // Strip top navbar and menus so dropdown items aren't mistaken for feedback forms
-    $('header, nav, .navbar, .uk-navbar, #menu, .menu, footer, .uk-nav').remove();
+    // Check if the page itself is ALREADY a direct feedback table
+    const directParsed = parseFeedbackPage(htmlStr);
+    if (directParsed.pending.length > 0 || directParsed.completed.length > 0) {
+      feedbackTypes.push({
+        id: '1',
+        name: directParsed.title || 'Feedback 1',
+        url: url,
+      });
+      const response = NextResponse.json({ success: true, data: { feedbackTypes } });
+      setUpdatedCookies(response, sessionCookie);
+      return response;
+    }
 
-    // 1. Look for feedback cards on the dashboard (e.g. card with "Feedback 1" and "Click Here")
+    // Step A: Search for Click Here cards in the page body (e.g. card with "Feedback 1" and "Click Here")
     $('a').each((i, el) => {
       const href = $(el).attr('href') || '';
       const text = cleanText($(el).text()).toUpperCase();
       if (!href || href.includes('task=logout') || href.includes('javascript:') || href.includes('task=printack')) return;
 
       const isClickHere = text === 'CLICK HERE' || text.includes('CLICK HERE');
-      const isCardLink = isClickHere || href.includes('ksign=') || href.includes('feedbackId=') || href.includes('task=feedback');
-
-      if (!isCardLink) return;
-
-      let name = '';
-      const container = $(el).closest('.uk-card, .card, .panel, table, div');
-      if (container.length > 0) {
-        name = cleanText(container.find('h1, h2, h3, h4, h5, h6, .uk-card-title, .card-title, strong, b').first().text());
-        if (!name || name.toUpperCase() === 'CLICK HERE') {
+      if (isClickHere) {
+        const container = $(el).closest('.uk-card, .card, .panel, table, div');
+        let cardName = cleanText(container.find('h1, h2, h3, h4, h5, h6, .uk-card-title, .card-title, strong, b').first().text());
+        if (!cardName || cardName.toUpperCase() === 'CLICK HERE') {
           const clone = container.clone();
           clone.find('a, button').remove();
-          name = cleanText(clone.text());
+          cardName = cleanText(clone.text());
+        }
+
+        const idMatch = (cardName && cardName.match(/Feedback\s*(\d+)/i)) || href.match(/feedbackId=(\d+)/);
+        const id = idMatch ? idMatch[1] : String(feedbackTypes.length + 1);
+        let name = cardName && cardName.length < 50 && cardName.toUpperCase() !== 'CLICK HERE' 
+          ? cardName 
+          : `Feedback ${id}`;
+
+        if (name.includes('SAI VIDYA') || name.includes('Contineo') || name.toLowerCase().includes('dashboard')) {
+          name = `Feedback ${id}`;
+        }
+
+        if (!seenIds.has(id)) {
+          seenIds.add(id);
+          feedbackTypes.push({
+            id,
+            name,
+            url: href,
+          });
         }
       }
-
-      let id = '';
-      const idMatch = href.match(/feedbackId=(\d+)/) || (name && name.match(/Feedback\s*(\d+)/i));
-      if (idMatch) id = idMatch[1];
-      if (!id) id = String(feedbackTypes.length + 1);
-
-      if (!name || name.toUpperCase() === 'CLICK HERE' || name.length > 40) {
-        name = `Feedback ${id}`;
-      }
-
-      if (name.includes('SAI VIDYA') || name.includes('Contineo') || name.toLowerCase().includes('dashboard')) {
-        name = `Feedback ${id}`;
-      }
-
-      if (seenIds.has(id)) return;
-      seenIds.add(id);
-
-      feedbackTypes.push({
-        id,
-        name,
-        url: href,
-      });
     });
 
-    // 2. If no cards were found, but the page itself is already a direct feedback form with tables
+    // Step B: If no "Click Here" cards were found, search all feedback links across the page (including navbar dropdowns)
     if (feedbackTypes.length === 0) {
-      const directParsed = parseFeedbackPage(htmlStr);
-      if (directParsed.pending.length > 0 || directParsed.completed.length > 0 || directParsed.acknowledgementUrl) {
-        feedbackTypes.push({
-          id: '1',
-          name: directParsed.title || 'Feedback 1',
-          url: url,
-        });
-      }
+      $('a').each((i, el) => {
+        const href = $(el).attr('href') || '';
+        const text = cleanText($(el).text());
+        const isFeedbackLink = 
+          href.includes('feedbackId=') || 
+          href.includes('task=feedback') || 
+          href.includes('com_feedback') ||
+          text.toLowerCase().includes('feedback');
+
+        if (!isFeedbackLink || href.includes('task=logout') || href.includes('task=printack')) return;
+
+        let name = text;
+        const idMatch = href.match(/feedbackId=(\d+)/) || (name && name.match(/Feedback\s*(\d+)/i));
+        const id = idMatch ? idMatch[1] : String(feedbackTypes.length + 1);
+
+        if (!name || name.toLowerCase().includes('click') || name.length > 50) {
+          name = `Feedback ${id}`;
+        }
+
+        if (name.includes('SAI VIDYA') || name.includes('Contineo') || name.toLowerCase().includes('dashboard')) {
+          name = `Feedback ${id}`;
+        }
+
+        if (!seenIds.has(id)) {
+          seenIds.add(id);
+          feedbackTypes.push({
+            id,
+            name,
+            url: href,
+          });
+        }
+      });
+    }
+
+    // Step C: Fallback to Feedback 1 if nothing matched so student is never stuck on empty screen
+    if (feedbackTypes.length === 0) {
+      feedbackTypes.push({
+        id: '1',
+        name: 'Feedback 1',
+        url: `${BASE_URL}?option=com_feedback&controller=feedbackentry&task=feedback&feedbackId=1`,
+      });
     }
 
     const response = NextResponse.json({
