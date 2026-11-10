@@ -30,13 +30,30 @@ async function fetchPage(url, sessionCookie) {
       },
       maxRedirects: 3,
       validateStatus: () => true,
+      responseType: 'text',
     }),
     { retries: 2, baseDelayMs: 400 }
   );
 }
 
+function toHtmlString(html) {
+  if (typeof html === 'string') return html;
+  if (!html) return '';
+  if (Buffer.isBuffer(html)) return html.toString('utf-8');
+  if (html instanceof ArrayBuffer) return new TextDecoder().decode(html);
+  if (typeof html === 'object') {
+    try {
+      return JSON.stringify(html);
+    } catch {
+      return '';
+    }
+  }
+  return String(html || '');
+}
+
 function isLoginPage($, html) {
-  return $('input[name="username"]').length > 0 || (html || '').includes('Login to Your Account');
+  const htmlStr = toHtmlString(html);
+  return ($ && typeof $ === 'function' && $('input[name="username"]').length > 0) || htmlStr.includes('Login to Your Account') || htmlStr.includes('Session expired');
 }
 
 // ═══════════════════════════════════════════════════════

@@ -49,6 +49,7 @@ export async function POST(request) {
     let sessionCookie = '';
     let returnToken = '';
     let csrfTokenName = '';
+    let targetLoginUrl = ERP_BASE_URL;
 
     const pendingSessionRaw = request.cookies.get('erp_login_session')?.value;
     if (pendingSessionRaw) {
@@ -57,6 +58,9 @@ export async function POST(request) {
         sessionCookie = decoded.sessionCookie || '';
         returnToken = decoded.returnToken || '';
         csrfTokenName = decoded.csrfTokenName || '';
+        if (decoded.activeOrigin) {
+          targetLoginUrl = `${decoded.activeOrigin.replace(/\/+$/, '')}/parents/index.php`;
+        }
       } catch (e) {
         console.warn('Failed to parse pending login session cookie:', e.message);
       }
@@ -121,14 +125,14 @@ export async function POST(request) {
     if (returnToken) formData.append('return', returnToken);
     formData.append(csrfTokenName, '1');
 
-    const loginRes = await axios.post(ERP_BASE_URL, formData.toString(), {
+    const loginRes = await axios.post(targetLoginUrl, formData.toString(), {
       httpsAgent,
       timeout: 15000,
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'User-Agent': DEFAULT_USER_AGENT,
         'Cookie': sessionCookie,
-        'Referer': ERP_BASE_URL,
+        'Referer': targetLoginUrl,
       },
       maxRedirects: 0,
       validateStatus: (status) => status >= 200 && status < 400,

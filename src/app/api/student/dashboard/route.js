@@ -221,7 +221,8 @@ export async function scrapeStudentDashboard({
         const $ = cheerio.load(res.data);
 
         // Check if we are actually logged in
-        if ($('form#login-form').length > 0 || res.data.includes('Login to Your Account')) {
+        const resText = typeof res.data === 'string' ? res.data : (typeof res.data === 'object' && res.data !== null ? JSON.stringify(res.data) : String(res.data || ''));
+        if ($('form#login-form').length > 0 || resText.includes('Login to Your Account')) {
             throw new Error('Session expired or not logged in');
         }
 

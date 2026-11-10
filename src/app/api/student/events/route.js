@@ -148,7 +148,8 @@ export async function GET(request) {
           { retries: 2, baseDelayMs: 400 }
         );
 
-        if (res.data && !res.data.includes('Login to Your Account')) {
+        const resText = typeof res.data === 'string' ? res.data : (typeof res.data === 'object' && res.data !== null ? JSON.stringify(res.data) : String(res.data || ''));
+        if (resText && !resText.includes('Login to Your Account')) {
           parsedEvents = parseCalendarHtml(res.data);
         }
       } catch (err) {

@@ -45,6 +45,7 @@ async function fetchPage(url, sessionCookie, config = {}) {
       },
       maxRedirects: 0,
       validateStatus: () => true,
+      responseType: 'text',
       ...config,
     });
 
@@ -85,6 +86,7 @@ async function postForm(url, data, sessionCookie) {
     },
     maxRedirects: 0,
     validateStatus: () => true,
+    responseType: 'text',
   });
 
   currentCookie = updateCookies(currentCookie, res.headers['set-cookie']);
@@ -105,6 +107,7 @@ async function postForm(url, data, sessionCookie) {
       },
       maxRedirects: 0,
       validateStatus: () => true,
+      responseType: 'text',
     });
 
     currentCookie = updateCookies(currentCookie, res.headers['set-cookie']);
@@ -114,8 +117,33 @@ async function postForm(url, data, sessionCookie) {
   return res;
 }
 
+function toHtmlString(html) {
+  if (typeof html === 'string') return html;
+  if (!html) return '';
+  if (Buffer.isBuffer(html)) return html.toString('utf-8');
+  if (html instanceof ArrayBuffer) return new TextDecoder().decode(html);
+  if (typeof html === 'object') {
+    try {
+      return JSON.stringify(html);
+    } catch {
+      return '';
+    }
+  }
+  return String(html || '');
+}
+
 function isLoginPage($, html) {
-  return $('input[name="username"]').length > 0 || (html || '').includes('Login to Your Account');
+  const htmlStr = toHtmlString(html);
+  const hasLoginInput = Boolean($ && typeof $ === 'function' && $('input[name="username"]').length > 0);
+  return (
+    hasLoginInput ||
+    htmlStr.includes('Login to Your Account') ||
+    htmlStr.includes('session expired') ||
+    htmlStr.includes('Session expired') ||
+    htmlStr.includes('User session has expired') ||
+    htmlStr.includes('Not authenticated') ||
+    (htmlStr.includes('login') && htmlStr.includes('password') && htmlStr.includes('form'))
+  );
 }
 
 // Cookie Synchronization Helpers
@@ -163,24 +191,47 @@ function setUpdatedCookies(response, updatedCookieString) {
 
 // Robust scraper to parse feedback list details
 function parseFeedbackPage(html) {
-  const $ = cheerio.load(html);
+  const htmlStr = toHtmlString(html);
+  const $ = cheerio.load(htmlStr);
   const pending = [];
   const completed = [];
   let acknowledgementUrl = '';
 
-  // 1. Find acknowledgement link
-  $('a').each((i, el) => {
+  // 1. Find acknowledgement link or button
+  $('a, button, input[type="button"], input[type="submit"]').each((i, el) => {
     const href = $(el).attr('href') || '';
+    const onclick = $(el).attr('onclick') || '';
     const text = cleanText($(el).text()).toUpperCase();
-    if (href.includes('printacknowledgement') || href.includes('acknowledgement') || text.includes('ACKNOWLEDGEMENT')) {
-      acknowledgementUrl = href;
+    const val = cleanText($(el).attr('value')).toUpperCase();
+
+    if (
+      href.toLowerCase().includes('printacknowledgement') || 
+      href.toLowerCase().includes('acknowledgement') || 
+      href.toLowerCase().includes('printack') ||
+      onclick.toLowerCase().includes('acknowledgement') ||
+      onclick.toLowerCase().includes('printack') ||
+      text.includes('ACKNOWLEDGEMENT') ||
+      val.includes('ACKNOWLEDGEMENT')
+    ) {
+      if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
+        acknowledgementUrl = href;
+      } else if (onclick) {
+        const match = onclick.match(/href\s*=\s*['"]([^'"]+)['"]/) || 
+                      onclick.match(/open\s*\(\s*['"]([^'"]+)['"]/);
+        if (match) acknowledgementUrl = match[1];
+      }
     }
   });
 
   // 2. Parse faculty list tables
   $('table').each((tableIdx, table) => {
-    const captionText = cleanText($(table).find('caption').text()).toUpperCase();
-    const isCompletedTable = captionText.includes('COMPLETED');
+    const tableHeader = cleanText(
+      $(table).find('caption').text() + ' ' +
+      $(table).prev('h1, h2, h3, h4, h5, h6, .uk-card-title, .card-header, legend, div').text() + ' ' +
+      $(table).closest('.uk-card, .card, .panel, div').find('h1, h2, h3, h4, h5, h6, .uk-card-title, legend').first().text()
+    ).toUpperCase();
+
+    const isCompletedTable = tableHeader.includes('COMPLETED') && !tableHeader.includes('PENDING');
 
     $(table).find('tr').each((rowIdx, row) => {
       const cells = $(row).find('td');
@@ -189,6 +240,11 @@ function parseFeedbackPage(html) {
         const semSec = cleanText(cells.eq(1).text());
         const courseCode = cleanText(cells.eq(2).text());
         const courseName = cleanText(cells.eq(3).text());
+
+        // Skip headers mistakenly tagged as td
+        if (faculty.toUpperCase() === 'FACULTY' || courseCode.toUpperCase() === 'COURSE CODE') {
+          return;
+        }
 
         const item = {
           faculty,
@@ -211,7 +267,7 @@ function parseFeedbackPage(html) {
           const onclick = $(el).attr('onclick') || '';
           const txt = cleanText($(el).text()).toUpperCase();
 
-          if (txt.includes('GIVEN')) return;
+          if (txt.includes('GIVEN') || txt.includes('COMPLETED')) return;
 
           if (href && (href.includes('task=feedbackform') || href.includes('feedbackform') || href.includes('studentfeedback') || href.includes('questionschoices') || txt.includes('GIVE') || txt.includes('FEEDBACK'))) {
             giveFeedbackLink = href;
@@ -236,7 +292,7 @@ function parseFeedbackPage(html) {
             const onclick = $(el).attr('onclick') || '';
             const txt = (cleanText($(el).text()) || $(el).attr('value') || '').toUpperCase();
 
-            if (txt.includes('GIVEN')) return;
+            if (txt.includes('GIVEN') || txt.includes('COMPLETED')) return;
 
             if (onclick) {
               const match = onclick.match(/href\s*=\s*['"]([^'"]+)['"]/) || onclick.match(/location\s*=\s*['"]([^'"]+)['"]/);
@@ -247,7 +303,10 @@ function parseFeedbackPage(html) {
           });
         }
 
-        if (giveFeedbackLink) {
+        const rowText = cleanText($(row).text()).toUpperCase();
+        if (rowText.includes('FEEDBACK GIVEN') || rowText.includes('GIVEN')) {
+          completed.push(item);
+        } else if (giveFeedbackLink) {
           item.url = giveFeedbackLink;
           pending.push(item);
         } else {
@@ -300,11 +359,17 @@ function parseFeedbackPage(html) {
     });
   }
 
+  const pageText = cleanText($('body').text()).toUpperCase();
+  const isFinished = pageText.includes('THANK YOU VERY MUCH FOR COMPLETING THE FEEDBACK') || 
+                     pageText.includes('ALL FEEDBACKS COMPLETED') || 
+                     (uniqueCompleted.length > 0 && uniquePending.length === 0);
+
   return {
-    title,
+    title: title || 'Faculty Feedback',
     pending: uniquePending,
     completed: uniqueCompleted,
     acknowledgementUrl,
+    isFinished,
   };
 }
 
@@ -323,6 +388,7 @@ export async function GET(request) {
     let sessionCookie = cookieStrings.join('; ');
     const { searchParams } = new URL(request.url);
     const feedbackId = searchParams.get('feedbackId');
+    const feedbackUrlParam = searchParams.get('feedbackUrl');
     const action = searchParams.get('action');
 
     debugLog(`GET request received. feedbackId=${feedbackId}, action=${action}, cookieStore.length=${cookieStore.getAll().length}`);
@@ -335,46 +401,58 @@ export async function GET(request) {
 
     // 1. Fetch raw print acknowledgement
     if (feedbackId && action === 'acknowledgement') {
-      const listUrl = `${BASE_URL}?option=com_feedback&controller=feedbackentry&task=feedbacktypes`;
-      debugLog(`Fetching acknowledgement listUrl: ${listUrl}`);
-      let res = await fetchPage(listUrl, sessionCookie);
-      sessionCookie = updateCookies(sessionCookie, res.headers['set-cookie']);
-      let $ = cheerio.load(res.data);
+      let detailUrl = '';
+      if (feedbackUrlParam) {
+        detailUrl = getFullUrl(feedbackUrlParam);
+      } else {
+        const listUrl = `${BASE_URL}?option=com_feedback&controller=feedbackentry&task=feedbacktypes`;
+        debugLog(`Fetching acknowledgement listUrl: ${listUrl}`);
+        let res = await fetchPage(listUrl, sessionCookie);
+        sessionCookie = updateCookies(sessionCookie, res.headers['set-cookie']);
+        let $ = cheerio.load(toHtmlString(res.data));
 
-      const listIsLogin = isLoginPage($, res.data);
-      debugLog(`listUrl page length: ${res.data?.length}, isLogin: ${listIsLogin}`);
-
-      if (listIsLogin) {
-        debugLog(`Error: listUrl returned login page (session expired)`);
-        return new NextResponse('Session expired. Please log in again.', { status: 401 });
-      }
-
-      let targetHref = '';
-      $('a').each((i, el) => {
-        const href = $(el).attr('href') || '';
-        if (href.includes(`feedbackId=${feedbackId}`)) {
-          targetHref = href;
+        if (isLoginPage($, res.data)) {
+          debugLog(`Error: listUrl returned login page (session expired)`);
+          return new NextResponse('Session expired. Please log in again.', { status: 401 });
         }
-      });
 
-      if (!targetHref) {
-        targetHref = `?option=com_feedback&controller=feedbackentry&task=feedback&feedbackId=${feedbackId}`;
+        let targetHref = '';
+        $('a').each((i, el) => {
+          const href = $(el).attr('href') || '';
+          if (href.includes(`feedbackId=${feedbackId}`)) {
+            targetHref = href;
+            return false;
+          }
+        });
+
+        if (!targetHref) {
+          $('a').each((i, el) => {
+            const href = $(el).attr('href') || '';
+            const container = $(el).closest('.uk-card, .card, .panel, div');
+            if (container.text().includes(`Feedback ${feedbackId}`)) {
+              targetHref = href;
+              return false;
+            }
+          });
+        }
+
+        if (!targetHref) {
+          targetHref = `?option=com_feedback&controller=feedbackentry&task=feedback&feedbackId=${feedbackId}`;
+        }
+        detailUrl = getFullUrl(targetHref);
       }
 
-      const detailUrl = getFullUrl(targetHref);
       debugLog(`Fetching acknowledgement detailUrl: ${detailUrl}`);
       const detailRes = await fetchPage(detailUrl, sessionCookie);
       sessionCookie = updateCookies(sessionCookie, detailRes.headers['set-cookie']);
 
       const parsed = parseFeedbackPage(detailRes.data);
-      debugLog(`parsed detail page. has acknowledgementUrl: ${!!parsed.acknowledgementUrl}`);
-      
-      if (!parsed.acknowledgementUrl) {
-        debugLog(`Error: acknowledgementUrl not found in detail page`);
-        return new NextResponse('Acknowledgement form not available yet.', { status: 400 });
+      let ackUrlString = parsed.acknowledgementUrl;
+      if (!ackUrlString) {
+        ackUrlString = `?option=com_feedback&controller=feedbackentry&task=printacknowledgement&feedbackId=${feedbackId}`;
       }
 
-      const ackUrl = getFullUrl(parsed.acknowledgementUrl);
+      const ackUrl = getFullUrl(ackUrlString);
       debugLog(`Fetching acknowledgement ackUrl: ${ackUrl}`);
       const ackRes = await fetchPage(ackUrl, sessionCookie, { responseType: 'arraybuffer', timeout: 30000 });
       sessionCookie = updateCookies(sessionCookie, ackRes.headers['set-cookie']);
@@ -398,43 +476,53 @@ export async function GET(request) {
 
     // 2. Fetch specific feedback form details (faculty members list)
     if (feedbackId) {
-      const listUrl = `${BASE_URL}?option=com_feedback&controller=feedbackentry&task=feedbacktypes`;
-      debugLog(`Fetching feedback details listUrl: ${listUrl}`);
-      let res = await fetchPage(listUrl, sessionCookie);
-      sessionCookie = updateCookies(sessionCookie, res.headers['set-cookie']);
-      let $ = cheerio.load(res.data);
+      let url = '';
+      if (feedbackUrlParam) {
+        url = getFullUrl(feedbackUrlParam);
+      } else {
+        const listUrl = `${BASE_URL}?option=com_feedback&controller=feedbackentry&task=feedbacktypes`;
+        debugLog(`Fetching feedback details listUrl: ${listUrl}`);
+        let res = await fetchPage(listUrl, sessionCookie);
+        sessionCookie = updateCookies(sessionCookie, res.headers['set-cookie']);
+        let $ = cheerio.load(toHtmlString(res.data));
 
-      const listIsLogin = isLoginPage($, res.data);
-      debugLog(`listUrl page length: ${res.data?.length}, isLogin: ${listIsLogin}`);
-
-      if (listIsLogin) {
-        debugLog(`Error: listUrl returned login page (session expired)`);
-        return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
-      }
-
-      let targetHref = '';
-      $('a').each((i, el) => {
-        const href = $(el).attr('href') || '';
-        if (href.includes(`feedbackId=${feedbackId}`)) {
-          targetHref = href;
+        if (isLoginPage($, res.data)) {
+          debugLog(`Error: listUrl returned login page (session expired)`);
+          return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
         }
-      });
 
-      if (!targetHref) {
-        targetHref = `?option=com_feedback&controller=feedbackentry&task=feedback&feedbackId=${feedbackId}`;
+        let targetHref = '';
+        $('a').each((i, el) => {
+          const href = $(el).attr('href') || '';
+          if (href.includes(`feedbackId=${feedbackId}`)) {
+            targetHref = href;
+            return false;
+          }
+        });
+
+        if (!targetHref) {
+          $('a').each((i, el) => {
+            const href = $(el).attr('href') || '';
+            const container = $(el).closest('.uk-card, .card, .panel, div');
+            if (container.text().includes(`Feedback ${feedbackId}`)) {
+              targetHref = href;
+              return false;
+            }
+          });
+        }
+
+        if (!targetHref) {
+          targetHref = `?option=com_feedback&controller=feedbackentry&task=feedback&feedbackId=${feedbackId}`;
+        }
+        url = getFullUrl(targetHref);
       }
 
-      const url = getFullUrl(targetHref);
       debugLog(`Fetching feedback details url: ${url}`);
-
       const detailRes = await fetchPage(url, sessionCookie);
       sessionCookie = updateCookies(sessionCookie, detailRes.headers['set-cookie']);
-      const $detail = cheerio.load(detailRes.data);
+      const $detail = cheerio.load(toHtmlString(detailRes.data));
 
-      const detailIsLogin = isLoginPage($detail, detailRes.data);
-      debugLog(`detailRes page length: ${detailRes.data?.length}, isLogin: ${detailIsLogin}`);
-
-      if (detailIsLogin) {
+      if (isLoginPage($detail, detailRes.data)) {
         debugLog(`Error: detailRes returned login page (session expired)`);
         return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
       }
@@ -442,14 +530,17 @@ export async function GET(request) {
       const parsed = parseFeedbackPage(detailRes.data);
       debugLog(`parsed detail page. pending: ${parsed.pending.length}, completed: ${parsed.completed.length}`);
 
+      const hasAck = !!parsed.acknowledgementUrl || parsed.isFinished || (parsed.completed.length > 0 && parsed.pending.length === 0);
+
       const response = NextResponse.json({
         success: true,
         data: {
           title: parsed.title || `Feedback ${feedbackId}`,
           feedbackId,
+          feedbackUrl: url,
           pending: parsed.pending,
           completed: parsed.completed,
-          hasAcknowledgement: !!parsed.acknowledgementUrl,
+          hasAcknowledgement: hasAck,
         }
       });
       setUpdatedCookies(response, sessionCookie);
@@ -460,53 +551,79 @@ export async function GET(request) {
     const url = `${BASE_URL}?option=com_feedback&controller=feedbackentry&task=feedbacktypes`;
     const res = await fetchPage(url, sessionCookie);
     sessionCookie = updateCookies(sessionCookie, res.headers['set-cookie']);
-    const $ = cheerio.load(res.data);
+    const $ = cheerio.load(toHtmlString(res.data));
 
     if (isLoginPage($, res.data)) {
       return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
     }
 
     const feedbackTypes = [];
+    const seenIds = new Set();
+
     $('a').each((i, el) => {
       const href = $(el).attr('href') || '';
       const text = cleanText($(el).text());
-      if (href.includes('feedbackId=') && text) {
-        const idMatch = href.match(/feedbackId=(\d+)/);
-        let name = text;
-        if (name.toLowerCase() === 'click here' || !name) {
-          const container = $(el).closest('.uk-card, .card, .panel, div, td, tr');
-          let heading = '';
-          if (container.length > 0) {
-            heading = cleanText(container.find('h1, h2, h3, h4, h5, h6, .uk-card-title, .card-title, .title, strong, b').first().text());
-          }
-          if (!heading) {
-            let parent = $(el).parent();
-            for (let depth = 0; depth < 3; depth++) {
-              if (!parent.length) break;
-              heading = cleanText(parent.find('h1, h2, h3, h4, h5, h6, strong, b').first().text());
-              if (heading) break;
-              parent = parent.parent();
-            }
-          }
-          if (heading && heading.toLowerCase() !== 'click here') {
-            name = heading;
-          }
-        }
+      const isFeedbackLink = 
+        href.includes('feedbackId=') || 
+        href.includes('task=feedback') || 
+        href.includes('com_feedback') ||
+        text.toLowerCase() === 'click here' ||
+        text.toLowerCase().includes('feedback');
 
-        if (idMatch && idMatch[1] === '1') {
-          return;
-        }
-
-        if (!name || name.toLowerCase() === 'click here') {
-          name = `Feedback ${idMatch ? idMatch[1] : i + 1}`;
-        }
-
-        feedbackTypes.push({
-          id: idMatch ? idMatch[1] : '',
-          name: name,
-          url: href,
-        });
+      if (!isFeedbackLink || href.includes('task=logout') || href.includes('task=feedbacktypes') || href.includes('task=printack')) {
+        return;
       }
+
+      const idMatch = href.match(/feedbackId=(\d+)/);
+      let id = idMatch ? idMatch[1] : '';
+
+      let name = '';
+      const container = $(el).closest('.uk-card, .card, .panel, table, tr, td, div');
+      if (container.length > 0) {
+        name = cleanText(container.find('h1, h2, h3, h4, h5, h6, .uk-card-title, .card-title, .title, strong, b').first().text());
+      }
+      if (!name) {
+        let parent = $(el).parent();
+        for (let depth = 0; depth < 3; depth++) {
+          if (!parent.length) break;
+          name = cleanText(parent.find('h1, h2, h3, h4, h5, h6, strong, b').first().text());
+          if (name) break;
+          parent = parent.parent();
+        }
+      }
+      if (!name || name.toLowerCase() === 'click here') {
+        name = text && text.toLowerCase() !== 'click here' ? text : '';
+      }
+
+      if (!id && name) {
+        const nameIdMatch = name.match(/Feedback\s*(\d+)/i) || name.match(/(\d+)/);
+        if (nameIdMatch) {
+          id = nameIdMatch[1];
+        }
+      }
+
+      if (!id) {
+        id = String(feedbackTypes.length + 1);
+      }
+
+      if (!name || name.toLowerCase() === 'click here') {
+        name = `Feedback ${id}`;
+      }
+
+      if (name.includes('SAI VIDYA') || name.includes('Contineo') || name.toLowerCase().includes('dashboard')) {
+        name = `Feedback ${id}`;
+      }
+
+      if (seenIds.has(id)) {
+        return;
+      }
+      seenIds.add(id);
+
+      feedbackTypes.push({
+        id,
+        name,
+        url: href,
+      });
     });
 
     const response = NextResponse.json({
@@ -567,10 +684,20 @@ export async function POST(request) {
       let form = null;
       forms.each((idx, el) => {
         const f = $formPage(el);
-        if (f.find('input[type="radio"]').length > 0 || f.find('input[name="teacherId"]').length > 0) {
+        if (
+          f.find('input[type="radio"]').length > 0 || 
+          f.find('input[name="teacherId"]').length > 0 ||
+          f.attr('id') === 'adminForm' ||
+          f.attr('name') === 'adminForm' ||
+          f.find('input[name="task"]').length > 0
+        ) {
           form = f;
         }
       });
+
+      if (!form && forms.length > 0) {
+        form = forms.first();
+      }
 
       if (!form) {
         debugLog(`POST single Error: feedback form not found on page`);

@@ -36,15 +36,21 @@ export default function FeedbackPage() {
         return;
       }
       const json = await res.json();
-      if (!json.success) throw new Error(json.error || "Failed to load feedbacks");
+      if (!json.success) {
+        if (json.error?.toLowerCase().includes("session expired") || json.error?.toLowerCase().includes("unauthorized")) {
+          router.push("/");
+          return;
+        }
+        throw new Error(json.error || "Failed to load feedbacks");
+      }
 
       setFeedbackTypes(json.data.feedbackTypes || []);
       
       // Auto-select first feedback if available
       if (json.data.feedbackTypes?.length > 0) {
-        const firstId = json.data.feedbackTypes[0].id;
-        setSelectedId(firstId);
-        fetchFeedbackDetails(firstId);
+        const firstFb = json.data.feedbackTypes[0];
+        setSelectedId(firstFb.id);
+        fetchFeedbackDetails(firstFb.id, firstFb.url);
       } else {
         setLoading(false);
       }
@@ -54,18 +60,29 @@ export default function FeedbackPage() {
     }
   }
 
-  async function fetchFeedbackDetails(id) {
+  async function fetchFeedbackDetails(id, url) {
     if (!id) return;
     setDetailsLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/student/feedback?feedbackId=${id}`, { cache: "no-store" });
+      const fb = feedbackTypes.find(f => f.id === id);
+      const targetUrl = url || fb?.url;
+      const queryUrl = targetUrl 
+        ? `/api/student/feedback?feedbackId=${encodeURIComponent(id)}&feedbackUrl=${encodeURIComponent(targetUrl)}`
+        : `/api/student/feedback?feedbackId=${encodeURIComponent(id)}`;
+      const res = await fetch(queryUrl, { cache: "no-store" });
       if (res.status === 401) {
         router.push("/");
         return;
       }
       const json = await res.json();
-      if (!json.success) throw new Error(json.error || "Failed to fetch feedback details");
+      if (!json.success) {
+        if (json.error?.toLowerCase().includes("session expired") || json.error?.toLowerCase().includes("unauthorized")) {
+          router.push("/");
+          return;
+        }
+        throw new Error(json.error || "Failed to fetch feedback details");
+      }
 
       setFeedbackData(json.data);
     } catch (err) {
@@ -78,7 +95,8 @@ export default function FeedbackPage() {
 
   const handleFeedbackSelect = (id) => {
     setSelectedId(id);
-    fetchFeedbackDetails(id);
+    const fb = feedbackTypes.find(f => f.id === id);
+    fetchFeedbackDetails(id, fb?.url);
   };
 
   const startAutomation = async () => {
@@ -142,7 +160,10 @@ export default function FeedbackPage() {
       
       // Finally, check for acknowledgement availability
       try {
-        const refreshRes = await fetch(`/api/student/feedback?feedbackId=${selectedId}`, { cache: "no-store" });
+        const fb = feedbackTypes.find(f => f.id === selectedId);
+        const targetUrl = feedbackData?.feedbackUrl || fb?.url;
+        const fbUrlParam = targetUrl ? `&feedbackUrl=${encodeURIComponent(targetUrl)}` : "";
+        const refreshRes = await fetch(`/api/student/feedback?feedbackId=${encodeURIComponent(selectedId)}${fbUrlParam}`, { cache: "no-store" });
         if (refreshRes.ok) {
           const refreshJson = await refreshRes.json();
           if (refreshJson.success) {
@@ -161,8 +182,10 @@ export default function FeedbackPage() {
 
   const handleDownloadAcknowledgement = () => {
     if (!selectedId) return;
-    // Open acknowledgement page in new window to print/save
-    window.open(`/api/student/feedback?feedbackId=${selectedId}&action=acknowledgement`, "_blank");
+    const fb = feedbackTypes.find(f => f.id === selectedId);
+    const targetUrl = feedbackData?.feedbackUrl || fb?.url;
+    const fbUrlParam = targetUrl ? `&feedbackUrl=${encodeURIComponent(targetUrl)}` : "";
+    window.open(`/api/student/feedback?feedbackId=${encodeURIComponent(selectedId)}&action=acknowledgement${fbUrlParam}`, "_blank");
   };
 
   const ratingOptions = [

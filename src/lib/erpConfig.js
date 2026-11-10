@@ -29,10 +29,10 @@ export function createHttpsAgent(options = {}) {
     const agent = new https.Agent({
       rejectUnauthorized: false,
       keepAlive: true,
-      keepAliveMsecs: 120000, // 2 minutes socket persistence
+      keepAliveMsecs: 4000,   // match upstream Apache timeout=5 to prevent stale 502 socket reuse
       maxSockets: 32,         // expand concurrency pool for multi-request throughput
-      maxFreeSockets: 16,
-      timeout: 20000,
+      maxFreeSockets: 8,
+      timeout: 15000,
       ...options,
     });
     if (Object.keys(options).length === 0) {
