@@ -1014,7 +1014,7 @@ Sai Vidya Institute of Technology`;
                   type="email"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="e.g. rishabpy.25ds@saividya.ac.in"
+                  placeholder="student@saividya.ac.in"
                   required
                   style={{
                     width: "100%",
