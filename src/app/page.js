@@ -323,9 +323,33 @@ export default function Home() {
           <p className="app-login-subtitle">Student ERP</p>
         </div>
 
+        {/* Fast Link to Letter Portal */}
+        <div style={{ textAlign: "center", marginBottom: "16px" }}>
+          <Link
+            href="/letters"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "rgba(37, 99, 235, 0.12)",
+              border: "1px solid rgba(59, 130, 246, 0.3)",
+              color: "#93c5fd",
+              padding: "8px 16px",
+              borderRadius: "20px",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              textDecoration: "none",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <span>Need Leave or Bonafide Letter? Open Portal</span>
+            <span style={{ fontSize: "0.9rem" }}>→</span>
+          </Link>
+        </div>
+
         {/* Login Form Card */}
         <form onSubmit={handleLogin} method="post" autoComplete="on" className="app-login-card">
-          {/* USN Field */}
+              {/* USN Field */}
           <div className="app-login-field">
             <label className="app-login-label" htmlFor="login-usn">USN</label>
             <input
