@@ -3747,49 +3747,74 @@ body {
 .mobile-bottom-nav {
   position: fixed;
   left: 50%;
-  bottom: max(10px, env(safe-area-inset-bottom));
+  bottom: max(12px, env(safe-area-inset-bottom));
   z-index: 100;
-  width: min(720px, calc(100% - 20px));
-  min-height: 56px;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 3px;
-  padding: 5px 6px;
-  background: rgba(18, 20, 24, 0.94);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--line-strong);
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  width: min(720px, calc(100% - 16px));
+  min-height: 58px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  padding: 5px 6px !important;
+  background: rgba(14, 18, 28, 0.78) !important;
+  backdrop-filter: blur(28px) saturate(210%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(210%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.13) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.22) !important;
   transform: translateX(-50%) translateZ(0);
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-x: contain !important;
+}
+
+.mobile-bottom-nav::-webkit-scrollbar {
+  display: none !important;
 }
 
 .mobile-nav-item {
-  min-width: 0;
-  min-height: 46px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 4px 2px;
-  color: var(--muted);
-  border-radius: 10px;
-  font-size: 0.62rem;
-  font-weight: 600;
-  line-height: 1.1;
-  transition: color 150ms ease, background 150ms ease;
+  flex: 1 0 auto !important;
+  min-width: 64px !important;
+  min-height: 48px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  padding: 5px 8px !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  border-radius: 22px !important;
+  border: 1px solid transparent !important;
+  font-size: 0.63rem !important;
+  font-weight: 600 !important;
+  line-height: 1.1 !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 .mobile-nav-item:hover {
-  color: var(--ink);
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.05) !important;
 }
 
 .mobile-nav-item.active {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: none;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(37, 99, 235, 0.24) 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  border-radius: 22px !important;
+}
+
+.mobile-nav-item.active .mobile-nav-icon {
+  color: #38bdf8 !important;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.6)) !important;
+  transform: translateY(-1px) scale(1.05) !important;
+  background: transparent !important;
 }
 
 .mobile-nav-icon {
@@ -3797,10 +3822,10 @@ body {
   height: 22px;
   display: grid;
   place-items: center;
-  border-radius: 999px;
   color: currentColor;
   background: transparent;
   font-size: 0.72rem;
+  transition: transform 0.2s ease, filter 0.2s ease;
 }
 
 .mobile-app-content>.page-shell {
@@ -4974,12 +4999,13 @@ body {
   }
 
   .mobile-bottom-nav {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    border-radius: 20px;
+    display: flex !important;
+    overflow-x: auto !important;
+    border-radius: 28px !important;
   }
 
   .mobile-nav-item {
-    font-size: 0.62rem;
+    font-size: 0.63rem;
   }
 
   .mobile-nav-icon {
@@ -4995,21 +5021,22 @@ body {
 
 @media (max-width: 420px) {
   .mobile-bottom-nav {
-    width: calc(100% - 10px);
-    gap: 1px;
-    padding: 5px 2px;
-    min-height: 56px;
+    width: calc(100% - 12px) !important;
+    padding: 5px 6px !important;
+    min-height: 58px !important;
   }
 
   .mobile-nav-item {
-    font-size: 0.56rem;
-    min-height: 44px;
-    padding: 3px 0;
+    font-size: 0.62rem !important;
+    min-height: 48px !important;
+    min-width: 62px !important;
+    border-radius: 22px !important;
+    padding: 5px 6px !important;
   }
 
   .mobile-nav-icon {
-    width: 19px;
-    height: 19px;
+    width: 20px !important;
+    height: 20px !important;
   }
 
   .mobile-logout {
@@ -7191,31 +7218,61 @@ select:focus {
   color: var(--primary) !important;
 }
 
-/* Floating Ergonomic Bottom Nav */
+/* Floating Ergonomic Bottom Nav — VisionOS Glassmorphism & Concentric Curve */
 .mobile-bottom-nav {
-  background: rgba(18, 22, 30, 0.88) !important;
-  backdrop-filter: blur(20px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
-  border: 1px solid var(--line-strong) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
-  border-radius: 24px !important;
-  padding: 6px 4px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  background: rgba(14, 18, 28, 0.78) !important;
+  backdrop-filter: blur(28px) saturate(210%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(210%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.13) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.22) !important;
+  border-radius: 28px !important;
+  padding: 5px 6px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.mobile-bottom-nav::-webkit-scrollbar {
+  display: none !important;
 }
 
 .mobile-nav-item {
-  color: var(--muted) !important;
-  transition: all 0.2s var(--ease-spring) !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   font-weight: 600 !important;
+  flex: 1 0 auto !important;
+  min-width: 64px !important;
+  min-height: 48px !important;
+  border-radius: 22px !important;
+  border: 1px solid transparent !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+}
+
+.mobile-nav-item:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.05) !important;
 }
 
 .mobile-nav-item.active {
-  color: var(--primary) !important;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(37, 99, 235, 0.24) 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  border-radius: 22px !important;
 }
 
 .mobile-nav-item.active .mobile-nav-icon {
-  background: rgba(56, 189, 248, 0.12) !important;
-  border-radius: 12px !important;
-  transform: translateY(-2px) !important;
+  background: transparent !important;
+  color: #38bdf8 !important;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.6)) !important;
+  transform: translateY(-1px) scale(1.05) !important;
 }
 
 .mobile-app-content .panel,
@@ -7596,16 +7653,16 @@ select:focus {
     padding: 8px 10px !important;
   }
   .mobile-bottom-nav {
-    grid-template-columns: repeat(8, minmax(58px, 1fr));
-    width: calc(100% - 16px);
-    max-width: 720px;
-    overflow-x: auto;
-    justify-content: start;
-    scrollbar-width: none;
-    padding: 5px;
+    display: flex !important;
+    flex-direction: row !important;
+    width: calc(100% - 16px) !important;
+    max-width: 720px !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    padding: 5px 6px !important;
   }
-  .mobile-bottom-nav::-webkit-scrollbar { display: none; }
-  .mobile-nav-item { min-height: 48px; font-size: .65rem; }
+  .mobile-bottom-nav::-webkit-scrollbar { display: none !important; }
+  .mobile-nav-item { min-height: 48px !important; font-size: 0.63rem !important; }
   .mobile-app-content>.page-shell { padding-bottom: 24px; }
 }
 

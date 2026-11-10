@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { CalendarDays, Clock, FileText, Home, IdCard, RefreshCw, Settings, Star, UserRound } from "lucide-react";
 import { apiFetch, clearClientSession } from "@/lib/clientApi";
 
@@ -81,6 +81,18 @@ export default function AppShell({ children }) {
     router.replace("/");
   };
 
+  const activeItemRef = useRef(null);
+
+  useEffect(() => {
+    if (activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, [pathname]);
+
   return (
     <div className="mobile-app-shell">
       <header className="mobile-topbar">
@@ -115,7 +127,12 @@ export default function AppShell({ children }) {
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return (
-            <Link key={item.href} href={item.href} className={`mobile-nav-item${active ? " active" : ""}`}>
+            <Link
+              key={item.href}
+              ref={active ? activeItemRef : null}
+              href={item.href}
+              className={`mobile-nav-item${active ? " active" : ""}`}
+            >
               <span className="mobile-nav-icon" aria-hidden="true"><item.icon size={19} strokeWidth={2} /></span>
               <span>{item.label}</span>
             </Link>
