@@ -7680,3 +7680,15 @@ button[style*="border-radius: 16px"]:active,
 button[style*="border-radius: 20px"]:active {
   transform: scale(0.97) !important;
 }
+
+@keyframes drawerSlideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
