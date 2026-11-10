@@ -464,7 +464,17 @@ export async function GET(request) {
                       (ackRes.data instanceof ArrayBuffer && new TextDecoder().decode(ackRes.data.slice(0, 4)) === '%PDF')
                     ));
 
-      const response = new NextResponse(ackRes.data, {
+      let bodyData = ackRes.data;
+      if (!isPdf) {
+        let htmlContent = Buffer.isBuffer(bodyData) ? bodyData.toString('utf-8') : String(bodyData || '');
+        const baseHref = ERP_BASE_URL.replace(/\/index\.php$/i, '/');
+        if (htmlContent.includes('<head') && !htmlContent.includes('<base')) {
+          htmlContent = htmlContent.replace(/<head[^>]*>/i, `$&<base href="${baseHref}" />`);
+          bodyData = Buffer.from(htmlContent, 'utf-8');
+        }
+      }
+
+      const response = new NextResponse(bodyData, {
         headers: {
           'Content-Type': isPdf ? 'application/pdf' : 'text/html; charset=utf-8',
           'Content-Disposition': `inline; filename="feedback_acknowledgement_${feedbackId}.${isPdf ? 'pdf' : 'html'}"`,
