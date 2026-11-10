@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Clock, Home, IdCard, Info, RefreshCw, Settings, Star, UserRound, Map } from "lucide-react";
+import { CalendarDays, Clock, FileText, Home, IdCard, RefreshCw, Settings, Star, UserRound } from "lucide-react";
 import { apiFetch, clearClientSession } from "@/lib/clientApi";
 
 const NAV_ITEMS = [
@@ -11,8 +11,9 @@ const NAV_ITEMS = [
   { href: "/dashboard/timetable", label: "Timetable", icon: Clock },
   { href: "/dashboard/attendance", label: "Attendance", icon: UserRound },
   { href: "/dashboard/events", label: "Calendar", icon: CalendarDays },
-  { href: "/dashboard/idcard", label: "ID Card", icon: IdCard },
+  { href: "/dashboard/letters", label: "Letters", icon: FileText },
   { href: "/dashboard/results", label: "Results", icon: Star },
+  { href: "/dashboard/idcard", label: "ID Card", icon: IdCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
@@ -27,6 +28,8 @@ const PAGE_META = [
   { match: "/dashboard/bunk", title: "Attendance Planner", eyebrow: "Calculator" },
   { match: "/dashboard/marketplace", title: "Task Marketplace", eyebrow: "Campus work" },
   { match: "/dashboard/connect", title: "Campus Connect", eyebrow: "Student chat" },
+  { match: "/letters", title: "Letter Approval", eyebrow: "Sai Vidya Portal" },
+  { match: "/dashboard/letters", title: "Letter Approval", eyebrow: "Sai Vidya Portal" },
   { match: "/dashboard", title: "Command Center", eyebrow: "SVIT ERP" },
 ];
 
@@ -62,18 +65,7 @@ export default function AppShell({ children }) {
       document.documentElement.classList.add("is-apk");
     }
 
-    // 2. Globally disable long-press context menu / link preview tooltips in mobile viewports
-    const handleContextMenu = (e) => {
-      // Allow context menu for actual text input fields but disable it on navigation/buttons
-      if (e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
-        e.preventDefault();
-      }
-    };
-
-    window.addEventListener("contextmenu", handleContextMenu, { passive: false });
-    return () => {
-      window.removeEventListener("contextmenu", handleContextMenu);
-    };
+    return undefined;
   }, []);
 
   const meta = useMemo(() => {

@@ -29,6 +29,17 @@ export async function GET() {
       }
     }
 
+    // 1b. Check if student logged in via Sai Vidya Letter Portal
+    const lettersUserCookie = cookieStore.get('svit_letters_user')?.value;
+    if (lettersUserCookie) {
+      try {
+        const u = JSON.parse(lettersUserCookie);
+        if (u?.profilePhoto) {
+          return NextResponse.json({ success: true, photo: u.profilePhoto, fromLetters: true });
+        }
+      } catch {}
+    }
+
     const cookieStrings = [];
     cookieStore.getAll().forEach((cookie) => {
       if (cookie.name !== 'dashboard_url') {

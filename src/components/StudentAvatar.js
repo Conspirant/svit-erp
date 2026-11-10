@@ -37,13 +37,27 @@ function InstagramSilhouette({ className = "" }) {
 export default function StudentAvatar({ name = "Student", photo = "", size = 72, className = "" }) {
   const [imgError, setImgError] = useState(false);
 
-  // Filter out empty or college logo fallback
-  const isLogo = typeof photo === "string" && (photo.toLowerCase().includes("logo") || photo.toLowerCase().includes("svit-logo"));
-  const hasValidPhoto = photo && !isLogo && !imgError;
+  const trimmedPhoto = typeof photo === "string" ? photo.trim() : "";
+  const isInvalid =
+    !trimmedPhoto ||
+    trimmedPhoto === "null" ||
+    trimmedPhoto === "undefined" ||
+    trimmedPhoto.length < 10;
+  const isLogo =
+    trimmedPhoto.toLowerCase().includes("logo") ||
+    trimmedPhoto.toLowerCase().includes("svit-logo");
+  const hasValidPhoto = !isInvalid && !isLogo && !imgError;
 
-  const isUrl = typeof photo === "string" && (photo.startsWith("data:") || photo.startsWith("http://") || photo.startsWith("https://") || photo.startsWith("/"));
+  const isUrl =
+    hasValidPhoto &&
+    (trimmedPhoto.startsWith("data:") ||
+      trimmedPhoto.startsWith("http://") ||
+      trimmedPhoto.startsWith("https://") ||
+      trimmedPhoto.startsWith("/"));
   const displaySrc = hasValidPhoto
-    ? (isUrl ? photo : `data:image/jpeg;base64,${photo}`)
+    ? isUrl
+      ? trimmedPhoto
+      : `data:image/jpeg;base64,${trimmedPhoto}`
     : null;
 
   return (
@@ -60,10 +74,11 @@ export default function StudentAvatar({ name = "Student", photo = "", size = 72,
         placeItems: "center",
       }}
     >
-      {hasValidPhoto ? (
+      {hasValidPhoto && displaySrc ? (
         <img
           src={displaySrc}
-          alt={name}
+          alt=""
+          aria-hidden="true"
           className="student-avatar-img"
           style={{
             width: "100%",
