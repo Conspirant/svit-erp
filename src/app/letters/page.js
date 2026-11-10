@@ -3034,18 +3034,6 @@ Sai Vidya Institute of Technology`;
                     </div>
                   </div>
                 )}
-                            fontSize: "0.76rem",
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            transition: "all 0.15s ease",
-                          }}
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* FEATURE 4: DYNAMIC SUBJECTS BUILDER FOR ATTENDANCE CONSIDERATION */}
                 {(modalType === "Attendance Consideration Request" || modalType === "Permission for Special/Makeup Exam") && (
