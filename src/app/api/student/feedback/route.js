@@ -518,17 +518,53 @@ export async function GET(request) {
       }
 
       debugLog(`Fetching feedback details url: ${url}`);
-      const detailRes = await fetchPage(url, sessionCookie);
+      let detailRes = await fetchPage(url, sessionCookie);
       sessionCookie = updateCookies(sessionCookie, detailRes.headers['set-cookie']);
-      const $detail = cheerio.load(toHtmlString(detailRes.data));
+      let $detail = cheerio.load(toHtmlString(detailRes.data));
 
       if (isLoginPage($detail, detailRes.data)) {
         debugLog(`Error: detailRes returned login page (session expired)`);
         return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
       }
 
-      const parsed = parseFeedbackPage(detailRes.data);
+      let parsed = parseFeedbackPage(detailRes.data);
       debugLog(`parsed detail page. pending: ${parsed.pending.length}, completed: ${parsed.completed.length}`);
+
+      // If no tables were found, check if this is an intermediate selection dashboard with a "Click Here" link!
+      if (parsed.pending.length === 0 && parsed.completed.length === 0) {
+        let nestedHref = '';
+        $detail('a').each((_, a) => {
+          const txt = cleanText($detail(a).text()).toUpperCase();
+          const h = $detail(a).attr('href') || '';
+          if (txt === 'CLICK HERE' || (txt.includes('CLICK') && !h.includes('logout'))) {
+            nestedHref = h;
+            return false;
+          }
+        });
+
+        if (!nestedHref) {
+          $detail('a').each((_, a) => {
+            const h = $detail(a).attr('href') || '';
+            const containerTxt = cleanText($detail(a).closest('.uk-card, .card, div').text()).toUpperCase();
+            if (containerTxt.includes(`FEEDBACK ${feedbackId}`) && h && !h.includes('logout')) {
+              nestedHref = h;
+              return false;
+            }
+          });
+        }
+
+        if (nestedHref) {
+          const targetNestedUrl = getFullUrl(nestedHref);
+          debugLog(`Intermediate dashboard detected, following Click Here link: ${targetNestedUrl}`);
+          const nestedRes = await fetchPage(targetNestedUrl, sessionCookie);
+          sessionCookie = updateCookies(sessionCookie, nestedRes.headers['set-cookie']);
+          const nestedParsed = parseFeedbackPage(nestedRes.data);
+          if (nestedParsed.pending.length > 0 || nestedParsed.completed.length > 0 || nestedParsed.acknowledgementUrl) {
+            parsed = nestedParsed;
+            url = targetNestedUrl;
+          }
+        }
+      }
 
       const hasAck = !!parsed.acknowledgementUrl || parsed.isFinished || (parsed.completed.length > 0 && parsed.pending.length === 0);
 
@@ -551,7 +587,8 @@ export async function GET(request) {
     const url = `${BASE_URL}?option=com_feedback&controller=feedbackentry&task=feedbacktypes`;
     const res = await fetchPage(url, sessionCookie);
     sessionCookie = updateCookies(sessionCookie, res.headers['set-cookie']);
-    const $ = cheerio.load(toHtmlString(res.data));
+    const htmlStr = toHtmlString(res.data);
+    const $ = cheerio.load(htmlStr);
 
     if (isLoginPage($, res.data)) {
       return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
@@ -560,53 +597,37 @@ export async function GET(request) {
     const feedbackTypes = [];
     const seenIds = new Set();
 
+    // Strip top navbar and menus so dropdown items aren't mistaken for feedback forms
+    $('header, nav, .navbar, .uk-navbar, #menu, .menu, footer, .uk-nav').remove();
+
+    // 1. Look for feedback cards on the dashboard (e.g. card with "Feedback 1" and "Click Here")
     $('a').each((i, el) => {
       const href = $(el).attr('href') || '';
-      const text = cleanText($(el).text());
-      const isFeedbackLink = 
-        href.includes('feedbackId=') || 
-        href.includes('task=feedback') || 
-        href.includes('com_feedback') ||
-        text.toLowerCase() === 'click here' ||
-        text.toLowerCase().includes('feedback');
+      const text = cleanText($(el).text()).toUpperCase();
+      if (!href || href.includes('task=logout') || href.includes('javascript:') || href.includes('task=printack')) return;
 
-      if (!isFeedbackLink || href.includes('task=logout') || href.includes('task=feedbacktypes') || href.includes('task=printack')) {
-        return;
-      }
+      const isClickHere = text === 'CLICK HERE' || text.includes('CLICK HERE');
+      const isCardLink = isClickHere || href.includes('ksign=') || href.includes('feedbackId=') || href.includes('task=feedback');
 
-      const idMatch = href.match(/feedbackId=(\d+)/);
-      let id = idMatch ? idMatch[1] : '';
+      if (!isCardLink) return;
 
       let name = '';
-      const container = $(el).closest('.uk-card, .card, .panel, table, tr, td, div');
+      const container = $(el).closest('.uk-card, .card, .panel, table, div');
       if (container.length > 0) {
-        name = cleanText(container.find('h1, h2, h3, h4, h5, h6, .uk-card-title, .card-title, .title, strong, b').first().text());
-      }
-      if (!name) {
-        let parent = $(el).parent();
-        for (let depth = 0; depth < 3; depth++) {
-          if (!parent.length) break;
-          name = cleanText(parent.find('h1, h2, h3, h4, h5, h6, strong, b').first().text());
-          if (name) break;
-          parent = parent.parent();
-        }
-      }
-      if (!name || name.toLowerCase() === 'click here') {
-        name = text && text.toLowerCase() !== 'click here' ? text : '';
-      }
-
-      if (!id && name) {
-        const nameIdMatch = name.match(/Feedback\s*(\d+)/i) || name.match(/(\d+)/);
-        if (nameIdMatch) {
-          id = nameIdMatch[1];
+        name = cleanText(container.find('h1, h2, h3, h4, h5, h6, .uk-card-title, .card-title, strong, b').first().text());
+        if (!name || name.toUpperCase() === 'CLICK HERE') {
+          const clone = container.clone();
+          clone.find('a, button').remove();
+          name = cleanText(clone.text());
         }
       }
 
-      if (!id) {
-        id = String(feedbackTypes.length + 1);
-      }
+      let id = '';
+      const idMatch = href.match(/feedbackId=(\d+)/) || (name && name.match(/Feedback\s*(\d+)/i));
+      if (idMatch) id = idMatch[1];
+      if (!id) id = String(feedbackTypes.length + 1);
 
-      if (!name || name.toLowerCase() === 'click here') {
+      if (!name || name.toUpperCase() === 'CLICK HERE' || name.length > 40) {
         name = `Feedback ${id}`;
       }
 
@@ -614,9 +635,7 @@ export async function GET(request) {
         name = `Feedback ${id}`;
       }
 
-      if (seenIds.has(id)) {
-        return;
-      }
+      if (seenIds.has(id)) return;
       seenIds.add(id);
 
       feedbackTypes.push({
@@ -625,6 +644,18 @@ export async function GET(request) {
         url: href,
       });
     });
+
+    // 2. If no cards were found, but the page itself is already a direct feedback form with tables
+    if (feedbackTypes.length === 0) {
+      const directParsed = parseFeedbackPage(htmlStr);
+      if (directParsed.pending.length > 0 || directParsed.completed.length > 0 || directParsed.acknowledgementUrl) {
+        feedbackTypes.push({
+          id: '1',
+          name: directParsed.title || 'Feedback 1',
+          url: url,
+        });
+      }
+    }
 
     const response = NextResponse.json({
       success: true,

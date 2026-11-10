@@ -95,7 +95,16 @@ export default function Dashboard() {
         } catch { }
 
         if (dashJson?.success) {
-          setData(dashJson.data);
+          setData(prev => {
+            if (!prev) return dashJson.data;
+            const prevHasCie = Array.isArray(prev.cie) && prev.cie.some(c => Number(c.marks) > 0);
+            const newHasCie = Array.isArray(dashJson.data?.cie) && dashJson.data.cie.some(c => Number(c.marks) > 0);
+            return {
+              ...prev,
+              ...dashJson.data,
+              cie: (!newHasCie && prevHasCie) ? prev.cie : (dashJson.data?.cie || prev.cie),
+            };
+          });
           try { sessionStorage.setItem('dashboard_data', JSON.stringify(dashJson.data)); } catch { }
 
           if (dashJson.data?.photoUrl && !localStorage.getItem('svit_idcard_photo')) {
@@ -115,7 +124,14 @@ export default function Dashboard() {
               .then((r) => (r.ok ? r.json() : null))
               .then((detJson) => {
                 if (detJson?.success && detJson.data) {
-                  setData(detJson.data);
+                  setData(prev => {
+                    if (!prev) return detJson.data;
+                    return {
+                      ...prev,
+                      ...detJson.data,
+                      cie: (Array.isArray(detJson.data.cie) && detJson.data.cie.length > 0) ? detJson.data.cie : prev.cie,
+                    };
+                  });
                   try { sessionStorage.setItem('dashboard_data', JSON.stringify(detJson.data)); } catch { }
                   window.dispatchEvent(new Event("attendanceChanged"));
                 }
@@ -146,8 +162,10 @@ export default function Dashboard() {
 
         if (ttJson?.success) {
           const list = Array.isArray(ttJson.data) ? ttJson.data : (ttJson.data?.timetable || []);
-          setTimetable(list);
-          try { sessionStorage.setItem('dashboard_timetable', JSON.stringify(list)); } catch { }
+          if (list.length > 0) {
+            setTimetable(list);
+            try { sessionStorage.setItem('dashboard_timetable', JSON.stringify(list)); } catch { }
+          }
         }
 
         // Background fetch photo and profile if missing
