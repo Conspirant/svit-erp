@@ -25,15 +25,13 @@ class EgressManager {
       .map((u) => u.trim().replace(/\/+$/, ''))
       .filter((u) => u && /^https?:\/\//i.test(u));
 
-    // Always ensure direct origin is available as an egress candidate
+    // Direct origin is always the canonical upstream
     if (!parsed.includes(DIRECT_ORIGIN)) {
-      parsed.push(DIRECT_ORIGIN);
-    }
-
-    // In non-production or when specified, include the Vercel cloud proxy as a resilient egress node
-    const VERCEL_GATEWAY = 'https://svit-erp.vercel.app/api/erp-proxy';
-    if (!parsed.includes(VERCEL_GATEWAY) && process.env.NODE_ENV !== 'production') {
-      parsed.push(VERCEL_GATEWAY);
+      if (parsed.length === 0) {
+        parsed.push(DIRECT_ORIGIN);
+      } else {
+        parsed.push(DIRECT_ORIGIN);
+      }
     }
 
     this.nodes = parsed.map((url) => ({
@@ -113,7 +111,7 @@ class EgressManager {
    * Resolve an ERP path to a full URL using the chosen or best egress origin
    */
   resolveUrl(path, preferredOrigin = null) {
-    const origin = preferredOrigin || this.getNextOrigin();
+    const origin = preferredOrigin || (this.nodes.length > 0 ? this.nodes[0].url : DIRECT_ORIGIN);
     if (!path) return `${origin}/parents/index.php`;
 
     if (/^https?:\/\//i.test(path)) {

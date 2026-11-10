@@ -477,6 +477,8 @@ export async function GET(request) {
     // 2. Fetch specific feedback form details (faculty members list)
     if (feedbackId) {
       let url = '';
+      let detailRes = null;
+      let parsed = null;
       if (feedbackUrlParam) {
         url = getFullUrl(feedbackUrlParam);
       } else {
@@ -491,47 +493,61 @@ export async function GET(request) {
           return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
         }
 
-        let targetHref = '';
-        $('a').each((i, el) => {
-          const href = $(el).attr('href') || '';
-          if (href.includes(`feedbackId=${feedbackId}`)) {
-            targetHref = href;
-            return false;
-          }
-        });
+        const listParsed = parseFeedbackPage(res.data);
+        const ackMatch = listParsed.acknowledgementUrl?.match(/feedbackId=(\d+)/);
+        const titleMatch = listParsed.title?.match(/Feedback\s*(\d+)/i);
+        const extractedId = ackMatch ? ackMatch[1] : (titleMatch ? titleMatch[1] : '');
 
-        if (!targetHref) {
+        if ((listParsed.pending.length > 0 || listParsed.completed.length > 0) && (!extractedId || extractedId === String(feedbackId))) {
+          url = listUrl;
+          detailRes = res;
+          parsed = listParsed;
+        } else {
+          let targetHref = '';
           $('a').each((i, el) => {
             const href = $(el).attr('href') || '';
-            const container = $(el).closest('.uk-card, .card, .panel, div');
-            if (container.text().includes(`Feedback ${feedbackId}`)) {
+            if (href.includes(`feedbackId=${feedbackId}`)) {
               targetHref = href;
               return false;
             }
           });
-        }
 
-        if (!targetHref) {
-          targetHref = `?option=com_feedback&controller=feedbackentry&task=feedback&feedbackId=${feedbackId}`;
+          if (!targetHref) {
+            $('a').each((i, el) => {
+              const href = $(el).attr('href') || '';
+              const container = $(el).closest('.uk-card, .card, .panel, div');
+              if (container.text().includes(`Feedback ${feedbackId}`)) {
+                targetHref = href;
+                return false;
+              }
+            });
+          }
+
+          if (!targetHref) {
+            targetHref = `?option=com_feedback&controller=feedbackentry&task=feedback&feedbackId=${feedbackId}`;
+          }
+          url = getFullUrl(targetHref);
         }
-        url = getFullUrl(targetHref);
       }
 
-      debugLog(`Fetching feedback details url: ${url}`);
-      let detailRes = await fetchPage(url, sessionCookie);
-      sessionCookie = updateCookies(sessionCookie, detailRes.headers['set-cookie']);
-      let $detail = cheerio.load(toHtmlString(detailRes.data));
+      if (!parsed) {
+        debugLog(`Fetching feedback details url: ${url}`);
+        detailRes = await fetchPage(url, sessionCookie);
+        sessionCookie = updateCookies(sessionCookie, detailRes.headers['set-cookie']);
+        let $detail = cheerio.load(toHtmlString(detailRes.data));
 
-      if (isLoginPage($detail, detailRes.data)) {
-        debugLog(`Error: detailRes returned login page (session expired)`);
-        return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
+        if (isLoginPage($detail, detailRes.data)) {
+          debugLog(`Error: detailRes returned login page (session expired)`);
+          return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
+        }
+
+        parsed = parseFeedbackPage(detailRes.data);
       }
-
-      let parsed = parseFeedbackPage(detailRes.data);
       debugLog(`parsed detail page. pending: ${parsed.pending.length}, completed: ${parsed.completed.length}`);
 
       // If no tables were found, check if this is an intermediate selection dashboard with a "Click Here" link!
       if (parsed.pending.length === 0 && parsed.completed.length === 0) {
+        const $detail = cheerio.load(toHtmlString(detailRes?.data));
         let nestedHref = '';
         $detail('a').each((_, a) => {
           const txt = cleanText($detail(a).text()).toUpperCase();
@@ -600,9 +616,18 @@ export async function GET(request) {
     // Check if the page itself is ALREADY a direct feedback table
     const directParsed = parseFeedbackPage(htmlStr);
     if (directParsed.pending.length > 0 || directParsed.completed.length > 0) {
+      let extractedId = '1';
+      const ackMatch = directParsed.acknowledgementUrl?.match(/feedbackId=(\d+)/);
+      const titleMatch = directParsed.title?.match(/Feedback\s*(\d+)/i);
+      if (ackMatch) {
+        extractedId = ackMatch[1];
+      } else if (titleMatch) {
+        extractedId = titleMatch[1];
+      }
+
       feedbackTypes.push({
-        id: '1',
-        name: directParsed.title || 'Feedback 1',
+        id: extractedId,
+        name: directParsed.title || `Feedback ${extractedId}`,
         url: url,
       });
       const response = NextResponse.json({ success: true, data: { feedbackTypes } });

@@ -47,5 +47,16 @@ export function createHttpsAgent(options = {}) {
 }
 
 export function resolveErpUrl(path, preferredOrigin = null) {
-  return egressManager.resolveUrl(path, preferredOrigin);
+  const origin = preferredOrigin || ERP_ROOT_ORIGIN;
+  if (!path) return `${origin}/parents/index.php`;
+
+  if (/^https?:\/\//i.test(path)) {
+    return path.replace(/^https?:\/\/svit-students\.accredia\.in:8084/i, origin);
+  }
+
+  const clean = path.replace(/^\.?\//, '');
+  if (clean.startsWith('parents/')) {
+    return `${origin}/${clean}`;
+  }
+  return `${origin}/parents/${clean}`;
 }
