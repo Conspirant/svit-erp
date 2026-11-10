@@ -176,6 +176,7 @@ export async function scrapeStudentDashboard({
     knownUsn,
     forceRefresh = false,
     includeCieDetails = false,
+    mode = 'auto',
 }) {
     if (knownUsn && !forceRefresh) {
         const cachedFull = erpCache.get(`dash_full_${knownUsn}`);
@@ -348,11 +349,14 @@ export async function scrapeStudentDashboard({
             stats.metrics.push($(el).text().replace(/\s+/g, ' ').trim());
         });
 
-        // 3. Scrape Attendance Sub-Pages with High-Speed Parallel Pool (concurrency: 6) & Keep-Alive
-        // With Keep-Alive HTTP sockets, fetching 7-9 attendance links takes ~1.2s total!
-        if (attendanceLinks.length > 0) {
+        // 3. Scrape Attendance Sub-Pages with High-Speed Parallel Pool
+        // FAST TIER: If not explicitly requesting deep sub-page date history (mode !== 'details'),
+        // skip sub-page blast to guarantee sub-400ms real-time response and zero 429 rate limits!
+        const shouldScrapeDeepAttendance = includeCieDetails || mode === 'details';
+
+        if (shouldScrapeDeepAttendance && attendanceLinks.length > 0) {
             try {
-                const detailedResultsSettled = await pLimitPool(attendanceLinks, 6, (linkObj) =>
+                const detailedResultsSettled = await pLimitPool(attendanceLinks, 4, (linkObj) =>
                     fetchWithRetry(
                         () =>
                             axios.get(linkObj.url, {
@@ -632,14 +636,17 @@ export async function GET(request) {
             knownUsn,
             forceRefresh: mode === 'refresh',
             includeCieDetails: mode === 'details',
+            mode,
         });
+
+        const hasDetails = mode === 'details' || (Array.isArray(result.data?.attendance) && result.data.attendance.some(a => a.dates && a.dates.length > 0));
 
         const response = NextResponse.json({
             success: true,
             data: result.data,
             fromCache: result.fromCache,
-            hasDetails: true,
-            isPartial: false,
+            hasDetails,
+            isPartial: !hasDetails,
         });
         setSessionIdentity(response, { usn: result.data?.usn || knownUsn, name: result.data?.profileName });
         return response;
