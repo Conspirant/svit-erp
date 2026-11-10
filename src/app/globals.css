@@ -6713,12 +6713,25 @@ div[data-nextjs-route-announcer] {
 select,
 input[type="text"],
 input[type="password"] {
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: var(--surface) !important;
   border: 1px solid var(--line-strong) !important;
   color: var(--ink) !important;
   border-radius: 10px !important;
   font-size: 0.92rem !important;
   transition: all 0.15s var(--ease-smooth) !important;
+}
+
+/* Force dark canvas background and crisp contrast for native select dropdown options */
+option {
+  background-color: #161a22 !important;
+  color: #f8fafc !important;
+  padding: 10px 14px !important;
+}
+
+option:checked,
+option:hover {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
 }
 
 .app-login-input:focus,
