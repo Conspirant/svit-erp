@@ -3031,8 +3031,22 @@ Sai Vidya Institute of Technology`;
 
                 {/* Every letter type has a usable starting draft. */}
                 {modalType && selectedTypePresets.length > 0 && (
-                  <section className="letter-form-preset">
-                    <label htmlFor="letter-type-preset">Request purpose <span>Optional</span></label>
+                  <div className="letter-form-field letter-form-preset" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <label
+                        htmlFor="letter-type-preset"
+                        style={{
+                          fontSize: "0.82rem",
+                          fontWeight: 700,
+                          color: "rgba(255,255,255,0.85)",
+                        }}
+                      >
+                        Request Purpose
+                      </label>
+                      <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>
+                        Optional
+                      </span>
+                    </div>
                     <select
                       id="letter-type-preset"
                       defaultValue=""
@@ -3048,14 +3062,29 @@ Sai Vidya Institute of Technology`;
                         setModalFields((previous) => ({ ...previous, ...fields }));
                         if (preset.note) setModalNote(preset.note);
                       }}
+                      style={{
+                        width: "100%",
+                        background: "rgba(0,0,0,0.35)",
+                        border: "1px solid rgba(255,255,255,0.15)",
+                        color: "#fff",
+                        borderRadius: "10px",
+                        padding: "11px 14px",
+                        fontSize: "0.9rem",
+                        boxSizing: "border-box",
+                        outline: "none",
+                      }}
                     >
-                      <option value="">Choose a purpose to prefill</option>
+                      <option value="" style={{ background: "#1a1f2c" }}>Choose a purpose to prefill...</option>
                       {selectedTypePresets.map((preset, index) => (
-                        <option key={`${preset.label}-${index}`} value={index}>{preset.label}</option>
+                        <option key={`${preset.label}-${index}`} value={index} style={{ background: "#1a1f2c" }}>
+                          {preset.label}
+                        </option>
                       ))}
                     </select>
-                    <small>Applies the relevant wording and fills any matching fields. You can edit everything afterwards.</small>
-                  </section>
+                    <small style={{ display: "block", color: "rgba(255,255,255,0.45)", fontSize: "0.76rem", margin: "2px 0 0 0", lineHeight: 1.4 }}>
+                      Applies the relevant wording and fills any matching fields. You can edit everything afterwards.
+                    </small>
+                  </div>
                 )}
 
                 {/* FEATURE 4: DYNAMIC SUBJECTS BUILDER FOR ATTENDANCE CONSIDERATION */}

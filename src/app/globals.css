@@ -442,6 +442,23 @@ select.app-login-input option {
   background: #090e17 !important;
   color: #f1f5f9 !important;
   border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  width: 100% !important;
+  display: block !important;
+  box-sizing: border-box !important;
+}
+
+.letter-form-sheet select,
+.letter-form-sheet input:not([type="checkbox"]):not([type="file"]),
+.letter-form-sheet textarea {
+  width: 100% !important;
+  display: block !important;
+  box-sizing: border-box !important;
+}
+
+.letter-form-sheet small {
+  display: block !important;
+  width: 100% !important;
+  clear: both !important;
 }
 
 button {
