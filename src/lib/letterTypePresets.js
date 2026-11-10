@@ -234,6 +234,30 @@ export const ALL_LETTER_TYPE_PRESETS = {
     },
   ],
 
+  "Request for VTU Marks Card": [
+    {
+      label: "Current semester marks card",
+      fields: {
+        purpose: "Requesting an official copy of my VTU marks card for the current semester for academic and personal records.",
+      },
+      note: "Request for current semester VTU marks card.",
+    },
+    {
+      label: "Higher studies application",
+      fields: {
+        purpose: "Requesting an official VTU marks card for submission with a higher studies application and academic document verification.",
+      },
+      note: "Marks card required for higher studies application.",
+    },
+    {
+      label: "Bank or scholarship verification",
+      fields: {
+        purpose: "Requesting an official VTU marks card for bank, scholarship, or education loan verification.",
+      },
+      note: "Marks card required for financial verification.",
+    },
+  ],
+
   // ================= 3. FEES & FINANCIAL =================
   "Request for Education Loan Documents": [
     {

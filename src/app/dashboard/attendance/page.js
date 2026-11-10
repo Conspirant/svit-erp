@@ -143,7 +143,7 @@ function AttendanceCard({ item, classesRemaining, target, index, usn, milestone 
         <p>{item.course}</p>
         <div className="attendance-progress-row">
           <div className="attendance-progress"><span style={{ width: `${clamp(percentage, 0, 100)}%` }} /></div>
-          <strong>{present || "-"} / {total || "-"}</strong>
+          <strong>{total > 0 ? `${present} / ${total}` : "- / -"}</strong>
         </div>
 
         <p className={metrics.statusType === "risk" ? "risk-text" : metrics.statusType === "warning" ? "warning-text" : "safe-text"} style={{ marginTop: "10px", fontSize: "0.86rem", fontWeight: 700, lineHeight: 1.3 }}>

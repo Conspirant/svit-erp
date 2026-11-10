@@ -44,8 +44,9 @@ import {
 } from "lucide-react";
 import { LETTER_TEMPLATES_CATALOG } from "@/lib/letterTemplates";
 import { ALL_LETTER_TYPE_PRESETS, CATEGORY_SUBCATEGORIES_MAP } from "@/lib/letterTypePresets";
+import StudentAvatar from "@/components/StudentAvatar";
 
-export default function LetterApprovalPortal() {
+export default function LetterApprovalPortal({ newPage = false }) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -110,6 +111,18 @@ export default function LetterApprovalPortal() {
   const [pingBody, setPingBody] = useState("");
   const [copiedPingText, setCopiedPingText] = useState(false);
   const [copiedPingEmail, setCopiedPingEmail] = useState(false);
+
+  useEffect(() => {
+    if (newPage && !authLoading && session.authenticated) {
+      setShowNewModal(true);
+      setSubmitError("");
+    }
+  }, [newPage, authLoading, session.authenticated]);
+
+  const closeNewLetterForm = () => {
+    if (newPage) router.replace("/letters");
+    else setShowNewModal(false);
+  };
 
   // Derive faculty email from name and department
   const deriveFacultyEmail = useCallback((name, dept) => {
@@ -488,6 +501,38 @@ Sai Vidya Institute of Technology`;
     return currentCategorySchema.subcategories?.find((s) => s.name === modalType);
   }, [currentCategorySchema, modalType]);
 
+  const selectedTypePresets = useMemo(() => {
+    if (!modalType) return [];
+    const defined = ALL_LETTER_TYPE_PRESETS[modalType];
+    if (defined?.length) return defined;
+
+    const categoryDrafts = {
+      "Academic Affairs": [
+        { label: "Standard academic request", note: `Requesting consideration for ${modalType} in accordance with institutional guidelines.` },
+        { label: "Medical / documented reason", note: `Requesting consideration for ${modalType}. Supporting medical or official documents are attached for reference.` },
+      ],
+      "Certificates & Records": [
+        { label: "Official verification", note: `Requesting ${modalType} for official verification and documentation purposes.` },
+        { label: "Higher studies / employment", note: `Requesting ${modalType} for a higher studies or employment application.` },
+      ],
+      "Fees & Financial": [
+        { label: "Standard financial request", note: `Requesting consideration for ${modalType}. Relevant financial documents are attached.` },
+        { label: "Bank / scholarship submission", note: `Requesting ${modalType} for bank, scholarship, or fee processing.` },
+      ],
+      "Internships & Career": [
+        { label: "Industry opportunity", note: `Requesting approval for ${modalType} in relation to an industry opportunity.` },
+        { label: "Academic credit / OD", note: `Requesting approval for ${modalType} and any applicable academic credit or on-duty consideration.` },
+      ],
+      "Library": [
+        { label: "Standard library request", note: `Requesting consideration for ${modalType} through the library administration.` },
+      ],
+    };
+
+    return categoryDrafts[modalCategory] || [
+      { label: "Standard request", note: `Requesting consideration for ${modalType}.` },
+    ];
+  }, [modalCategory, modalType]);
+
   const handleCategoryChange = (e) => {
     const cat = e.target.value;
     setModalCategory(cat);
@@ -612,7 +657,7 @@ Sai Vidya Institute of Technology`;
       if (data.success) {
         setSubmitSuccess(true);
         setTimeout(() => {
-          setShowNewModal(false);
+          if (!newPage) setShowNewModal(false);
           setSubmitSuccess(false);
           setModalCategory("");
           setModalType("");
@@ -620,6 +665,7 @@ Sai Vidya Institute of Technology`;
           setModalNote("");
           setModalFiles([]);
           fetchLetters();
+          if (newPage) router.replace("/letters");
         }, 1200);
       } else {
         setSubmitError(data.error || data.message || "Failed to submit letter application.");
@@ -661,11 +707,12 @@ Sai Vidya Institute of Technology`;
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0b0e14", color: "#f3f4f6" }}>
+    <div className={`letter-workspace${newPage ? " letter-new-page" : ""}`}>
       {/* =========================================================================
           TOP INSTITUTIONAL NAVIGATION BAR
          ========================================================================= */}
       <header
+        className="letter-header"
         style={{
           borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
           background: "rgba(13, 17, 23, 0.85)",
@@ -676,6 +723,7 @@ Sai Vidya Institute of Technology`;
         }}
       >
         <div
+          className="letter-header-inner"
           style={{
             maxWidth: "1100px",
             margin: "0 auto",
@@ -715,6 +763,7 @@ Sai Vidya Institute of Technology`;
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <span
+                  className="letter-header-title"
                   style={{
                     fontSize: "1.25rem",
                     fontWeight: 800,
@@ -725,6 +774,7 @@ Sai Vidya Institute of Technology`;
                   Letter Approval
                 </span>
                 <span
+                  className="letter-header-badge"
                   style={{
                     fontSize: "0.68rem",
                     fontWeight: 700,
@@ -740,7 +790,7 @@ Sai Vidya Institute of Technology`;
                   Official Accredia API
                 </span>
               </div>
-              <p style={{ margin: 0, fontSize: "0.74rem", color: "rgba(255,255,255,0.45)" }}>
+              <p className="letter-header-subtext" style={{ margin: 0, fontSize: "0.74rem", color: "rgba(255,255,255,0.45)" }}>
                 Sai Vidya Institute of Technology • Digital Verification Workflow
               </p>
             </div>
@@ -775,31 +825,30 @@ Sai Vidya Institute of Technology`;
 
               {/* Student Identity Chip */}
               <div
+                className="letter-dashboard-heading"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.1)",
-                  padding: "6px 12px",
+                  padding: "4px 10px 4px 6px",
                   borderRadius: "20px",
                   fontSize: "0.82rem",
                   color: "#e2e8f0",
                 }}
               >
-                {session.user.profilePhoto ? (
-                  <img
-                    src={session.user.profilePhoto}
-                    alt={session.user.name}
-                    style={{ width: "22px", height: "22px", borderRadius: "50%", objectFit: "cover" }}
+                <div style={{ width: "24px", height: "24px", borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                  <StudentAvatar
+                    name={session.user.name || "Student"}
+                    photo={session.user.profilePhoto || ""}
+                    size={24}
                   />
-                ) : (
-                  <User size={14} style={{ color: "#60a5fa" }} />
-                )}
-                <span style={{ fontWeight: 600 }}>
-                  {session.user.name} ({session.user.usn})
+                </div>
+                <span style={{ fontWeight: 600, maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {session.user.name}
                 </span>
-                <span style={{ color: "rgba(255,255,255,0.4)" }}>(Student)</span>
+                <span style={{ color: "rgba(255,255,255,0.4)" }}>({session.user.usn})</span>
               </div>
 
               {/* Profile Button */}
@@ -855,15 +904,16 @@ Sai Vidya Institute of Technology`;
                   background: "rgba(255,255,255,0.06)",
                   border: "1px solid rgba(255,255,255,0.15)",
                   color: "rgba(255,255,255,0.85)",
-                  padding: "7px 14px",
+                  padding: "7px 12px",
                   borderRadius: "8px",
                   fontSize: "0.82rem",
                   fontWeight: 600,
                   textDecoration: "none",
+                  whiteSpace: "nowrap",
                 }}
               >
                 <ArrowLeft size={14} />
-                <span>Return to Student ERP</span>
+                <span><span className="hidden-mobile">Return to Student </span>ERP</span>
               </Link>
             </div>
           )}
@@ -871,7 +921,7 @@ Sai Vidya Institute of Technology`;
       </header>
 
       {/* Main Container */}
-      <main style={{ maxWidth: "1100px", margin: "0 auto", padding: "24px 18px" }}>
+      <main className="letter-main" style={{ maxWidth: "1100px", margin: "0 auto", padding: "24px 18px" }}>
         {/* =========================================================================
             STATE 1: NOT AUTHENTICATED -> STANDALONE LOGIN
            ========================================================================= */}
@@ -987,7 +1037,7 @@ Sai Vidya Institute of Technology`;
                     Forgot Password?
                   </a>
                 </div>
-                <div style={{ position: "relative" }}>
+                <div style={{ position: "relative", width: "100%" }}>
                   <input
                     type={showPassword ? "text" : "password"}
                     value={loginPassword}
@@ -1000,7 +1050,7 @@ Sai Vidya Institute of Technology`;
                       border: "1px solid rgba(255,255,255,0.15)",
                       color: "#fff",
                       borderRadius: "10px",
-                      padding: "11px 40px 11px 14px",
+                      padding: "12px 42px 12px 14px",
                       fontSize: "0.9rem",
                       boxSizing: "border-box",
                       outline: "none",
@@ -1008,20 +1058,28 @@ Sai Vidya Institute of Technology`;
                   />
                   <button
                     type="button"
+                    className="password-toggle-btn"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                     style={{
                       position: "absolute",
-                      right: "12px",
+                      right: "10px",
                       top: "50%",
                       transform: "translateY(-50%)",
                       background: "none",
                       border: "none",
-                      color: "rgba(255,255,255,0.5)",
+                      color: "rgba(255,255,255,0.6)",
                       cursor: "pointer",
-                      padding: "4px",
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "32px",
+                      height: "32px",
+                      minHeight: "unset",
                     }}
                   >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
@@ -1113,6 +1171,7 @@ Sai Vidya Institute of Technology`;
           <div className="letter-detail-view" style={{ maxWidth: "880px", margin: "0 auto" }}>
             {/* Top Control Bar: Previous, Next, Index Counter, Back to Dashboard */}
             <div
+              className="letter-detail-controls"
               style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -1889,7 +1948,7 @@ Sai Vidya Institute of Technology`;
               STATE 3: AUTHENTICATED -> LETTERS LIST & DASHBOARD VIEW
              ========================================================================= */
           session.authenticated && (
-            <div>
+            <div className="letter-dashboard">
               {/* Dashboard Action Header */}
               <div
                 style={{
@@ -1901,7 +1960,7 @@ Sai Vidya Institute of Technology`;
                   gap: "14px",
                 }}
               >
-                <div>
+                <div className="letter-dashboard-copy">
                   <h1 style={{ fontSize: "1.75rem", fontWeight: 800, margin: "0 0 4px 0", letterSpacing: "-0.5px" }}>
                     Letter Approval Applications
                   </h1>
@@ -1910,7 +1969,7 @@ Sai Vidya Institute of Technology`;
                   </p>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <div className="letter-dashboard-actions" style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                   <button
                     type="button"
                     onClick={() => setShowAuthorityModal(true)}
@@ -1956,7 +2015,7 @@ Sai Vidya Institute of Technology`;
                   <button
                     type="button"
                     onClick={() => {
-                      setShowNewModal(true);
+                      router.push("/letters/new");
                       setSubmitError("");
                     }}
                     style={{
@@ -1982,6 +2041,7 @@ Sai Vidya Institute of Technology`;
 
               {/* Summary Stats Overview */}
               <div
+                className="letter-stats"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
@@ -2050,6 +2110,7 @@ Sai Vidya Institute of Technology`;
 
               {/* Filter Tabs */}
               <div
+                className="letter-tabs"
                 style={{
                   display: "flex",
                   gap: "8px",
@@ -2111,7 +2172,7 @@ Sai Vidya Institute of Technology`;
                   </p>
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div className="letter-list" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                   {filteredLetters.map((letter) => {
                     const isApproved = (letter.status || "").toLowerCase() === "approved";
                     const isRejected = (letter.status || "").toLowerCase() === "rejected";
@@ -2130,6 +2191,7 @@ Sai Vidya Institute of Technology`;
 
                     return (
                       <div
+                        className="letter-list-item"
                         key={letter._id}
                         onClick={() => setSelectedLetterId(letter._id)}
                         style={{
@@ -2189,9 +2251,9 @@ Sai Vidya Institute of Technology`;
                           </div>
                         </div>
 
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
-                          <div>
-                            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0 0 4px 0", color: "#ffffff" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                          <div style={{ minWidth: 0, flex: "1 1 200px" }}>
+                            <h3 style={{ fontSize: "1.05rem", fontWeight: 700, margin: "0 0 4px 0", color: "#ffffff", wordBreak: "break-word" }}>
                               {letter.letterType || letter.title || "Institutional Letter"}
                             </h3>
                             <p style={{ margin: 0, fontSize: "0.82rem", color: "rgba(255,255,255,0.5)" }}>
@@ -2199,7 +2261,7 @@ Sai Vidya Institute of Technology`;
                             </p>
                           </div>
 
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div className="letter-list-actions" style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                             {(letter.status || "").toLowerCase() === "pending" && (
                               <button
                                 type="button"
@@ -2286,62 +2348,50 @@ Sai Vidya Institute of Technology`;
          ========================================================================= */}
       {showAuthorityModal && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.8)",
-            backdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 65,
-            padding: "16px",
-          }}
+          className="letter-modal-overlay"
           onClick={() => setShowAuthorityModal(false)}
         >
           <div
+            className="letter-modal-card"
             style={{
-              background: "#121620",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: "20px",
               maxWidth: "680px",
-              width: "100%",
               maxHeight: "85vh",
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div
               style={{
-                padding: "20px 24px",
+                padding: "18px 20px",
                 borderBottom: "1px solid rgba(255,255,255,0.08)",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
+                gap: "12px",
               }}
             >
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <Building size={20} color="#60a5fa" />
-                  <h2 style={{ fontSize: "1.25rem", fontWeight: 800, margin: 0, color: "#ffffff" }}>
+                  <h2 style={{ fontSize: "1.15rem", fontWeight: 800, margin: 0, color: "#ffffff" }}>
                     Approval Authorities Directory
                   </h2>
                 </div>
-                <p style={{ margin: "4px 0 0 0", fontSize: "0.8rem", color: "rgba(255,255,255,0.5)" }}>
+                <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "rgba(255,255,255,0.5)" }}>
                   Official Proctors and Head of Department roster for Sai Vidya Institute of Technology
                 </p>
               </div>
 
               <button
                 type="button"
+                className="letter-modal-close-btn"
                 onClick={() => setShowAuthorityModal(false)}
-                style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", cursor: "pointer" }}
+                aria-label="Close authorities directory"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -2518,29 +2568,15 @@ Sai Vidya Institute of Technology`;
          ========================================================================= */}
       {showQrModal && selectedLetter && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.8)",
-            backdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 70,
-            padding: "16px",
-          }}
+          className="letter-modal-overlay"
           onClick={() => setShowQrModal(false)}
         >
           <div
+            className="letter-modal-card"
             style={{
-              background: "#121620",
-              border: "1px solid rgba(255,255,255,0.15)",
-              borderRadius: "20px",
               maxWidth: "400px",
-              width: "100%",
-              padding: "26px",
+              padding: "24px 20px",
               textAlign: "center",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -2551,8 +2587,9 @@ Sai Vidya Institute of Technology`;
               </div>
               <button
                 type="button"
+                className="letter-modal-close-btn"
                 onClick={() => setShowQrModal(false)}
-                style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", cursor: "pointer" }}
+                aria-label="Close QR verification dialog"
               >
                 <X size={18} />
               </button>
@@ -2637,29 +2674,11 @@ Sai Vidya Institute of Technology`;
          ========================================================================= */}
       {showProfileModal && session.user && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.75)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 60,
-            padding: "16px",
-          }}
+          className="letter-modal-overlay"
           onClick={() => setShowProfileModal(false)}
         >
           <div
-            style={{
-              background: "#131722",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: "18px",
-              padding: "24px",
-              maxWidth: "420px",
-              width: "100%",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
-            }}
+            className="letter-profile-modal-card"
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
@@ -2668,77 +2687,58 @@ Sai Vidya Institute of Technology`;
               </h2>
               <button
                 type="button"
+                className="letter-modal-close-btn"
                 onClick={() => setShowProfileModal(false)}
-                style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.6)", cursor: "pointer" }}
+                aria-label="Close profile modal"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
             <div style={{ textAlign: "center", marginBottom: "20px" }}>
-              {session.user.profilePhoto ? (
-                <img
-                  src={session.user.profilePhoto}
-                  alt={session.user.name}
-                  style={{
-                    width: "74px",
-                    height: "74px",
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                    border: "3px solid #3b82f6",
-                    boxShadow: "0 4px 16px rgba(59,130,246,0.3)",
-                    marginBottom: "10px",
-                  }}
+              <div style={{ width: "76px", height: "76px", margin: "0 auto 12px", borderRadius: "50%", overflow: "hidden", border: "2px solid rgba(59,130,246,0.6)", boxShadow: "0 4px 16px rgba(59,130,246,0.25)" }}>
+                <StudentAvatar
+                  name={session.user.name || "Student"}
+                  photo={session.user.profilePhoto || ""}
+                  size={76}
                 />
-              ) : (
-                <div
-                  style={{
-                    width: "74px",
-                    height: "74px",
-                    borderRadius: "50%",
-                    background: "#1e3a8a",
-                    color: "#93c5fd",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: 800,
-                    fontSize: "1.5rem",
-                    marginBottom: "10px",
-                  }}
-                >
-                  {session.user.name?.slice(0, 2).toUpperCase() || "SV"}
-                </div>
-              )}
+              </div>
 
-              <h3 style={{ fontSize: "1.2rem", fontWeight: 800, margin: "0 0 4px 0", color: "#ffffff" }}>
+              <h3 style={{ fontSize: "1.18rem", fontWeight: 800, margin: "0 0 4px 0", color: "#ffffff", wordBreak: "break-word" }}>
                 {session.user.name}
               </h3>
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "#60a5fa", fontWeight: 700 }}>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#60a5fa", fontWeight: 700, letterSpacing: "0.5px" }}>
                 {session.user.usn}
               </p>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.86rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: "8px" }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>Department</span>
-                <span style={{ fontWeight: 600, color: "#ffffff" }}>{session.user.department || "CSE"}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: "10px", gap: "12px" }}>
+                <span style={{ color: "rgba(255,255,255,0.5)", flexShrink: 0 }}>Department</span>
+                <span style={{ fontWeight: 600, color: "#ffffff", textAlign: "right", wordBreak: "break-word", minWidth: 0 }}>
+                  {session.user.department || "CSE"}
+                </span>
               </div>
 
               {session.user.semester && (
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: "8px" }}>
-                  <span style={{ color: "rgba(255,255,255,0.5)" }}>Semester</span>
-                  <span style={{ fontWeight: 600, color: "#ffffff" }}>Semester {session.user.semester}</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: "10px", gap: "12px" }}>
+                  <span style={{ color: "rgba(255,255,255,0.5)", flexShrink: 0 }}>Semester</span>
+                  <span style={{ fontWeight: 600, color: "#ffffff", textAlign: "right" }}>
+                    Semester {session.user.semester}
+                  </span>
                 </div>
               )}
 
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: "8px" }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>College Email</span>
-                <span style={{ fontWeight: 600, color: "#93c5fd" }}>{session.user.email}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: "10px", gap: "12px" }}>
+                <span style={{ color: "rgba(255,255,255,0.5)", flexShrink: 0 }}>College Email</span>
+                <span style={{ fontWeight: 600, color: "#93c5fd", textAlign: "right", wordBreak: "break-all", minWidth: 0, fontSize: "0.82rem" }}>
+                  {session.user.email}
+                </span>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: "8px" }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>Account Status</span>
-                <span style={{ fontWeight: 700, color: "#34d399" }}>Active Student</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: "10px", gap: "12px" }}>
+                <span style={{ color: "rgba(255,255,255,0.5)", flexShrink: 0 }}>Account Status</span>
+                <span style={{ fontWeight: 700, color: "#34d399", textAlign: "right", flexShrink: 0 }}>Active Student</span>
               </div>
             </div>
           </div>
@@ -2750,6 +2750,7 @@ Sai Vidya Institute of Technology`;
          ========================================================================= */}
       {showNewModal && (
         <div
+          className="letter-form-overlay"
           style={{
             position: "fixed",
             inset: 0,
@@ -2761,9 +2762,13 @@ Sai Vidya Institute of Technology`;
             zIndex: 60,
             padding: "16px",
           }}
-          onClick={() => setShowNewModal(false)}
+          onClick={closeNewLetterForm}
         >
           <div
+            className="letter-form-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="letter-form-title"
             style={{
               background: "#121620",
               border: "1px solid rgba(255,255,255,0.12)",
@@ -2780,7 +2785,7 @@ Sai Vidya Institute of Technology`;
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <div>
-                <h2 style={{ fontSize: "1.3rem", fontWeight: 800, margin: "0 0 4px 0", color: "#ffffff" }}>
+                <h2 id="letter-form-title" style={{ fontSize: "1.3rem", fontWeight: 800, margin: "0 0 4px 0", color: "#ffffff" }}>
                   Submit Letter Application
                 </h2>
                 <p style={{ margin: 0, fontSize: "0.82rem", color: "rgba(255,255,255,0.5)" }}>
@@ -2789,10 +2794,11 @@ Sai Vidya Institute of Technology`;
               </div>
               <button
                 type="button"
-                onClick={() => setShowNewModal(false)}
-                style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", cursor: "pointer" }}
+                className="letter-modal-close-btn"
+                onClick={closeNewLetterForm}
+                aria-label="Close letter application form"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -2807,9 +2813,9 @@ Sai Vidya Institute of Technology`;
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleCreateSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <form className="letter-application-form" onSubmit={handleCreateSubmit}>
                 {/* 1-Click Smart Templates Pill Bar */}
-                <div
+                <section className="letter-form-template"
                   style={{
                     background: "rgba(59, 130, 246, 0.08)",
                     border: "1px solid rgba(59, 130, 246, 0.2)",
@@ -2817,53 +2823,27 @@ Sai Vidya Institute of Technology`;
                     padding: "14px",
                   }}
                 >
-                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#93c5fd", marginBottom: "10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <label htmlFor="letter-template" style={{ fontSize: "0.82rem", fontWeight: 700, color: "#93c5fd", marginBottom: "10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       <Sparkles size={15} style={{ color: "#60a5fa" }} />
-                      <span>Instant Issue Templates (Auto-fills entire form)</span>
+                      <span>Start from a template</span>
                     </div>
-                    <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>Click any scenario</span>
-                  </div>
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", maxHeight: "160px", overflowY: "auto", paddingBottom: "2px" }}>
+                    <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>Optional</span>
+                  </label>
+                  <select
+                    id="letter-template"
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) applyTemplate(e.target.value);
+                    }}
+                    style={{ width: "100%", background: "#0c131c", border: "1px solid rgba(96,165,250,.42)", color: "#f2f6fa", borderRadius: "9px", padding: "11px 12px", fontSize: "0.9rem" }}
+                  >
+                    <option value="">Choose a template or fill manually</option>
                     {LETTER_TEMPLATES_CATALOG.map((tpl) => (
-                      <button
-                        key={tpl.key}
-                        type="button"
-                        onClick={() => applyTemplate(tpl.key)}
-                        title={tpl.description}
-                        style={{
-                          background: modalCategory === tpl.category && modalType === tpl.type 
-                            ? "linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(37, 99, 235, 0.5))" 
-                            : "rgba(255, 255, 255, 0.06)",
-                          border: modalCategory === tpl.category && modalType === tpl.type
-                            ? "1px solid #3b82f6"
-                            : "1px solid rgba(255, 255, 255, 0.12)",
-                          color: "rgba(255,255,255,0.95)",
-                          padding: "6px 12px",
-                          borderRadius: "20px",
-                          fontSize: "0.78rem",
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          transition: "all 0.15s ease",
-                        }}
-                      >
-                        <span>{tpl.label}</span>
-                        <span style={{
-                          fontSize: "0.65rem",
-                          padding: "2px 6px",
-                          borderRadius: "10px",
-                          background: "rgba(0,0,0,0.3)",
-                          color: "rgba(255,255,255,0.7)"
-                        }}>
-                          {tpl.badge}
-                        </span>
-                      </button>
+                      <option key={tpl.key} value={tpl.key}>{tpl.label} · {tpl.badge}</option>
                     ))}
-                  </div>
-                </div>
+                  </select>
+                </section>
 
                 {submitError && (
                   <div
@@ -2881,7 +2861,7 @@ Sai Vidya Institute of Technology`;
                 )}
 
                 {/* Category Selector */}
-                <div>
+                <div className="letter-form-field">
                   <label
                     style={{
                       display: "block",
@@ -2894,6 +2874,8 @@ Sai Vidya Institute of Technology`;
                     Letter Category *
                   </label>
                   <select
+                    id="letter-category"
+                    aria-describedby="letter-category-help"
                     value={modalCategory}
                     onChange={handleCategoryChange}
                     required
@@ -2927,11 +2909,12 @@ Sai Vidya Institute of Technology`;
                       </>
                     )}
                   </select>
+                  <small id="letter-category-help" className="letter-field-help">Choose the office or purpose area for your request.</small>
                 </div>
 
                 {/* Subcategory / Type Selector */}
                 {modalCategory && (
-                  <div>
+                  <div className="letter-form-field">
                     <label
                       style={{
                         display: "block",
@@ -2944,6 +2927,8 @@ Sai Vidya Institute of Technology`;
                       Letter Type *
                     </label>
                     <select
+                      id="letter-type"
+                      aria-describedby="letter-type-help"
                       value={modalType}
                       onChange={handleTypeChange}
                       required
@@ -2979,60 +2964,37 @@ Sai Vidya Institute of Technology`;
                         ))
                       )}
                     </select>
+                    <small id="letter-type-help" className="letter-field-help">The type determines which details and approvals are required.</small>
                   </div>
                 )}
 
-                {/* CONTEXTUAL SMART PRESETS FOR SELECTED LETTER TYPE */}
-                {modalType && ALL_LETTER_TYPE_PRESETS[modalType] && (
-                  <div
-                    style={{
-                      background: "rgba(16, 185, 129, 0.08)",
-                      border: "1px solid rgba(16, 185, 129, 0.25)",
-                      borderRadius: "12px",
-                      padding: "12px 14px",
-                    }}
-                  >
-                    <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#6ee7b7", marginBottom: "8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <Sparkles size={14} style={{ color: "#34d399" }} />
-                        <span>Professional Presets for &quot;{modalType}&quot;</span>
-                      </div>
-                      <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.5)" }}>1-Click Auto Fill</span>
-                    </div>
-                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                      {ALL_LETTER_TYPE_PRESETS[modalType].map((preset, pIdx) => (
-                        <button
-                          key={pIdx}
-                          type="button"
-                          onClick={() => {
-                            const savedFather = typeof window !== "undefined" ? localStorage.getItem("svit_letters_father_name") || "" : "";
-                            const today = new Date().toISOString().split("T")[0];
-                            const updated = { ...preset.fields };
-                            if ("fatherName" in updated && !updated.fatherName) updated.fatherName = savedFather;
-                            if ("startDate" in updated && !updated.startDate) {
-                              updated.startDate = today;
-                              updated.endDate = today;
-                            }
-                            setModalFields((prev) => ({ ...prev, ...updated }));
-                            if (preset.note) setModalNote(preset.note);
-                          }}
-                          style={{
-                            background: "rgba(0, 0, 0, 0.3)",
-                            border: "1px solid rgba(16, 185, 129, 0.35)",
-                            color: "#d1fae5",
-                            padding: "5px 11px",
-                            borderRadius: "14px",
-                            fontSize: "0.76rem",
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            transition: "all 0.15s ease",
-                          }}
-                        >
-                          {preset.label}
-                        </button>
+                {/* Every letter type has a usable starting draft. */}
+                {modalType && selectedTypePresets.length > 0 && (
+                  <section className="letter-form-preset">
+                    <label htmlFor="letter-type-preset">Request purpose <span>Optional</span></label>
+                    <select
+                      id="letter-type-preset"
+                      defaultValue=""
+                      onChange={(e) => {
+                        const preset = selectedTypePresets[Number(e.target.value)];
+                        if (!preset) return;
+                        const today = new Date().toISOString().split("T")[0];
+                        const fields = { ...(preset.fields || {}) };
+                        if ("startDate" in fields && !fields.startDate) {
+                          fields.startDate = today;
+                          fields.endDate = today;
+                        }
+                        setModalFields((previous) => ({ ...previous, ...fields }));
+                        if (preset.note) setModalNote(preset.note);
+                      }}
+                    >
+                      <option value="">Choose a purpose to prefill</option>
+                      {selectedTypePresets.map((preset, index) => (
+                        <option key={`${preset.label}-${index}`} value={index}>{preset.label}</option>
                       ))}
-                    </div>
-                  </div>
+                    </select>
+                    <small>Applies the relevant wording and fills any matching fields. You can edit everything afterwards.</small>
+                  </section>
                 )}
 
                 {/* FEATURE 4: DYNAMIC SUBJECTS BUILDER FOR ATTENDANCE CONSIDERATION */}
@@ -3170,6 +3132,7 @@ Sai Vidya Institute of Technology`;
                 {/* Dynamic Schema Fields */}
                 {currentTypeSchema?.fields && currentTypeSchema.fields.length > 0 && (
                   <div
+                    className="letter-form-required"
                     style={{
                       background: "rgba(255,255,255,0.02)",
                       border: "1px solid rgba(255,255,255,0.06)",
@@ -3273,7 +3236,7 @@ Sai Vidya Institute of Technology`;
                 )}
 
                 {/* Optional Note */}
-                <div>
+                <div className="letter-form-field letter-form-remarks">
                   <label
                     style={{
                       display: "block",
@@ -3304,7 +3267,7 @@ Sai Vidya Institute of Technology`;
                 </div>
 
                 {/* File Attachment */}
-                <div>
+                <div className="letter-form-field letter-form-attachments">
                   <label
                     style={{
                       display: "block",
@@ -3330,6 +3293,7 @@ Sai Vidya Institute of Technology`;
                 </div>
 
                 {/* Submit Button */}
+                <div className="letter-form-footer">
                 <button
                   type="submit"
                   disabled={submitting || !modalCategory || !modalType}
@@ -3363,6 +3327,7 @@ Sai Vidya Institute of Technology`;
                     </>
                   )}
                 </button>
+                </div>
               </form>
             )}
           </div>
@@ -3374,29 +3339,15 @@ Sai Vidya Institute of Technology`;
          ========================================================================= */}
       {deleteTargetLetter && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.8)",
-            backdropFilter: "blur(8px)",
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "20px",
-          }}
+          className="letter-modal-overlay"
           onClick={() => !deletingLetter && setDeleteTargetLetter(null)}
         >
           <div
+            className="letter-modal-card"
             style={{
-              background: "#0f172a",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-              borderRadius: "16px",
-              width: "100%",
               maxWidth: "500px",
-              padding: "24px",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.6)",
-              position: "relative",
+              padding: "22px 18px",
+              border: "1px solid rgba(239, 68, 68, 0.35)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -3428,8 +3379,8 @@ Sai Vidya Institute of Technology`;
 
             <div
               style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                          background: "#121a24",
+                          border: "1px solid #2b3d4e",
                 borderRadius: "10px",
                 padding: "14px",
                 marginBottom: "18px",
@@ -3569,32 +3520,11 @@ Sai Vidya Institute of Technology`;
          ========================================================================= */}
       {pingModalLetter && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.8)",
-            backdropFilter: "blur(8px)",
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "20px",
-          }}
+          className="letter-modal-overlay"
           onClick={() => setPingModalLetter(null)}
         >
           <div
-            style={{
-              background: "#0f172a",
-              border: "1px solid rgba(59, 130, 246, 0.35)",
-              borderRadius: "16px",
-              width: "100%",
-              maxWidth: "600px",
-              padding: "24px",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.6)",
-              position: "relative",
-              maxHeight: "90vh",
-              overflowY: "auto",
-            }}
+            className="letter-ping-modal-card"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -3603,45 +3533,42 @@ Sai Vidya Institute of Technology`;
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "flex-start",
-                marginBottom: "18px",
+                gap: "12px",
+                marginBottom: "16px",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", minWidth: 0 }}>
                 <div
                   style={{
                     background: "rgba(59, 130, 246, 0.15)",
                     border: "1px solid rgba(59, 130, 246, 0.3)",
-                    borderRadius: "12px",
-                    padding: "10px",
+                    borderRadius: "10px",
+                    padding: "8px",
                     color: "#60a5fa",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
-                  <Mail size={22} />
+                  <Mail size={20} />
                 </div>
-                <div>
-                  <h2 style={{ fontSize: "1.2rem", fontWeight: 800, margin: "0 0 2px 0", color: "#ffffff" }}>
+                <div style={{ minWidth: 0 }}>
+                  <h2 style={{ fontSize: "1.08rem", fontWeight: 800, margin: "0 0 3px 0", color: "#ffffff", wordBreak: "break-word", lineHeight: 1.25 }}>
                     Ping Proctor — Expedited Review Notice
                   </h2>
-                  <p style={{ margin: 0, fontSize: "0.82rem", color: "rgba(255,255,255,0.6)" }}>
+                  <p style={{ margin: 0, fontSize: "0.78rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.35 }}>
                     Notify your assigned faculty proctor to review and approve your pending application.
                   </p>
                 </div>
               </div>
               <button
                 type="button"
+                className="letter-modal-close-btn"
                 onClick={() => setPingModalLetter(null)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "rgba(255,255,255,0.5)",
-                  cursor: "pointer",
-                  padding: "4px",
-                }}
+                aria-label="Close expedited review modal"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -3651,19 +3578,21 @@ Sai Vidya Institute of Technology`;
                 background: "rgba(255,255,255,0.03)",
                 border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: "12px",
-                padding: "14px 16px",
-                marginBottom: "18px",
+                padding: "12px 14px",
+                marginBottom: "16px",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
                 flexWrap: "wrap",
                 gap: "10px",
+                boxSizing: "border-box",
+                minWidth: 0,
               }}
             >
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <div
                   style={{
-                    fontSize: "0.75rem",
+                    fontSize: "0.72rem",
                     color: "rgba(255,255,255,0.45)",
                     textTransform: "uppercase",
                     letterSpacing: "0.5px",
@@ -3672,10 +3601,10 @@ Sai Vidya Institute of Technology`;
                 >
                   Assigned Verification Proctor
                 </div>
-                <div style={{ fontSize: "1.02rem", fontWeight: 700, color: "#ffffff", marginTop: "2px" }}>
+                <div style={{ fontSize: "0.98rem", fontWeight: 700, color: "#ffffff", marginTop: "2px", wordBreak: "break-word" }}>
                   {pingModalLetter.assignedProctor?.name || "Department Proctor"}
                 </div>
-                <div style={{ fontSize: "0.8rem", color: "#93c5fd", marginTop: "2px" }}>
+                <div style={{ fontSize: "0.78rem", color: "#93c5fd", marginTop: "2px", wordBreak: "break-word" }}>
                   {pingModalLetter.assignedProctor?.department || session.user?.department || "CSE (Data Science)"}
                 </div>
               </div>
@@ -3687,8 +3616,9 @@ Sai Vidya Institute of Technology`;
                   border: "1px solid rgba(16, 185, 129, 0.3)",
                   padding: "4px 10px",
                   borderRadius: "20px",
-                  fontSize: "0.74rem",
+                  fontSize: "0.72rem",
                   fontWeight: 700,
+                  flexShrink: 0,
                 }}
               >
                 Pending Review
@@ -3696,7 +3626,7 @@ Sai Vidya Institute of Technology`;
             </div>
 
             {/* Email Form Fields */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "18px" }}>
               {/* To Email Field */}
               <div>
                 <div
@@ -3727,10 +3657,11 @@ Sai Vidya Institute of Technology`;
                       display: "inline-flex",
                       alignItems: "center",
                       gap: "4px",
+                      padding: 0,
                     }}
                   >
                     {copiedPingEmail ? <Check size={12} /> : <Copy size={12} />}
-                    <span>{copiedPingEmail ? "Copied Email!" : "Copy Email"}</span>
+                    <span>{copiedPingEmail ? "Copied!" : "Copy Email"}</span>
                   </button>
                 </div>
                 <input
@@ -3746,10 +3677,11 @@ Sai Vidya Institute of Technology`;
                     color: "#ffffff",
                     fontSize: "0.88rem",
                     outline: "none",
+                    boxSizing: "border-box",
                   }}
                 />
                 <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)", marginTop: "4px" }}>
-                  Auto-derived from official SVIT faculty directory. You can edit this if you have their alternate contact.
+                  Auto-derived from official SVIT faculty directory. You can edit this if needed.
                 </div>
               </div>
 
@@ -3779,6 +3711,7 @@ Sai Vidya Institute of Technology`;
                     color: "#ffffff",
                     fontSize: "0.88rem",
                     outline: "none",
+                    boxSizing: "border-box",
                   }}
                 />
               </div>
@@ -3794,7 +3727,7 @@ Sai Vidya Institute of Technology`;
                   }}
                 >
                   <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>
-                    Message Body (Pre-filled with your USN & Letter details)
+                    Message Body (Pre-filled)
                   </label>
                   <button
                     type="button"
@@ -3813,14 +3746,15 @@ Sai Vidya Institute of Technology`;
                       display: "inline-flex",
                       alignItems: "center",
                       gap: "4px",
+                      padding: 0,
                     }}
                   >
                     {copiedPingText ? <Check size={12} /> : <Copy size={12} />}
-                    <span>{copiedPingText ? "Copied Message!" : "Copy Text"}</span>
+                    <span>{copiedPingText ? "Copied!" : "Copy Text"}</span>
                   </button>
                 </div>
                 <textarea
-                  rows={8}
+                  rows={7}
                   value={pingBody}
                   onChange={(e) => setPingBody(e.target.value)}
                   style={{
@@ -3835,13 +3769,14 @@ Sai Vidya Institute of Technology`;
                     fontFamily: "inherit",
                     outline: "none",
                     resize: "vertical",
+                    boxSizing: "border-box",
                   }}
                 />
               </div>
             </div>
 
             {/* Quick Action Buttons */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", justifyContent: "flex-end" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "flex-end" }}>
               {/* Copy Full Message Button */}
               <button
                 type="button"
@@ -3855,17 +3790,19 @@ Sai Vidya Institute of Technology`;
                   border: "1px solid rgba(255, 255, 255, 0.15)",
                   color: "#ffffff",
                   borderRadius: "8px",
-                  padding: "9px 14px",
-                  fontSize: "0.85rem",
+                  padding: "8px 12px",
+                  fontSize: "0.82rem",
                   fontWeight: 600,
                   cursor: "pointer",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "6px",
+                  flex: "1 1 140px",
+                  justifyContent: "center",
                 }}
               >
                 {copiedPingText ? <Check size={14} color="#34d399" /> : <Copy size={14} />}
-                <span>{copiedPingText ? "Copied to Clipboard!" : "Copy Full Notice"}</span>
+                <span>{copiedPingText ? "Copied!" : "Copy Full Notice"}</span>
               </button>
 
               {/* Open in Gmail Web */}
@@ -3880,17 +3817,19 @@ Sai Vidya Institute of Technology`;
                   border: "1px solid rgba(239, 68, 68, 0.4)",
                   color: "#fca5a5",
                   borderRadius: "8px",
-                  padding: "9px 14px",
-                  fontSize: "0.85rem",
+                  padding: "8px 12px",
+                  fontSize: "0.82rem",
                   fontWeight: 600,
                   textDecoration: "none",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "6px",
+                  flex: "1 1 140px",
+                  justifyContent: "center",
                 }}
               >
                 <ExternalLink size={14} />
-                <span>Open in Gmail Web</span>
+                <span>Open in Gmail</span>
               </a>
 
               {/* Default Mailto Link */}
@@ -3902,18 +3841,20 @@ Sai Vidya Institute of Technology`;
                   background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
                   color: "#ffffff",
                   borderRadius: "8px",
-                  padding: "9px 16px",
-                  fontSize: "0.85rem",
+                  padding: "8px 14px",
+                  fontSize: "0.82rem",
                   fontWeight: 700,
                   textDecoration: "none",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "6px",
                   boxShadow: "0 2px 10px rgba(37,99,235,0.35)",
+                  flex: "1 1 140px",
+                  justifyContent: "center",
                 }}
               >
                 <Send size={14} />
-                <span>Open in Mail App</span>
+                <span>Send via Mail</span>
               </a>
             </div>
           </div>

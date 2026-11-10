@@ -41,8 +41,9 @@ export default function StudentAvatar({ name = "Student", photo = "", size = 72,
   const isLogo = typeof photo === "string" && (photo.toLowerCase().includes("logo") || photo.toLowerCase().includes("svit-logo"));
   const hasValidPhoto = photo && !isLogo && !imgError;
 
+  const isUrl = typeof photo === "string" && (photo.startsWith("data:") || photo.startsWith("http://") || photo.startsWith("https://") || photo.startsWith("/"));
   const displaySrc = hasValidPhoto
-    ? (photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`)
+    ? (isUrl ? photo : `data:image/jpeg;base64,${photo}`)
     : null;
 
   return (

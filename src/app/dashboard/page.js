@@ -106,8 +106,11 @@ export default function Dashboard() {
             }
           }
 
-          // If the fast response is partial, enrich subpages (attendance dates & CIE breakdown) in the background
-          if (dashJson.isPartial) {
+          // If the fast response is partial or missing class totals, enrich subpages in the background
+          const hasAttendanceTotals = Array.isArray(dashJson.data?.attendance) &&
+            dashJson.data.attendance.some(a => (Number(a.present || 0) + Number(a.total || 0)) > 0);
+
+          if (dashJson.isPartial || !hasAttendanceTotals) {
             fetch("/api/student/dashboard?mode=details")
               .then((r) => (r.ok ? r.json() : null))
               .then((detJson) => {

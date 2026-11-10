@@ -170,6 +170,17 @@ const extractCourseName = ($, courseCode) => {
     return cleanText(tooltipName);
 };
 
+const hasDetailedCounts = (cached) => {
+    return (
+        cached &&
+        Array.isArray(cached.attendance) &&
+        cached.attendance.length > 0 &&
+        cached.attendance.some(
+            (a) => (Number(a.present || 0) + Number(a.absent || 0)) > 0 || (a.dates && a.dates.length > 0)
+        )
+    );
+};
+
 export async function scrapeStudentDashboard({
     sessionCookie,
     targetUrl,
@@ -180,7 +191,7 @@ export async function scrapeStudentDashboard({
 }) {
     if (knownUsn && !forceRefresh) {
         const cachedFull = erpCache.get(`dash_full_${knownUsn}`);
-        if (cachedFull) {
+        if (cachedFull && (hasDetailedCounts(cachedFull) || mode === 'fast')) {
             return { data: cachedFull, fromCache: true };
         }
     }
@@ -189,7 +200,7 @@ export async function scrapeStudentDashboard({
     return await erpCache.coalesce(flightKey, async () => {
         if (knownUsn && !forceRefresh) {
             const cachedFull = erpCache.get(`dash_full_${knownUsn}`);
-            if (cachedFull) {
+            if (cachedFull && (hasDetailedCounts(cachedFull) || mode === 'fast')) {
                 return { data: cachedFull, fromCache: true };
             }
         }
