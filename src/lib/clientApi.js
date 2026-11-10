@@ -186,3 +186,77 @@ export function filterElectives(list) {
   return list;
 }
 
+/**
+ * Sentinel Stale-While-Revalidate Sync Coordinator (S-SWR)
+ * 1. Checks sentinel status for this student's section/sem
+ * 2. If update detected or canary probe needed, dispatches coalesced fetch to upstream
+ * 3. Notifies client subscribers seamlessly
+ */
+let clientInFlightSync = null;
+
+export async function checkAndSyncSentinelAttendance({ usn, section, sem, onFreshData } = {}) {
+  if (typeof window === "undefined") return null;
+
+  // Single-flight in-flight coalescing lock
+  if (clientInFlightSync) {
+    return clientInFlightSync;
+  }
+
+  clientInFlightSync = (async () => {
+    try {
+      const localVer = parseInt(sessionStorage.getItem("sentinel_version") || "0", 10);
+      const branch = usn && usn.length >= 7 ? usn.substring(5, 7) : "";
+      const query = new URLSearchParams({
+        section: section || "",
+        semester: sem || "",
+        branch,
+        clientVersion: String(localVer),
+      });
+
+      const sentinelRes = await fetch(`/api/student/attendance/sentinel?${query.toString()}`).then((r) =>
+        r.ok ? r.json() : null
+      );
+
+      const hasUpdate = sentinelRes?.hasUpdate;
+      const isProbeNeeded = sentinelRes?.isProbeNeeded;
+      const serverVersion = sentinelRes?.serverVersion || 1;
+
+      // Only perform network roundtrip to upstream ERP if:
+      // A) A classmate triggered a version bump (hasUpdate)
+      // B) Or this client was chosen as a periodic canary probe (isProbeNeeded)
+      // C) Or there is no cached dashboard data at all
+      const hasCached = !!sessionStorage.getItem("dashboard_data");
+      if (!hasUpdate && !isProbeNeeded && hasCached) {
+        return null;
+      }
+
+      // Revalidate in background
+      const freshRes = await apiFetch("/api/student/dashboard?mode=refresh", {
+        retries: 0,
+        redirectOnUnauthorized: false,
+      }).catch((err) => {
+        console.warn("Background sentinel revalidation deferred:", err?.message);
+        return null;
+      });
+
+      if (freshRes?.success && freshRes?.data) {
+        sessionStorage.setItem("sentinel_version", String(serverVersion));
+        sessionStorage.setItem("dashboard_data", JSON.stringify(freshRes.data));
+        window.dispatchEvent(new Event("attendanceChanged"));
+        if (typeof onFreshData === "function") {
+          onFreshData(freshRes.data);
+        }
+        return freshRes.data;
+      }
+    } catch (e) {
+      console.warn("Sentinel SWR error:", e);
+    } finally {
+      clientInFlightSync = null;
+    }
+    return null;
+  })();
+
+  return clientInFlightSync;
+}
+
+

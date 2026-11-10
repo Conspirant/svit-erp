@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch, getMergedAttendance, saveSelfLoggedAttendance, filterElectives } from "@/lib/clientApi";
+import { apiFetch, getMergedAttendance, saveSelfLoggedAttendance, filterElectives, checkAndSyncSentinelAttendance } from "@/lib/clientApi";
 
 const SEMESTER_END_DATE = new Date("2026-06-15T23:59:59");
 
@@ -328,6 +328,18 @@ export default function AttendancePage() {
               }
             })
             .catch(() => {});
+        }
+
+        // Sentinel SWR Sync: Check if classmates have flagged newer attendance from teachers
+        if (dashJson.data?.usn) {
+          checkAndSyncSentinelAttendance({
+            usn: dashJson.data.usn,
+            section: dashJson.data.section,
+            sem: dashJson.data.sem,
+            onFreshData: (fresh) => {
+              if (alive && fresh) setData(fresh);
+            }
+          });
         }
       })
       .catch((err) => alive && setError(err.message || "Could not load attendance."))

@@ -13,6 +13,7 @@ import {
   Clock,
   Calculator,
   FileText,
+  FileCheck,
   ShoppingBag,
   MessageSquare,
   IdCard as IdCardIcon,
@@ -21,7 +22,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import StudentAvatar from "@/components/StudentAvatar";
-import { getMergedAttendance, saveSelfLoggedAttendance } from "@/lib/clientApi";
+import { getMergedAttendance, saveSelfLoggedAttendance, checkAndSyncSentinelAttendance } from "@/lib/clientApi";
 
 const toNumber = (value, fallback = 0) => {
   const number = Number(value);
@@ -117,6 +118,18 @@ export default function Dashboard() {
                 }
               })
               .catch(() => { });
+          }
+
+          // Sentinel SWR check
+          if (dashJson.data?.usn) {
+            checkAndSyncSentinelAttendance({
+              usn: dashJson.data.usn,
+              section: dashJson.data.section,
+              sem: dashJson.data.sem,
+              onFreshData: (fresh) => {
+                if (fresh) setData(fresh);
+              }
+            });
           }
         } else if (dashRes.status !== 401) {
           // If 500 occurred but we have cached data, keep showing cached data with a warning
@@ -578,6 +591,12 @@ export default function Dashboard() {
             <Unlock size={20} strokeWidth={1.8} />
           </span>
           <span className="home-action-label">Unlocked</span>
+        </Link>
+        <Link href="/letters" className="home-action-tile">
+          <span className="home-action-icon-wrap" style={{ color: "#38bdf8" }}>
+            <FileCheck size={20} strokeWidth={1.8} />
+          </span>
+          <span className="home-action-label">Letters</span>
         </Link>
         <Link href="/dashboard/feedback" className="home-action-tile">
           <span className="home-action-icon-wrap">

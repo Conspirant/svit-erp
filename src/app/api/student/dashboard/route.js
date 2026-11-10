@@ -4,6 +4,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { setSessionIdentity, getSessionUsn } from '@/lib/authSession';
 import { erpCache } from '@/lib/erpCache';
+import { sectionSentinel } from '@/lib/sentinelManager';
 import { fetchWithRetry, pLimitPool } from '@/lib/fetchRetry';
 import {
     ERP_BASE_URL,
@@ -582,6 +583,19 @@ export async function scrapeStudentDashboard({
         if (stats.usn) {
             erpCache.set(`dash_details_${stats.usn}`, { attendance: stats.attendance, cie: stats.cie }, 900);
             erpCache.set(`dash_full_${stats.usn}`, stats, 900);
+
+            // Compute total conducted classes across courses to feed the section sentinel
+            if (Array.isArray(stats.attendance)) {
+                const totalConducted = stats.attendance.reduce((acc, curr) => {
+                    const t = Number(curr.total) || (Number(curr.present || 0) + Number(curr.absent || 0));
+                    return acc + t;
+                }, 0);
+                
+                const section = stats.section || '';
+                const sem = stats.sem || stats.semester || '';
+                const branch = stats.branch || (stats.usn.length >= 7 ? stats.usn.substring(5, 7) : '');
+                sectionSentinel.reportAttendanceState(section, sem, branch, totalConducted);
+            }
         }
 
         return { data: stats, fromCache: false };
