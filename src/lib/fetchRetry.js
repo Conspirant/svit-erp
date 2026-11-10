@@ -1,4 +1,13 @@
 import axios from 'axios';
+import { egressManager } from './egressManager';
+
+function reportOutcomeFromConfig(config, status) {
+  if (!config?.url) return;
+  try {
+    const origin = new URL(config.url).origin;
+    egressManager.reportOutcome(origin, status);
+  } catch (_) {}
+}
 
 /**
  * Enhanced retry wrapper for requests to Accredia / Cloudflare Gateway.
@@ -21,6 +30,7 @@ export async function fetchWithRetry(fn, options = {}) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fn();
+      reportOutcomeFromConfig(res.config, res.status);
 
       // Retry on Cloudflare gateway errors (520/521/522/523/524)
       if (res.status >= 520 && res.status <= 524 && attempt < retries) {
@@ -51,6 +61,7 @@ export async function fetchWithRetry(fn, options = {}) {
       lastErr = err;
 
       const status = err.response?.status;
+      reportOutcomeFromConfig(err.config, status || 502);
 
       // Specifically retry on 429 (Rate Limit) even if axios throws
       if (status === 429 && attempt < retries) {

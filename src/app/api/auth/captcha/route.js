@@ -6,6 +6,7 @@ import {
   ERP_CAPTCHA_URL,
   DEFAULT_USER_AGENT,
   createHttpsAgent,
+  egressManager,
 } from '@/lib/erpConfig';
 
 const httpsAgent = createHttpsAgent();
@@ -118,16 +119,16 @@ async function tryFetchCaptcha(baseOrigin) {
 }
 
 export async function GET() {
-  const configuredOrigin = (process.env.ERP_GATEWAY_URL || DIRECT_ORIGIN).replace(/\/+$/, '');
-  const candidateOrigins = [configuredOrigin];
-  if (configuredOrigin !== DIRECT_ORIGIN) candidateOrigins.push(DIRECT_ORIGIN);
-  if (!candidateOrigins.includes(DEFAULT_GATEWAY)) candidateOrigins.push(DEFAULT_GATEWAY);
+  const registeredNodes = egressManager.getAllNodes().map(n => n.url);
+  const candidateOrigins = registeredNodes.length > 0 ? registeredNodes : [DIRECT_ORIGIN];
 
   let lastError = null;
 
   for (const origin of candidateOrigins) {
+    const startTime = Date.now();
     try {
       const result = await tryFetchCaptcha(origin);
+      egressManager.reportOutcome(origin, 200, Date.now() - startTime);
 
       const sessionData = JSON.stringify({
         sessionCookie: result.sessionCookie,
@@ -155,6 +156,8 @@ export async function GET() {
       return response;
     } catch (err) {
       lastError = err;
+      const status = err.response?.status || 502;
+      egressManager.reportOutcome(origin, status, Date.now() - startTime);
       console.warn(`[captcha] Origin ${origin} failed: ${err.message}, trying next origin...`);
     }
   }
