@@ -10,7 +10,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "medical_leave",
     category: "Academic Affairs",
     type: "Leave of Absence Application",
-    label: "🏥 Medical Leave",
+    label: "Medical Leave",
     badge: "Health",
     description: "Illness, hospitalization, or viral recovery with medical certificate attachment",
     fields: {
@@ -24,7 +24,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "attendance_condone",
     category: "Academic Affairs",
     type: "Attendance Consideration Request",
-    label: "📊 Attendance Condonation",
+    label: "Attendance Condonation",
     badge: "Attendance",
     description: "Shortage consideration due to institutional activities, illness, or unavoidable emergencies",
     fields: {
@@ -37,7 +37,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "makeup_exam",
     category: "Academic Affairs",
     type: "Permission for Special/Makeup Exam",
-    label: "📝 Makeup / Special IA",
+    label: "Makeup / Special IA",
     badge: "Exams",
     description: "Permission to appear for re-test / makeup internal assessment due to genuine absence",
     fields: {
@@ -50,7 +50,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "onduty_event",
     category: "Academic Affairs",
     type: "Leave of Absence Application",
-    label: "🏆 On-Duty (Hackathon / Sports)",
+    label: "On-Duty (Hackathon / Sports)",
     badge: "Official",
     description: "Attendance credit (OD) for representing SVIT at external hackathons, conferences, or sports meets",
     fields: {
@@ -66,7 +66,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "bonafide_loan",
     category: "Certificates & Records",
     type: "Request for Bonafide Certificate",
-    label: "🎓 Education Loan Bonafide",
+    label: "Education Loan Bonafide",
     badge: "Bank",
     description: "Bonafide letter for nationalized/private bank loan processing & fee disbursement",
     fields: {
@@ -79,7 +79,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "bonafide_passport",
     category: "Certificates & Records",
     type: "Request for Bonafide Certificate",
-    label: "🛂 Passport / Visa Bonafide",
+    label: "Passport / Visa Bonafide",
     badge: "Govt",
     description: "Address and student verification proof for Passport Seva Kendra & Police Verification",
     fields: {
@@ -92,7 +92,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "bonafide_bus_pass",
     category: "Certificates & Records",
     type: "Request for Bonafide Certificate",
-    label: "🚌 BMTC / KSRTC Bus Pass",
+    label: "BMTC / KSRTC Bus Pass",
     badge: "Travel",
     description: "Student concession verification for Seva Sindhu / BMTC student bus pass issuance",
     fields: {
@@ -105,7 +105,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "noc_internship",
     category: "Certificates & Records",
     type: "No Objection Certificate",
-    label: "💼 Internship NOC",
+    label: "Internship NOC",
     badge: "Career",
     description: "NOC for technical industrial training, summer internships, or research assistantships",
     fields: {
@@ -119,7 +119,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "bonafide_scholarship",
     category: "Certificates & Records",
     type: "Request for Bonafide Certificate",
-    label: "🪙 SSP / NSP Scholarship",
+    label: "SSP / NSP Scholarship",
     badge: "Finance",
     description: "State Scholarship Portal (SSP) / National Scholarship Portal (NSP) verification document",
     fields: {
@@ -134,7 +134,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "fee_extension",
     category: "Fees & Financial",
     type: "Request for Education Loan Documents",
-    label: "⏳ Fee Payment Extension",
+    label: "Fee Payment Extension",
     badge: "Accounts",
     description: "Temporary extension request for tuition/college fee payment due to loan disbursement delays",
     fields: {
@@ -147,7 +147,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "fee_structure_letter",
     category: "Fees & Financial",
     type: "Request for Education Loan Documents",
-    label: "📑 Detailed Fee Structure",
+    label: "Detailed Fee Structure",
     badge: "Accounts",
     description: "Official institutional fee estimate breakdown for bank loan approval or employer allowances",
     fields: {
@@ -162,7 +162,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "lost_id_card",
     category: "Library",
     type: "Lost ID Card",
-    label: "🪪 Duplicate ID Card",
+    label: "Duplicate ID Card",
     badge: "Security",
     description: "Application for re-issuance of lost or damaged institutional RFID smart card",
     fields: {
@@ -175,7 +175,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "library_fine_waiver",
     category: "Library",
     type: "Custom Letter",
-    label: "📚 Library Fine / Clearance",
+    label: "Library Fine / Clearance",
     badge: "Library",
     description: "Request for fine concession or special book borrowing allowance for project research",
     fields: {
@@ -191,7 +191,7 @@ export const LETTER_TEMPLATES_CATALOG = [
     key: "principal_representation",
     category: "Others",
     type: "Custom Letter",
-    label: "⚡ Direct to Principal",
+    label: "Direct to Principal",
     badge: "Principal",
     description: "Direct institutional grievance, special permissions, or high-priority matters",
     fields: {
@@ -203,4 +203,3 @@ export const LETTER_TEMPLATES_CATALOG = [
     requiresERPAttendance: false,
   },
 ];
-

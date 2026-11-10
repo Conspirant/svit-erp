@@ -344,8 +344,7 @@ export default function Home() {
               transition: "all 0.18s cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
-            <span style={{ fontSize: "0.95rem" }}>📄</span>
-            <span>Letter Approval Portal</span>
+            <span>Common Application Form Online</span>
             <span style={{ fontSize: "0.85rem", opacity: 0.8 }}>→</span>
           </Link>
         </div>

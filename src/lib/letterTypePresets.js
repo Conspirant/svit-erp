@@ -59,7 +59,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
   // ================= 1. ACADEMIC AFFAIRS =================
   "Leave of Absence Application": [
     {
-      label: "🏥 Medical Illness",
+      label: "Medical Illness",
       fields: {
         reason: "Diagnosed with acute viral illness and severe dehydration. Under doctor's clinical prescription for complete bed rest and quarantine. Enclosing medical fitness certificate and outpatient slip.",
         daysCount: "3",
@@ -67,7 +67,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
       note: "Formal medical leave regularization with attached prescription and fitness slip.",
     },
     {
-      label: "👨‍👩‍👧 Family Emergency",
+      label: "Family Emergency",
       fields: {
         reason: "Required to urgently travel to native hometown to attend to an unexpected family emergency. I have taken lecture notes from peers to make up for missed syllabus.",
         daysCount: "2",
@@ -75,7 +75,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
       note: "Family emergency absence request.",
     },
     {
-      label: "🏆 Hackathon OD",
+      label: "Hackathon OD",
       fields: {
         reason: "Selected to represent Sai Vidya Institute of Technology at an external National Hackathon / Technical Symposium. Requesting formal On-Duty (OD) sanction for missed lecture and lab hours.",
         daysCount: "2",
@@ -83,7 +83,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
       note: "Hackathon OD representation. Event brochure and registration confirmation attached.",
     },
     {
-      label: "⚽ Sports Meet OD",
+      label: "Sports Meet OD",
       fields: {
         reason: "Participating in the University Inter-Collegiate Tournament as part of the official college sports contingent. Requesting approved leave and attendance credit.",
         daysCount: "3",
@@ -94,14 +94,14 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Attendance Consideration Request": [
     {
-      label: "🩺 Health Condonation",
+      label: "Health Condonation",
       fields: {
         reason: "Submitting a formal attendance consideration appeal due to documented health complications during instructional weeks. I have maintained consistent discipline and cleared all assignments. Requesting sympathetic condonation.",
       },
       note: "Attendance shortage condonation appeal with medical documentation.",
     },
     {
-      label: "⚡ Institutional OD Adjustment",
+      label: "Institutional OD Adjustment",
       fields: {
         reason: "Attendance recorded below threshold due to active participation in college-directed hackathons, accreditation exhibits, and sports events. Requesting adjustment of sanctioned On-Duty hours.",
       },
@@ -111,14 +111,14 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Permission for Special/Makeup Exam": [
     {
-      label: "📝 Hospitalization During IA",
+      label: "Hospitalization During IA",
       fields: {
         reason: "Unable to appear for the scheduled Internal Assessment (IA) examination due to unforeseen hospitalization and clinical treatment. Requesting permission to appear for the makeup examination.",
       },
       note: "Makeup test request with doctor's emergency memo attached.",
     },
     {
-      label: "🚆 Transit Delay / Emergency",
+      label: "Transit Delay / Emergency",
       fields: {
         reason: "Missed the morning examination due to railway transit disruption and unavoidable roadblock. Requesting approval for special test evaluation to safeguard academic scores.",
       },
@@ -128,7 +128,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Change of Elective Course": [
     {
-      label: "🔄 Elective Stream Reassignment",
+      label: "Elective Stream Reassignment",
       fields: {
         reason: "Requesting reassignment of professional elective to better align with my final-year capstone project and technical career specialization. I have obtained consent from the course coordinator.",
       },
@@ -138,7 +138,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Semester Break / Gap Year Request": [
     {
-      label: "⏸️ Medical / Personal Semester Break",
+      label: "Medical / Personal Semester Break",
       fields: {
         reason: "Applying for formal temporary semester leave / break on compassionate grounds due to ongoing medical rehabilitation. Undertaking to resume studies in the subsequent academic session per university statutes.",
       },
@@ -149,35 +149,35 @@ export const ALL_LETTER_TYPE_PRESETS = {
   // ================= 2. CERTIFICATES & RECORDS =================
   "Request for Bonafide Certificate": [
     {
-      label: "🎓 Education Loan",
+      label: "Education Loan",
       fields: {
         purpose: "Required for submission to Bank (State Bank of India / Canara Bank / HDFC) for education loan application sanction, interest subsidy, and direct institutional fee disbursement for the upcoming academic year.",
       },
       note: "Bank education loan bonafide letter verification.",
     },
     {
-      label: "🛂 Passport / Police Verification",
+      label: "Passport / Police Verification",
       fields: {
         purpose: "Required as bonafide student status & institutional local residence verification proof for Passport Application at the Regional Passport Seva Kendra (PSK) and subsequent police station verification.",
       },
       note: "Passport Seva Kendra appointment document.",
     },
     {
-      label: "🚌 BMTC / KSRTC Bus Pass",
+      label: "BMTC / KSRTC Bus Pass",
       fields: {
         purpose: "Required for uploading to the Karnataka Seva Sindhu / BMTC portal for issuance of student concessional bus travel pass for daily commute between residence and SVIT campus.",
       },
       note: "Student concession bus pass verification.",
     },
     {
-      label: "🪙 Scholarship (SSP / NSP)",
+      label: "Scholarship (SSP / NSP)",
       fields: {
         purpose: "Required for document upload on the Karnataka State Scholarship Portal (SSP / e-Kalyan / NSP) for verification of bonafide admission status and post-matric tuition fee reimbursement.",
       },
       note: "Post-matric scholarship portal verification.",
     },
     {
-      label: "🌍 Visa / International Travel",
+      label: "Visa / International Travel",
       fields: {
         purpose: "Required for submission to the Embassy / Consulate General as institutional verification and 'No Objection' for student tourist/visitor visa processing during semester vacation.",
       },
@@ -187,7 +187,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "No Objection Certificate": [
     {
-      label: "💼 Summer Internship NOC",
+      label: "Summer Internship NOC",
       fields: {
         academicYear: "2024-2028",
         purpose: "Requesting No Objection Certificate (NOC) to undergo technical industrial internship training during semester vacation / non-instructional working hours as required by the VTU curriculum.",
@@ -195,7 +195,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
       note: "Internship NOC. Corporate offer letter attached.",
     },
     {
-      label: "🔬 Research Lab Collaboration",
+      label: "Research Lab Collaboration",
       fields: {
         academicYear: "2024-2028",
         purpose: "Requesting NOC to carry out specialized research and final year capstone project experimentation at an external national research laboratory / public sector undertaking.",
@@ -206,7 +206,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Study / Medium of Instruction Certificate": [
     {
-      label: "🇬🇧 English Medium Verification",
+      label: "English Medium Verification",
       fields: {
         purpose: "Required as official proof certifying that the entire medium of instruction, course examination, and technical laboratory curriculum at SVIT is conducted exclusively in English.",
       },
@@ -216,7 +216,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Character & Conduct Certificate": [
     {
-      label: "📜 Good Moral Conduct Proof",
+      label: "Good Moral Conduct Proof",
       fields: {
         purpose: "Required for submission to higher education university admission board / public sector employment authority certifying exemplary personal conduct and academic record.",
       },
@@ -226,7 +226,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Transcripts / Marks Card Attestation": [
     {
-      label: "📑 VTU Grade Card Attestation",
+      label: "VTU Grade Card Attestation",
       fields: {
         purpose: "Requesting institutional seal and official attestation on semester grade transcripts for WES evaluation / international graduate study application.",
       },
@@ -261,14 +261,14 @@ export const ALL_LETTER_TYPE_PRESETS = {
   // ================= 3. FEES & FINANCIAL =================
   "Request for Education Loan Documents": [
     {
-      label: "⏳ Tuition Fee Grace Period",
+      label: "Tuition Fee Grace Period",
       fields: {
         purpose: "Humbly requesting a temporary grace period of 15-20 days for clearance of the outstanding semester tuition fees. Educational bank loan disbursement is currently under final underwriting. I undertake to clear all dues promptly upon bank credit.",
       },
       note: "Tuition fee payment extension request with bank sanction letter attached.",
     },
     {
-      label: "📑 Detailed Fee Estimate Structure",
+      label: "Detailed Fee Estimate Structure",
       fields: {
         purpose: "Requesting official institutional fee estimate breakdown on college letterhead (including Tuition Fee, VTU University Fee, Development Fee, and Laboratory Fee) for submission to bank loan officers / parental employer reimbursement.",
       },
@@ -278,7 +278,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Fee Payment Extension Request": [
     {
-      label: "🗓️ 15-Day Fee Clearance Extension",
+      label: "15-Day Fee Clearance Extension",
       fields: {
         reason: "Requesting a temporary extension of 15 days to clear the semester college fee dues. Family agricultural produce sales / loan disbursement has faced an unexpected delay. I assure clearance on or before the committed date.",
       },
@@ -288,7 +288,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Fee Concession / Scholarship Request": [
     {
-      label: "🤝 Meritorious / Economic Concession",
+      label: "Meritorious / Economic Concession",
       fields: {
         reason: "Applying for consideration under institutional economic hardship / merit-cum-means fee concession. Maintaining first-class academic standing and active participation in institutional projects.",
       },
@@ -298,7 +298,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Excess Fee Refund Application": [
     {
-      label: "💳 Double Payment / Surplus Refund",
+      label: "Double Payment / Surplus Refund",
       fields: {
         reason: "An inadvertent duplicate transaction occurred during online fee portal payment / KEA seat allotment adjustment. Requesting reimbursement of the surplus excess amount to the remitting bank account.",
       },
@@ -308,7 +308,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Bus / Transport Fee Receipt Request": [
     {
-      label: "🚌 Transport Tax / Fee Receipt",
+      label: "Transport Tax / Fee Receipt",
       fields: {
         purpose: "Requesting duplicate/official receipt for college bus transport fees paid for claiming corporate transport allowance and tax exemption under parent's employer.",
       },
@@ -319,7 +319,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
   // ================= 4. INTERNSHIPS & CAREER =================
   "Internship Permission": [
     {
-      label: "🏢 8th-Sem Full-Time Internship",
+      label: "8th-Sem Full-Time Internship",
       fields: {
         companyName: "Enterprise Software Corp",
         role: "Software Development Intern",
@@ -329,7 +329,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
       note: "Full-time final-semester corporate internship clearance.",
     },
     {
-      label: "💻 Virtual / Off-Hours Technical Internship",
+      label: "Virtual / Off-Hours Technical Internship",
       fields: {
         companyName: "Cloud Innovations Lab",
         role: "DevOps Engineer Trainee",
@@ -342,7 +342,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Placement On-Duty (OD) Request": [
     {
-      label: "👔 Campus Drive Interview OD",
+      label: "Campus Drive Interview OD",
       fields: {
         reason: "Shortlisted for technical interviews and managerial rounds at the centralized campus placement drive. Requesting On-Duty (OD) attendance credit for the interview rounds.",
       },
@@ -352,7 +352,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Industrial Training Endorsement": [
     {
-      label: "🏭 Core Engineering Industrial Visit",
+      label: "Core Engineering Industrial Visit",
       fields: {
         purpose: "Requesting institutional endorsement letter for completing mandatory 4-week core industrial practical training at an authorized PSU / manufacturing facility.",
       },
@@ -362,7 +362,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Recommendation Letter (LOR)": [
     {
-      label: "🎓 LOR for MS / Higher Studies",
+      label: "LOR for MS / Higher Studies",
       fields: {
         purpose: "Requesting an official Letter of Recommendation (LOR) from faculty / HOD evaluating academic performance, laboratory research acumen, and character for Master's degree admissions abroad.",
       },
@@ -372,7 +372,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "External Project / Workshop Clearance": [
     {
-      label: "🛠️ Technical Hackathon / Workshop Pass",
+      label: "Technical Hackathon / Workshop Pass",
       fields: {
         purpose: "Requesting departmental permission to attend an intensive weekend hands-on robotics / AI workshop at IISc / IIT. Undertaking to share learning with the department.",
       },
@@ -383,14 +383,14 @@ export const ALL_LETTER_TYPE_PRESETS = {
   // ================= 5. LIBRARY =================
   "Lost ID Card": [
     {
-      label: "🪪 Lost RFID Smart ID Card",
+      label: "Lost RFID Smart ID Card",
       fields: {
         reason: "My student identification RFID smart card was misplaced during transit. Despite diligent effort, it could not be recovered. I have completed library dues clearance and request approval for issuance of a duplicate card.",
       },
       note: "Duplicate ID card application with fine payment receipt.",
     },
     {
-      label: "⚡ Defective Chip / RFID Malfunction",
+      label: "Defective Chip / RFID Malfunction",
       fields: {
         reason: "The RFID embedded chip inside my student identity card has malfunctioned and is not reading at the biometric library turnstile. Requesting replacement smart card re-issuance.",
       },
@@ -400,7 +400,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Book Due Date Extension & Fine Waiver": [
     {
-      label: "📚 Exam Study Return Extension",
+      label: "Exam Study Return Extension",
       fields: {
         reason: "Unable to return borrowed reference volumes on due date owing to examination preparation and health recovery. Requesting sympathetic waiver of late overdue fine and book renewal.",
       },
@@ -410,7 +410,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Book Bank Scheme Enrollment": [
     {
-      label: "📖 SC/ST / Merit Book Bank Requisition",
+      label: "SC/ST / Merit Book Bank Requisition",
       fields: {
         purpose: "Applying for semester-long text book allocation under the institutional Book Bank scheme for complete semester reference and examination preparation.",
       },
@@ -420,7 +420,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "No Dues Clearance Certificate": [
     {
-      label: "✅ Final Library No-Dues Clearance",
+      label: "Final Library No-Dues Clearance",
       fields: {
         purpose: "All borrowed library books and reference manuals have been duly returned in good condition. Requesting official 'No Dues' clearance endorsement for semester exam hall ticket / graduation clearance.",
       },
@@ -430,7 +430,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Inter-Library Borrowing Card Request": [
     {
-      label: "🏛️ DELNET / Consortium Access Card",
+      label: "DELNET / Consortium Access Card",
       fields: {
         purpose: "Requesting access card / institutional credentials for DELNET / National Digital Library consortium to access peer-reviewed journals for final year capstone project literature review.",
       },
@@ -441,7 +441,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
   // ================= 6. OTHERS / PRINCIPAL =================
   "Custom Letter": [
     {
-      label: "⚡ Direct Appeal to Principal",
+      label: "Direct Appeal to Principal",
       fields: {
         title: "Urgent Representation for Institutional Sanction",
         description: "Humbly submitting this representation directly to the Principal's Office seeking special administrative consideration and formal institutional sanction for the matter detailed in the attached brief.",
@@ -450,7 +450,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
       note: "High-priority direct representation to Principal.",
     },
     {
-      label: "🏛️ Hostel Room Reallocation",
+      label: "Hostel Room Reallocation",
       fields: {
         title: "Request for Hostel Room Reallocation & Quiet Study",
         description: "Requesting reallocation of hostel room due to medical health needs and requirement of a quiet study environment for competitive exam preparation.",
@@ -459,7 +459,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
       note: "Hostel room reallocation request.",
     },
     {
-      label: "🚌 College Bus Route Modification",
+      label: "College Bus Route Modification",
       fields: {
         title: "Request for Transport Route Pickup Change",
         description: "Requesting official change of college bus pickup point due to change in family residential address. Willing to adjust transport fee difference if applicable.",
@@ -471,7 +471,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Hostel Admission & Room Change": [
     {
-      label: "🛏️ Hostel Room Change / Medical Transfer",
+      label: "Hostel Room Change / Medical Transfer",
       fields: {
         reason: "Requesting ground-floor / study room allocation in the college hostel on doctor's recommendation due to recent physical injury and study concentration.",
       },
@@ -481,7 +481,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "College Bus Route Modification": [
     {
-      label: "🚌 Permanent Bus Stop Relocation",
+      label: "Permanent Bus Stop Relocation",
       fields: {
         reason: "Our family has relocated to a new residential address. Requesting authorization to board the college bus from the nearest designated route stop starting next week.",
       },
@@ -491,7 +491,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Campus Wi-Fi / Portal Access Issue": [
     {
-      label: "📶 MAC Address Registration / Reset",
+      label: "MAC Address Registration / Reset",
       fields: {
         reason: "Requesting registration of laptop MAC address on the campus secure Wi-Fi network and institutional proxy server for research and project work.",
       },
@@ -501,7 +501,7 @@ export const ALL_LETTER_TYPE_PRESETS = {
 
   "Sports & Cultural Activity Sanction": [
     {
-      label: "🎭 Cultural Fest / Audition Clearance",
+      label: "Cultural Fest / Audition Clearance",
       fields: {
         reason: "Selected to participate in the VTU Inter-Collegiate Youth Fest / Technical Exhibition. Requesting sanction and department authorization.",
       },
