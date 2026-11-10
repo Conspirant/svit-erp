@@ -7147,3 +7147,94 @@ select:focus {
   background: rgba(56, 189, 248, 0.06) !important;
   box-shadow: 0 0 0 1px var(--primary-glow) !important;
 }
+
+/* =========================================================================
+   STEP 5: MOBILE-FIRST RESPONSIVE ARCHITECTURE FOR LETTER PORTAL & PIPELINE
+   ========================================================================= */
+
+/* Mobile Bottom Sheet Modal Overhaul */
+@media (max-width: 680px) {
+  /* Make the New Letter Modal and Detail Views slide up as native mobile bottom sheets */
+  div[style*="maxHeight: 90vh"],
+  div[style*="max-height: 90vh"] {
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 94vh !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 24px !important;
+    border-top-right-radius: 24px !important;
+    padding: 20px 16px !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
+
+  /* Sticky Modal Action Footer */
+  .modal-submit-row {
+    position: sticky !important;
+    bottom: -16px !important;
+    background: #121620 !important;
+    padding-top: 12px !important;
+    padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+    border-top: 1px solid var(--line) !important;
+    margin-top: 20px !important;
+  }
+
+  /* Responsive Multi-Tier Approval Pipeline Stepper Track */
+  div[style*="gridTemplateColumns: repeat(auto-fit, minmax(160px, 1fr))"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  /* Mobile summary stats grid: 2x2 symmetry */
+  div[style*="gridTemplateColumns: repeat(auto-fit, minmax(140px, 1fr))"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Compact Horizontal Filter Tabs */
+  div[style*="overflowX: auto"] {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    display: flex !important;
+    gap: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  div[style*="overflowX: auto"]::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Application Card Touch Target Adjustments */
+  .letter-feed-card {
+    padding: 14px 16px !important;
+  }
+
+  /* Header compacting */
+  header[style*="padding: 18px 24px"] {
+    padding: 12px 16px !important;
+  }
+
+  /* Hide excessive metadata text on small phones */
+  .desktop-only-meta {
+    display: none !important;
+  }
+}
+
+/* Fluid Touch Response for Preset Buttons */
+button[style*="border-radius: 14px"],
+button[style*="border-radius: 16px"],
+button[style*="border-radius: 20px"] {
+  min-height: 38px !important;
+  -webkit-tap-highlight-color: transparent !important;
+  user-select: none !important;
+}
+
+button[style*="border-radius: 14px"]:active,
+button[style*="border-radius: 16px"]:active,
+button[style*="border-radius: 20px"]:active {
+  transform: scale(0.97) !important;
+}
