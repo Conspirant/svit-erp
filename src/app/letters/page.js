@@ -43,6 +43,7 @@ import {
   Award,
 } from "lucide-react";
 import { LETTER_TEMPLATES_CATALOG } from "@/lib/letterTemplates";
+import { LETTER_TYPE_PRESETS } from "@/lib/letterTypePresets";
 
 export default function LetterApprovalPortal() {
   const searchParams = useSearchParams();
@@ -2974,6 +2975,59 @@ Sai Vidya Institute of Technology`;
                         </>
                       )}
                     </select>
+                  </div>
+                )}
+
+                {/* CONTEXTUAL SMART PRESETS FOR SELECTED LETTER TYPE */}
+                {modalType && LETTER_TYPE_PRESETS[modalType] && (
+                  <div
+                    style={{
+                      background: "rgba(16, 185, 129, 0.08)",
+                      border: "1px solid rgba(16, 185, 129, 0.25)",
+                      borderRadius: "12px",
+                      padding: "12px 14px",
+                    }}
+                  >
+                    <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#6ee7b7", marginBottom: "8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <Sparkles size={14} style={{ color: "#34d399" }} />
+                        <span>Professional Presets for &quot;{modalType}&quot;</span>
+                      </div>
+                      <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.5)" }}>1-Click Auto Fill</span>
+                    </div>
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                      {LETTER_TYPE_PRESETS[modalType].map((preset, pIdx) => (
+                        <button
+                          key={pIdx}
+                          type="button"
+                          onClick={() => {
+                            const savedFather = typeof window !== "undefined" ? localStorage.getItem("svit_letters_father_name") || "" : "";
+                            const today = new Date().toISOString().split("T")[0];
+                            const updated = { ...preset.fields };
+                            if ("fatherName" in updated && !updated.fatherName) updated.fatherName = savedFather;
+                            if ("startDate" in updated && !updated.startDate) {
+                              updated.startDate = today;
+                              updated.endDate = today;
+                            }
+                            setModalFields((prev) => ({ ...prev, ...updated }));
+                            if (preset.note) setModalNote(preset.note);
+                          }}
+                          style={{
+                            background: "rgba(0, 0, 0, 0.3)",
+                            border: "1px solid rgba(16, 185, 129, 0.35)",
+                            color: "#d1fae5",
+                            padding: "5px 11px",
+                            borderRadius: "14px",
+                            fontSize: "0.76rem",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
