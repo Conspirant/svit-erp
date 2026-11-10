@@ -6976,3 +6976,85 @@ select:focus {
   font-size: 0.72rem !important;
   color: var(--ink-tertiary) !important;
 }
+
+/* =========================================================================
+   STEP 3: EXECUTIVE LETTER APPROVAL DESK & DOCUMENT WORKSPACE
+   ========================================================================= */
+
+/* Letter Portal Shell & Header */
+.letter-portal-shell {
+  background: var(--bg) !important;
+  color: var(--ink) !important;
+}
+
+/* Modern Document Drawer & Modal Card */
+.letter-modal-card {
+  background: #12151d !important;
+  border: 1px solid var(--line-strong) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7) !important;
+  border-radius: 20px !important;
+}
+
+/* Multi-Tier Approval Pipeline Stepper Cards */
+.letter-pipeline-card {
+  background: #141822 !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  padding: 14px !important;
+  transition: all 0.2s var(--ease-spring) !important;
+}
+
+.letter-pipeline-card:hover {
+  border-color: var(--line-strong) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Clean Institutional Letterhead Preview */
+.letter-official-preview {
+  background: #0f1218 !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
+  color: #f1f5f9 !important;
+}
+
+/* High-Legibility Status Badges */
+.letter-badge-approved {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  color: #34d399 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  border-radius: 20px !important;
+}
+
+.letter-badge-pending {
+  background: rgba(245, 158, 11, 0.1) !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+  color: #fbbf24 !important;
+  font-weight: 700 !important;
+  border-radius: 20px !important;
+}
+
+.letter-badge-rejected {
+  background: rgba(244, 63, 94, 0.1) !important;
+  border: 1px solid rgba(244, 63, 94, 0.3) !important;
+  color: #fb7185 !important;
+  font-weight: 700 !important;
+  border-radius: 20px !important;
+}
+
+/* Application Tile Card in Dashboard Feed */
+.letter-feed-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 14px !important;
+  padding: 18px 20px !important;
+  transition: transform 0.2s var(--ease-spring), border-color 0.2s ease !important;
+}
+
+.letter-feed-card:hover {
+  background: var(--surface-soft) !important;
+  border-color: var(--line-strong) !important;
+  transform: translateY(-2px) !important;
+}
