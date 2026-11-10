@@ -7058,3 +7058,92 @@ select:focus {
   border-color: var(--line-strong) !important;
   transform: translateY(-2px) !important;
 }
+
+/* =========================================================================
+   STEP 4: PRECISION ACADEMIC METRICS (ATTENDANCE, TIMETABLE, BUNK, RESULTS)
+   ========================================================================= */
+
+/* High-Legibility Precision Attendance Cards */
+.native-attendance-card,
+.native-result-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: transform 0.2s var(--ease-spring), border-color 0.2s ease !important;
+}
+
+.native-attendance-card:hover,
+.native-result-card:hover {
+  background: var(--surface-soft) !important;
+  border-color: var(--line-strong) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Precision Percentage Squircle: Clean typography, no neon glare */
+.attendance-percent,
+.result-score {
+  width: 72px !important;
+  height: 72px !important;
+  border-radius: 16px !important;
+  font-size: 1.45rem !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.03em !important;
+  border: 1px solid rgba(16, 185, 129, 0.25) !important;
+  background: rgba(16, 185, 129, 0.08) !important;
+  color: #34d399 !important;
+}
+
+.attendance-percent.risk {
+  border-color: rgba(244, 63, 94, 0.25) !important;
+  background: rgba(244, 63, 94, 0.08) !important;
+  color: #fb7185 !important;
+}
+
+/* Linear Progress Bar with Smooth Curves */
+.attendance-progress {
+  height: 6px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-radius: 99px !important;
+  overflow: hidden !important;
+}
+
+.attendance-progress span {
+  background: linear-gradient(90deg, #10b981, #059669) !important;
+  border-radius: 99px !important;
+  transition: width 0.6s var(--ease-spring) !important;
+}
+
+.native-attendance-card .risk ~ .attendance-course-body .attendance-progress span,
+.native-attendance-card .attendance-percent.risk ~ .attendance-course-body .attendance-progress span {
+  background: linear-gradient(90deg, #f43f5e, #e11d48) !important;
+}
+
+/* Safe, Risk, and Warning Indicators */
+.safe-text {
+  color: #34d399 !important;
+}
+
+.warning-text {
+  color: #fbbf24 !important;
+}
+
+.risk-text {
+  color: #fb7185 !important;
+}
+
+/* Timetable & Schedule Card Modernization */
+.home-schedule-slot,
+.timetable-class-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 14px !important;
+  transition: all 0.2s var(--ease-spring) !important;
+}
+
+.home-schedule-slot.is-now,
+.timetable-class-card.active {
+  border-color: var(--primary) !important;
+  background: rgba(56, 189, 248, 0.06) !important;
+  box-shadow: 0 0 0 1px var(--primary-glow) !important;
+}
