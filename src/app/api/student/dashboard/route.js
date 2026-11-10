@@ -350,11 +350,8 @@ export async function scrapeStudentDashboard({
         });
 
         // 3. Scrape Attendance Sub-Pages with High-Speed Parallel Pool
-        // FAST TIER: If not explicitly requesting deep sub-page date history (mode !== 'details'),
-        // skip sub-page blast to guarantee sub-400ms real-time response and zero 429 rate limits!
-        const shouldScrapeDeepAttendance = includeCieDetails || mode === 'details';
-
-        if (shouldScrapeDeepAttendance && attendanceLinks.length > 0) {
+        // Always fetch sub-pages so exact present, absent, total counts and dates are complete!
+        if (attendanceLinks.length > 0) {
             try {
                 const detailedResultsSettled = await pLimitPool(attendanceLinks, 4, (linkObj) =>
                     fetchWithRetry(
