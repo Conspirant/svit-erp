@@ -43,7 +43,7 @@ import {
   Award,
 } from "lucide-react";
 import { LETTER_TEMPLATES_CATALOG } from "@/lib/letterTemplates";
-import { LETTER_TYPE_PRESETS } from "@/lib/letterTypePresets";
+import { ALL_LETTER_TYPE_PRESETS, CATEGORY_SUBCATEGORIES_MAP } from "@/lib/letterTypePresets";
 
 export default function LetterApprovalPortal() {
   const searchParams = useSearchParams();
@@ -2918,9 +2918,10 @@ Sai Vidya Institute of Technology`;
                       ))
                     ) : (
                       <>
-                        <option value="Certificates & Records" style={{ background: "#1a1f2c" }}>Certificates & Records</option>
                         <option value="Academic Affairs" style={{ background: "#1a1f2c" }}>Academic Affairs</option>
+                        <option value="Certificates & Records" style={{ background: "#1a1f2c" }}>Certificates & Records</option>
                         <option value="Fees & Financial" style={{ background: "#1a1f2c" }}>Fees & Financial</option>
+                        <option value="Internships & Career" style={{ background: "#1a1f2c" }}>Internships & Career</option>
                         <option value="Library" style={{ background: "#1a1f2c" }}>Library</option>
                         <option value="Others" style={{ background: "#1a1f2c" }}>Others</option>
                       </>
@@ -2966,20 +2967,23 @@ Sai Vidya Institute of Technology`;
                           </option>
                         ))
                       ) : (
-                        <>
-                          <option value="Request for Bonafide Certificate" style={{ background: "#1a1f2c" }}>Request for Bonafide Certificate</option>
-                          <option value="Leave of Absence Application" style={{ background: "#1a1f2c" }}>Leave of Absence Application</option>
-                          <option value="Attendance Consideration Request" style={{ background: "#1a1f2c" }}>Attendance Consideration Request</option>
-                          <option value="Request for Education Loan Documents" style={{ background: "#1a1f2c" }}>Request for Education Loan Documents</option>
-                          <option value="Custom Letter" style={{ background: "#1a1f2c" }}>Custom Letter</option>
-                        </>
+                        (CATEGORY_SUBCATEGORIES_MAP[modalCategory] || [
+                          "Request for Bonafide Certificate",
+                          "Leave of Absence Application",
+                          "Attendance Consideration Request",
+                          "Custom Letter",
+                        ]).map((subName) => (
+                          <option key={subName} value={subName} style={{ background: "#1a1f2c" }}>
+                            {subName}
+                          </option>
+                        ))
                       )}
                     </select>
                   </div>
                 )}
 
                 {/* CONTEXTUAL SMART PRESETS FOR SELECTED LETTER TYPE */}
-                {modalType && LETTER_TYPE_PRESETS[modalType] && (
+                {modalType && ALL_LETTER_TYPE_PRESETS[modalType] && (
                   <div
                     style={{
                       background: "rgba(16, 185, 129, 0.08)",
@@ -2996,7 +3000,7 @@ Sai Vidya Institute of Technology`;
                       <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.5)" }}>1-Click Auto Fill</span>
                     </div>
                     <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                      {LETTER_TYPE_PRESETS[modalType].map((preset, pIdx) => (
+                      {ALL_LETTER_TYPE_PRESETS[modalType].map((preset, pIdx) => (
                         <button
                           key={pIdx}
                           type="button"
@@ -3018,6 +3022,18 @@ Sai Vidya Institute of Technology`;
                             color: "#d1fae5",
                             padding: "5px 11px",
                             borderRadius: "14px",
+                            fontSize: "0.76rem",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                             fontSize: "0.76rem",
                             fontWeight: 600,
                             cursor: "pointer",
