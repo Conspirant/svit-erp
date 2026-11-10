@@ -203,3 +203,4 @@ export const LETTER_TEMPLATES_CATALOG = [
     requiresERPAttendance: false,
   },
 ];
+

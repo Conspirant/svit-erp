@@ -324,26 +324,29 @@ export default function Home() {
         </div>
 
         {/* Fast Link to Letter Portal */}
-        <div style={{ textAlign: "center", marginBottom: "16px" }}>
+        <div style={{ textAlign: "center", marginBottom: "18px" }}>
           <Link
             href="/letters"
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: "8px",
-              background: "rgba(37, 99, 235, 0.12)",
-              border: "1px solid rgba(59, 130, 246, 0.3)",
-              color: "#93c5fd",
-              padding: "8px 16px",
-              borderRadius: "20px",
+              background: "rgba(56, 189, 248, 0.08)",
+              border: "1px solid rgba(56, 189, 248, 0.22)",
+              color: "#38bdf8",
+              padding: "9px 18px",
+              borderRadius: "24px",
               fontSize: "0.82rem",
               fontWeight: 600,
+              letterSpacing: "0.01em",
               textDecoration: "none",
-              transition: "all 0.15s ease",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+              transition: "all 0.18s cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
-            <span>Need Leave or Bonafide Letter? Open Portal</span>
-            <span style={{ fontSize: "0.9rem" }}>→</span>
+            <span style={{ fontSize: "0.95rem" }}>📄</span>
+            <span>Letter Approval Portal</span>
+            <span style={{ fontSize: "0.85rem", opacity: 0.8 }}>→</span>
           </Link>
         </div>
 
