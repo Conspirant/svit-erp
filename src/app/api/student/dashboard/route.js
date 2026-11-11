@@ -518,8 +518,8 @@ export async function scrapeStudentDashboard({
             stats.attendance = finalAttendance;
         }
 
-        // Only scrape detailed CIE breakdown if explicitly requested
-        if (includeCieDetails && cieLinks.length > 0) {
+        // Scrape detailed CIE breakdown so marks are complete
+        if (cieLinks.length > 0) {
             try {
                 const cieDetailsSettled = await pLimitPool(cieLinks, 4, (linkObj) =>
                     fetchWithRetry(

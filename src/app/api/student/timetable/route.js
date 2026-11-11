@@ -98,7 +98,9 @@ export async function GET(request) {
         headerCells.push(cleanText($(th).text()).toLowerCase());
       });
 
-      if (headerCells.length !== 5 || !headerCells[0].includes('time')) return;
+      const hasTimeCol = headerCells.some(h => h.includes('time') || h.includes('period') || h.includes('hour'));
+      const hasCourseCol = headerCells.some(h => h.includes('course') || h.includes('subject'));
+      if (headerCells.length < 3 && (!hasTimeCol && !hasCourseCol)) return;
 
       let dayLabel = '';
       let dateLabel = '';
@@ -131,16 +133,31 @@ export async function GET(request) {
         }
       }
 
+      if (!dayLabel) {
+        const prevText = cleanText($(table).prevAll('h1, h2, h3, h4, h5, .uk-card-title, .cn-day-header, div').first().text()).toUpperCase();
+        for (const dn of dayNames) {
+          if (prevText.includes(dn)) {
+            dayLabel = dn;
+            const dm = prevText.match(/(\d{2}-\d{2}-\d{4})/);
+            if (dm) dateLabel = dm[1];
+            break;
+          }
+        }
+      }
+
       const rows = [];
-      $(table).find('tbody tr').each((j, row) => {
+      $(table).find('tbody tr, tr').each((j, row) => {
         const cells = $(row).find('td');
-        if (cells.length < 5) return;
+        if (cells.length < 3) return;
+
+        // Skip header rows
+        if (cleanText($(cells[0]).text()).toLowerCase().includes('time')) return;
 
         const time = cleanText($(cells[0]).text());
         const course = cleanText($(cells[1]).text());
-        const faculty = cleanText($(cells[2]).text());
-        const room = cleanText($(cells[3]).text());
-        const batch = cleanText($(cells[4]).text());
+        const faculty = cells.length > 2 ? cleanText($(cells[2]).text()) : '';
+        const room = cells.length > 3 ? cleanText($(cells[3]).text()) : '';
+        const batch = cells.length > 4 ? cleanText($(cells[4]).text()) : '';
 
         let courseCode = '';
         let courseName = course;

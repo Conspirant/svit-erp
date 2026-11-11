@@ -65,6 +65,9 @@ export function resolveErpUrl(path, preferredOrigin = null) {
   }
 
   const clean = path.replace(/^\.?\//, '');
+  if (clean.startsWith('?')) {
+    return `${origin}/parents/index.php${clean}`;
+  }
   if (clean.startsWith('parents/')) {
     return `${origin}/${clean}`;
   }
