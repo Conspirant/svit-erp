@@ -74,37 +74,25 @@ export default function Dashboard() {
 
     const fetchAll = async () => {
       try {
-        const [dashRes, ttRes] = await Promise.all([
-          fetch("/api/student/dashboard"),
-          fetch("/api/student/timetable")
-        ]);
+        // Step 1: Fetch main dashboard first in a single ultra-fast GET request (identical to CAPTCHA)
+        const dashRes = await fetch("/api/student/dashboard");
 
-        // Redirect to login if unauthorized or session expired
-        if (dashRes.status === 401 || ttRes.status === 401) {
+        if (dashRes.status === 401) {
           router.push("/");
           return;
         }
 
         let dashJson = null;
-        let ttJson = null;
-        try {
-          if (dashRes.ok) {
-            dashJson = await dashRes.json();
-          } else {
-            const errData = await dashRes.json().catch(() => ({}));
-            if (errData?.error?.toLowerCase().includes("session expired") || errData?.error?.toLowerCase().includes("not authenticated")) {
-              router.push("/");
-              return;
-            }
-            throw new Error(errData?.error || "ERP server is busy. Retrying in background...");
+        if (dashRes.ok) {
+          dashJson = await dashRes.json();
+        } else {
+          const errData = await dashRes.json().catch(() => ({}));
+          if (errData?.error?.toLowerCase().includes("session expired") || errData?.error?.toLowerCase().includes("not authenticated")) {
+            router.push("/");
+            return;
           }
-        } catch (e) {
-          console.warn("Dashboard fetch error:", e.message);
+          throw new Error(errData?.error || "ERP server is busy. Retrying in background...");
         }
-
-        try {
-          if (ttRes.ok) ttJson = await ttRes.json();
-        } catch { }
 
         if (dashJson?.success) {
           setData(prev => {
@@ -127,29 +115,19 @@ export default function Dashboard() {
             }
           }
 
-          // If the fast response is partial or missing class totals, enrich subpages in the background
-          const hasAttendanceTotals = Array.isArray(dashJson.data?.attendance) &&
-            dashJson.data.attendance.some(a => (Number(a.present || 0) + Number(a.total || 0)) > 0);
-
-          if (dashJson.isPartial || !hasAttendanceTotals) {
-            fetch("/api/student/dashboard?mode=details")
-              .then((r) => (r.ok ? r.json() : null))
-              .then((detJson) => {
-                if (detJson?.success && detJson.data) {
-                  setData(prev => {
-                    if (!prev) return detJson.data;
-                    return {
-                      ...prev,
-                      ...detJson.data,
-                      cie: (Array.isArray(detJson.data.cie) && detJson.data.cie.length > 0) ? detJson.data.cie : prev.cie,
-                    };
-                  });
-                  try { sessionStorage.setItem('dashboard_data', JSON.stringify(detJson.data)); } catch { }
-                  window.dispatchEvent(new Event("attendanceChanged"));
+          // Step 2: Fetch timetable sequentially to avoid PHP session lock contention on Accredia
+          fetch("/api/student/timetable")
+            .then(r => r.ok ? r.json() : null)
+            .then(ttJson => {
+              if (ttJson?.success) {
+                const list = Array.isArray(ttJson.data) ? ttJson.data : (ttJson.data?.timetable || []);
+                if (list.length > 0) {
+                  setTimetable(list);
+                  try { sessionStorage.setItem('dashboard_timetable', JSON.stringify(list)); } catch { }
                 }
-              })
-              .catch(() => { });
-          }
+              }
+            })
+            .catch(() => {});
 
           // Sentinel SWR check
           if (dashJson.data?.usn) {
@@ -169,14 +147,6 @@ export default function Dashboard() {
             setData(JSON.parse(cached));
           } else {
             setError(dashJson?.error || "ERP server is busy. Retrying in background...");
-          }
-        }
-
-        if (ttJson?.success) {
-          const list = Array.isArray(ttJson.data) ? ttJson.data : (ttJson.data?.timetable || []);
-          if (list.length > 0) {
-            setTimetable(list);
-            try { sessionStorage.setItem('dashboard_timetable', JSON.stringify(list)); } catch { }
           }
         }
 

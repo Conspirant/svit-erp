@@ -362,8 +362,9 @@ export async function scrapeStudentDashboard({
         });
 
         // 3. Scrape Attendance Sub-Pages with High-Speed Parallel Pool
-        // Always fetch sub-pages so exact present, absent, total counts and dates are complete!
-        if (attendanceLinks.length > 0) {
+        // Only fetch sub-pages when detailed date breakdown is specifically requested (mode === 'details')
+        // Initial dashboard renders lightning fast in a single request, identical to CAPTCHA fetching!
+        if (mode === 'details' && attendanceLinks.length > 0) {
             try {
                 const detailedResultsSettled = await pLimitPool(attendanceLinks, 4, (linkObj) =>
                     fetchWithRetry(

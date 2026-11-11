@@ -234,15 +234,6 @@ export async function POST(request) {
       .join('; ');
     const initialTargetUrl = resolveErpUrl(redirectLocation || ERP_BASE_URL);
 
-    // Warm up student dashboard and real attendance immediately in background
-    scrapeStudentDashboard({
-      sessionCookie: cookieString,
-      targetUrl: initialTargetUrl,
-      knownUsn: username,
-      forceRefresh: true,
-      includeCieDetails: false,
-    }).catch((e) => console.warn('Background dashboard pre-warm error:', e.message));
-
     setSessionIdentity(response, { usn: username });
     return response;
   } catch (error) {
