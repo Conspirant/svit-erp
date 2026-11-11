@@ -104,12 +104,28 @@ export async function GET() {
           profileData[key] = match[1].trim();
         }
       }
+
+      // Also parse key-value pairs directly from tables if present
+      $('table tr').each((_, tr) => {
+        const cells = $(tr).find('td, th');
+        if (cells.length >= 2) {
+          for (let c = 0; c < cells.length - 1; c++) {
+            const lbl = $(cells[c]).text().trim().toLowerCase().replace(/[^a-z]/g, '');
+            const val = $(cells[c + 1]).text().trim();
+            if (lbl.includes('categoryalloted') && val && !profileData.categoryalloted) profileData.categoryalloted = val;
+            if (lbl.includes('categoryclaimed') && val && !profileData.categoryclaimed) profileData.categoryclaimed = val;
+            if (lbl.includes('quota') && val && !profileData.quota) profileData.quota = val;
+            if ((lbl.includes('lastyeardue') || lbl.includes('previousdue')) && val && !profileData.lastyeardue) profileData.lastyeardue = val;
+          }
+        }
+      });
     } catch (e) {
       console.warn('Fee page fetch failed:', e.message);
     }
 
-    if (profileData.usn) {
-      erpCache.set(`profile_${profileData.usn}`, profileData, 1800);
+    const hasMeaningfulProfile = Boolean(profileData.categoryalloted || profileData.quota || profileData.lastyeardue);
+    if (profileData.usn && hasMeaningfulProfile) {
+      erpCache.set(`profile_${profileData.usn}`, profileData, 3600);
     }
 
     const response = NextResponse.json({ success: true, data: profileData });

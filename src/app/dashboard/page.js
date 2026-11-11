@@ -31,6 +31,72 @@ const toNumber = (value, fallback = 0) => {
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
+function mergeDashboardData(prev, incoming) {
+  if (!prev) return incoming;
+  if (!incoming) return prev;
+
+  const merged = { ...prev, ...incoming };
+
+  // 1. Preserve detailed attendance logs & exact counts
+  if (Array.isArray(incoming.attendance) && Array.isArray(prev.attendance)) {
+    const prevMap = new Map();
+    prev.attendance.forEach((a) => {
+      if (a.course) prevMap.set(a.course.toUpperCase(), a);
+    });
+
+    merged.attendance = incoming.attendance.map((inItem) => {
+      const prevItem = prevMap.get(inItem.course?.toUpperCase());
+      if (!prevItem) return inItem;
+
+      const inHasDates = Array.isArray(inItem.dates) && inItem.dates.length > 0;
+      const prevHasDates = Array.isArray(prevItem.dates) && prevItem.dates.length > 0;
+
+      const inTotal = Number(inItem.total || 0);
+      const prevTotal = Number(prevItem.total || 0);
+
+      return {
+        ...prevItem,
+        ...inItem,
+        dates: inHasDates ? inItem.dates : (prevHasDates ? prevItem.dates : []),
+        present: inTotal > 0 ? (inItem.present ?? prevItem.present) : (prevItem.present ?? inItem.present),
+        absent: inTotal > 0 ? (inItem.absent ?? prevItem.absent) : (prevItem.absent ?? inItem.absent),
+        total: inTotal > 0 ? inTotal : (prevTotal > 0 ? prevTotal : inTotal),
+        stillToGo: (inItem.stillToGo || 0) > 0 ? inItem.stillToGo : (prevItem.stillToGo || 0),
+        courseName: inItem.courseName || prevItem.courseName,
+      };
+    });
+  } else if (!incoming.attendance && prev.attendance) {
+    merged.attendance = prev.attendance;
+  }
+
+  // 2. Preserve CIE marks & detailed breakdown
+  if (Array.isArray(incoming.cie) && Array.isArray(prev.cie)) {
+    const prevCieMap = new Map();
+    prev.cie.forEach((c) => {
+      if (c.course) prevCieMap.set(c.course.toUpperCase(), c);
+    });
+
+    merged.cie = incoming.cie.map((inItem) => {
+      const prevItem = prevCieMap.get(inItem.course?.toUpperCase());
+      if (!prevItem) return inItem;
+
+      const inMarks = Number(inItem.marks || 0);
+      const prevMarks = Number(prevItem.marks || 0);
+
+      return {
+        ...prevItem,
+        ...inItem,
+        marks: inMarks > 0 ? inItem.marks : (prevMarks > 0 ? prevMarks : inItem.marks),
+        breakdown: inItem.breakdown || prevItem.breakdown,
+      };
+    });
+  } else if (!incoming.cie && prev.cie) {
+    merged.cie = prev.cie;
+  }
+
+  return merged;
+}
+
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [timetable, setTimetable] = useState(null);
@@ -96,16 +162,10 @@ export default function Dashboard() {
 
         if (dashJson?.success) {
           setData(prev => {
-            if (!prev) return dashJson.data;
-            const prevHasCie = Array.isArray(prev.cie) && prev.cie.some(c => Number(c.marks) > 0);
-            const newHasCie = Array.isArray(dashJson.data?.cie) && dashJson.data.cie.some(c => Number(c.marks) > 0);
-            return {
-              ...prev,
-              ...dashJson.data,
-              cie: (!newHasCie && prevHasCie) ? prev.cie : (dashJson.data?.cie || prev.cie),
-            };
+            const merged = mergeDashboardData(prev, dashJson.data);
+            try { sessionStorage.setItem('dashboard_data', JSON.stringify(merged)); } catch { }
+            return merged;
           });
-          try { sessionStorage.setItem('dashboard_data', JSON.stringify(dashJson.data)); } catch { }
 
           if (dashJson.data?.photoUrl && !localStorage.getItem('svit_idcard_photo')) {
             const isLogo = dashJson.data.photoUrl.toLowerCase().includes("logo") || dashJson.data.photoUrl.toLowerCase().includes("svit");
@@ -140,14 +200,10 @@ export default function Dashboard() {
                 .then(detJson => {
                   if (detJson?.success && detJson.data) {
                     setData(prev => {
-                      if (!prev) return detJson.data;
-                      return {
-                        ...prev,
-                        ...detJson.data,
-                        cie: (Array.isArray(detJson.data.cie) && detJson.data.cie.length > 0) ? detJson.data.cie : prev.cie,
-                      };
+                      const merged = mergeDashboardData(prev, detJson.data);
+                      try { sessionStorage.setItem('dashboard_data', JSON.stringify(merged)); } catch { }
+                      return merged;
                     });
-                    try { sessionStorage.setItem('dashboard_data', JSON.stringify(detJson.data)); } catch { }
                     window.dispatchEvent(new Event("attendanceChanged"));
                   }
                 })
@@ -162,7 +218,13 @@ export default function Dashboard() {
               section: dashJson.data.section,
               sem: dashJson.data.sem,
               onFreshData: (fresh) => {
-                if (fresh) setData(fresh);
+                if (fresh) {
+                  setData(prev => {
+                    const merged = mergeDashboardData(prev, fresh);
+                    try { sessionStorage.setItem('dashboard_data', JSON.stringify(merged)); } catch { }
+                    return merged;
+                  });
+                }
               }
             });
           }

@@ -619,7 +619,7 @@ export async function scrapeStudentDashboard({
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
-        const mode = searchParams.get('mode') || (searchParams.get('quick') ? 'fast' : (searchParams.get('details') ? 'details' : 'auto'));
+        const mode = searchParams.get('mode') || (searchParams.get('quick') ? 'fast' : (searchParams.get('details') ? 'details' : 'fast'));
 
         const cookieStore = await cookies();
         const cookieStrings = [];

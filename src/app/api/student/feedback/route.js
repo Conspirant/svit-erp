@@ -20,6 +20,8 @@ import {
   createHttpsAgent,
   resolveErpUrl,
 } from '@/lib/erpConfig';
+import { erpCache } from '@/lib/erpCache';
+import { getSessionUsn } from '@/lib/authSession';
 
 const httpsAgent = createHttpsAgent();
 
@@ -27,6 +29,61 @@ const BASE_URL = ERP_BASE_URL;
 const cleanText = (value) => value?.replace(/\s+/g, ' ').trim() || '';
 
 const getFullUrl = (href) => resolveErpUrl(href);
+
+/**
+ * Bulletproof Axios wrapper with automatic socket-reset recovery.
+ * Recovers from Apache connection drops, "socket hang up", ECONNRESET, and transient 503s.
+ */
+async function axiosRequestWithRetry(config, maxRetries = 3) {
+  let lastErr = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const isRetry = attempt > 0;
+      // On retry, force clean fresh TCP socket (Connection: close) to bypass any stale keep-alive socket
+      const agent = isRetry
+        ? new https.Agent({ rejectUnauthorized: false, keepAlive: false })
+        : httpsAgent;
+
+      const mergedHeaders = {
+        'User-Agent': DEFAULT_USER_AGENT,
+        ...(config.headers || {}),
+        'Connection': isRetry ? 'close' : 'keep-alive',
+      };
+
+      const res = await axios({
+        ...config,
+        httpsAgent: agent,
+        headers: mergedHeaders,
+        timeout: 12000,
+        validateStatus: () => true,
+      });
+
+      // If server returned 503 Service Unavailable, retry politely
+      if (res.status === 503 && attempt < maxRetries) {
+        debugLog(`[axiosRequestWithRetry] 503 from Accredia on attempt ${attempt + 1}, retrying...`);
+        await new Promise((r) => setTimeout(r, 300 * Math.pow(1.5, attempt)));
+        continue;
+      }
+
+      return res;
+    } catch (err) {
+      lastErr = err;
+      const isSocketIssue =
+        err.message?.includes('socket hang up') ||
+        err.code === 'ECONNRESET' ||
+        err.code === 'ETIMEDOUT' ||
+        err.code === 'ECONNABORTED';
+
+      if (isSocketIssue && attempt < maxRetries) {
+        debugLog(`[axiosRequestWithRetry] Socket reset (${err.message}) on attempt ${attempt + 1}, retrying with fresh socket...`);
+        await new Promise((r) => setTimeout(r, 200 * Math.pow(1.5, attempt)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
+}
 
 async function fetchPage(url, sessionCookie, config = {}) {
   let currentUrl = url;
@@ -36,15 +93,13 @@ async function fetchPage(url, sessionCookie, config = {}) {
 
   while (hop < 5) {
     debugLog(`[fetchPage] Hop ${hop}: GET ${currentUrl.substring(0, 100)}`);
-    res = await axios.get(currentUrl, {
-      httpsAgent,
-      timeout: 15000,
+    res = await axiosRequestWithRetry({
+      method: 'GET',
+      url: currentUrl,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Cookie': currentCookie,
       },
       maxRedirects: 0,
-      validateStatus: () => true,
       responseType: 'text',
       ...config,
     });
@@ -76,16 +131,15 @@ async function postForm(url, data, sessionCookie) {
   let res = null;
 
   debugLog(`[postForm] POST ${currentUrl.substring(0, 100)}`);
-  res = await axios.post(currentUrl, data, {
-    httpsAgent,
-    timeout: 15000,
+  res = await axiosRequestWithRetry({
+    method: 'POST',
+    url: currentUrl,
+    data,
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       'Cookie': currentCookie,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     maxRedirects: 0,
-    validateStatus: () => true,
     responseType: 'text',
   });
 
@@ -98,15 +152,13 @@ async function postForm(url, data, sessionCookie) {
     hop++;
 
     debugLog(`[postForm] Redirect Hop ${hop}: GET ${currentUrl.substring(0, 100)}`);
-    res = await axios.get(currentUrl, {
-      httpsAgent,
-      timeout: 15000,
+    res = await axiosRequestWithRetry({
+      method: 'GET',
+      url: currentUrl,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Cookie': currentCookie,
       },
       maxRedirects: 0,
-      validateStatus: () => true,
       responseType: 'text',
     });
 
@@ -594,16 +646,23 @@ export async function GET(request) {
 
       const hasAck = !!parsed.acknowledgementUrl || parsed.isFinished || (parsed.completed.length > 0 && parsed.pending.length === 0);
 
+      const payload = {
+        title: parsed.title || `Feedback ${feedbackId}`,
+        feedbackId,
+        feedbackUrl: url,
+        pending: parsed.pending,
+        completed: parsed.completed,
+        hasAcknowledgement: hasAck,
+      };
+
+      const knownUsn = getSessionUsn(cookieStore);
+      if (knownUsn) {
+        erpCache.set(`fb_detail_${knownUsn}_${feedbackId}`, payload, 1800);
+      }
+
       const response = NextResponse.json({
         success: true,
-        data: {
-          title: parsed.title || `Feedback ${feedbackId}`,
-          feedbackId,
-          feedbackUrl: url,
-          pending: parsed.pending,
-          completed: parsed.completed,
-          hasAcknowledgement: hasAck,
-        }
+        data: payload,
       });
       setUpdatedCookies(response, sessionCookie);
       return response;
@@ -727,6 +786,11 @@ export async function GET(request) {
       });
     }
 
+    const knownUsn = getSessionUsn(cookieStore);
+    if (knownUsn && feedbackTypes.length > 0) {
+      erpCache.set(`fb_types_${knownUsn}`, feedbackTypes, 1800);
+    }
+
     const response = NextResponse.json({
       success: true,
       data: {
@@ -738,6 +802,31 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('Feedback API error:', error.message);
+
+    // Fallback: Check if cached feedback data is available
+    try {
+      const cookieStore = await cookies();
+      const knownUsn = getSessionUsn(cookieStore);
+      const { searchParams } = new URL(request.url);
+      const feedbackId = searchParams.get('feedbackId');
+
+      if (knownUsn && feedbackId) {
+        const cachedDetail = erpCache.get(`fb_detail_${knownUsn}_${feedbackId}`);
+        if (cachedDetail) {
+          debugLog(`[feedback fallback] Serving cached feedback details for ${knownUsn}`);
+          return NextResponse.json({ success: true, data: cachedDetail, fromCache: true, fallback: true });
+        }
+      }
+
+      if (knownUsn && !feedbackId) {
+        const cachedTypes = erpCache.get(`fb_types_${knownUsn}`);
+        if (cachedTypes) {
+          debugLog(`[feedback fallback] Serving cached feedback types for ${knownUsn}`);
+          return NextResponse.json({ success: true, data: { feedbackTypes: cachedTypes }, fromCache: true, fallback: true });
+        }
+      }
+    } catch (_) {}
+
     return NextResponse.json({ error: 'Failed to fetch feedback data: ' + error.message }, { status: 500 });
   }
 }
