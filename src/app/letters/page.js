@@ -46,6 +46,23 @@ import { LETTER_TEMPLATES_CATALOG } from "@/lib/letterTemplates";
 import { ALL_LETTER_TYPE_PRESETS, CATEGORY_SUBCATEGORIES_MAP } from "@/lib/letterTypePresets";
 import StudentAvatar from "@/components/StudentAvatar";
 
+// 10-Minute Deletion Window Helpers
+const WITHDRAW_WINDOW_MS = 10 * 60 * 1000;
+
+const getWithdrawRemainingMs = (createdAt, currentTime = Date.now()) => {
+  if (!createdAt) return 0;
+  const created = new Date(createdAt).getTime();
+  if (isNaN(created)) return 0;
+  return Math.max(0, WITHDRAW_WINDOW_MS - (currentTime - created));
+};
+
+const formatWithdrawCountdown = (ms) => {
+  const totalSec = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSec / 60);
+  const seconds = totalSec % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+};
+
 export default function LetterApprovalPortal({ newPage = false }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -104,6 +121,12 @@ export default function LetterApprovalPortal({ newPage = false }) {
   const [deletingLetter, setDeletingLetter] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleteSuccess, setDeleteSuccess] = useState("");
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // One-Click "Ping Proctor" Expedited Notice State
   const [pingModalLetter, setPingModalLetter] = useState(null);
@@ -232,6 +255,13 @@ Sai Vidya Institute of Technology`;
   const handleCancelLetter = useCallback(
     async (letter) => {
       if (!letter?._id) return;
+      const remainingMs = getWithdrawRemainingMs(letter.createdAt);
+      if (remainingMs <= 0) {
+        setDeleteError(
+          "Delete window expired. Letters can only be deleted within 10 minutes of creation. This application is locked for proctor review. Please contact your proctor or Academic Affairs to discard it."
+        );
+        return;
+      }
       setDeletingLetter(true);
       setDeleteError("");
       setDeleteSuccess("");
@@ -1277,33 +1307,59 @@ Sai Vidya Institute of Technology`;
                 </button>
 
                 {/* Withdraw / Cancel Button for Pending Letters */}
-                {selectedLetter.status === "pending" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDeleteTargetLetter(selectedLetter);
-                      setDeleteError("");
-                      setDeleteSuccess("");
-                    }}
-                    style={{
-                      background: "rgba(239, 68, 68, 0.12)",
-                      border: "1px solid rgba(239, 68, 68, 0.35)",
-                      color: "#f87171",
-                      borderRadius: "8px",
-                      padding: "8px 14px",
-                      fontSize: "0.85rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                    title="Withdraw this pending letter application"
-                  >
-                    <Trash2 size={15} />
-                    <span>Withdraw</span>
-                  </button>
-                )}
+                {selectedLetter.status === "pending" && (() => {
+                  const remainingMs = getWithdrawRemainingMs(selectedLetter.createdAt, now);
+                  const isWithdrawActive = remainingMs > 0;
+                  if (isWithdrawActive) {
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteTargetLetter(selectedLetter);
+                          setDeleteError("");
+                          setDeleteSuccess("");
+                        }}
+                        style={{
+                          background: "rgba(239, 68, 68, 0.12)",
+                          border: "1px solid rgba(239, 68, 68, 0.35)",
+                          color: "#f87171",
+                          borderRadius: "8px",
+                          padding: "8px 14px",
+                          fontSize: "0.85rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                        title={`Withdraw active: ${formatWithdrawCountdown(remainingMs)} remaining`}
+                      >
+                        <Trash2 size={15} />
+                        <span>Withdraw ({formatWithdrawCountdown(remainingMs)})</span>
+                      </button>
+                    );
+                  }
+                  return (
+                    <span
+                      style={{
+                        background: "rgba(255, 255, 255, 0.05)",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        color: "rgba(255, 255, 255, 0.45)",
+                        borderRadius: "8px",
+                        padding: "8px 12px",
+                        fontSize: "0.82rem",
+                        fontWeight: 600,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                      title="Delete window expired (>10m). This letter is locked for proctor review."
+                    >
+                      <Lock size={13} />
+                      <span>Locked for Review</span>
+                    </span>
+                  );
+                })()}
 
                 {/* One-Click Ping Proctor Button */}
                 {selectedLetter.status === "pending" && (
@@ -1846,36 +1902,106 @@ Sai Vidya Institute of Technology`;
 
               </div>
 
-              {selectedLetter.status === "pending" ? (
-                <div>
-                  <p style={{ margin: "0 0 14px 0", fontSize: "0.86rem", color: "rgba(255,255,255,0.7)", lineHeight: "1.5" }}>
-                    You can withdraw a pending application at any time, including if it was submitted by mistake. Withdrawing removes it from the review queue so you can submit a corrected application.
-                  </p>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDeleteTargetLetter(selectedLetter);
-                        setDeleteError("");
-                        setDeleteSuccess("");
-                      }}
-                      style={{
-                        background: "rgba(239, 68, 68, 0.15)",
-                        border: "1px solid rgba(239, 68, 68, 0.4)",
-                        color: "#f87171",
-                        padding: "10px 18px",
-                        borderRadius: "10px",
-                        fontSize: "0.88rem",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      <Trash2 size={16} />
-                      <span>Withdraw / Cancel Application</span>
-                    </button>
+              {selectedLetter.status === "pending" ? (() => {
+                const remainingMs = getWithdrawRemainingMs(selectedLetter.createdAt, now);
+                const isWithdrawActive = remainingMs > 0;
+                return (
+                  <div>
+                    {isWithdrawActive ? (
+                      <div style={{ marginBottom: "14px" }}>
+                        <p style={{ margin: "0 0 8px 0", fontSize: "0.86rem", color: "rgba(255,255,255,0.7)", lineHeight: "1.5" }}>
+                          You have an active grace window to withdraw this application before it locks for review. Withdrawing removes it from the queue so you can submit a corrected application.
+                        </p>
+                        <div
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "0.82rem",
+                            color: "#f87171",
+                            background: "rgba(239, 68, 68, 0.1)",
+                            padding: "6px 12px",
+                            borderRadius: "6px",
+                            border: "1px solid rgba(239, 68, 68, 0.25)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          <Clock size={14} />
+                          <span>
+                            Withdrawal window closes in <strong>{formatWithdrawCountdown(remainingMs)}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ marginBottom: "14px" }}>
+                        <p style={{ margin: "0 0 8px 0", fontSize: "0.86rem", color: "rgba(255,255,255,0.7)", lineHeight: "1.5" }}>
+                          The 10-minute withdrawal window has expired. This application is locked in the proctor review queue.
+                        </p>
+                        <div
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "0.82rem",
+                            color: "#fbbf24",
+                            background: "rgba(245, 158, 11, 0.1)",
+                            padding: "6px 12px",
+                            borderRadius: "6px",
+                            border: "1px solid rgba(245, 158, 11, 0.25)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          <Lock size={14} />
+                          <span>Locked for Proctor Review — Contact your proctor if submitted in error</span>
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                      {isWithdrawActive ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeleteTargetLetter(selectedLetter);
+                            setDeleteError("");
+                            setDeleteSuccess("");
+                          }}
+                          style={{
+                            background: "rgba(239, 68, 68, 0.15)",
+                            border: "1px solid rgba(239, 68, 68, 0.4)",
+                            color: "#f87171",
+                            padding: "10px 18px",
+                            borderRadius: "10px",
+                            fontSize: "0.88rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <Trash2 size={16} />
+                          <span>Withdraw Application ({formatWithdrawCountdown(remainingMs)})</span>
+                        </button>
+                      ) : (
+                        <div
+                          style={{
+                            background: "rgba(255, 255, 255, 0.04)",
+                            border: "1px solid rgba(255, 255, 255, 0.1)",
+                            color: "rgba(255, 255, 255, 0.4)",
+                            padding: "10px 16px",
+                            borderRadius: "10px",
+                            fontSize: "0.86rem",
+                            fontWeight: 600,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                          title="Withdrawal window expired (>10 min)"
+                        >
+                          <Lock size={15} />
+                          <span>Locked for Review (Window Expired)</span>
+                        </div>
+                      )}
                     <button
                       type="button"
                       onClick={() => handleOpenPingModal(selectedLetter)}
@@ -1902,7 +2028,8 @@ Sai Vidya Institute of Technology`;
                     </span>
                   </div>
                 </div>
-              ) : selectedLetter.status === "approved" ? (
+                );
+              })() : selectedLetter.status === "approved" ? (
                 <div
                   style={{
                     display: "flex",
@@ -2298,34 +2425,59 @@ Sai Vidya Institute of Technology`;
                           }}
                         >
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            {(letter.status || "").toLowerCase() === "pending" && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteTargetLetter(letter);
-                                  setDeleteError("");
-                                  setDeleteSuccess("");
-                                }}
-                                style={{
-                                  background: "rgba(239, 68, 68, 0.1)",
-                                  border: "1px solid rgba(239, 68, 68, 0.3)",
-                                  color: "#f87171",
-                                  borderRadius: "6px",
-                                  padding: "5px 10px",
-                                  fontSize: "0.76rem",
-                                  fontWeight: 600,
-                                  cursor: "pointer",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "4px",
-                                }}
-                                title="Withdraw pending letter"
-                              >
-                                <Trash2 size={13} />
-                                <span>Withdraw</span>
-                              </button>
-                            )}
+                            {(letter.status || "").toLowerCase() === "pending" && (() => {
+                              const remainingMs = getWithdrawRemainingMs(letter.createdAt, now);
+                              const isWithdrawActive = remainingMs > 0;
+                              if (isWithdrawActive) {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeleteTargetLetter(letter);
+                                      setDeleteError("");
+                                      setDeleteSuccess("");
+                                    }}
+                                    style={{
+                                      background: "rgba(239, 68, 68, 0.1)",
+                                      border: "1px solid rgba(239, 68, 68, 0.3)",
+                                      color: "#f87171",
+                                      borderRadius: "6px",
+                                      padding: "5px 10px",
+                                      fontSize: "0.76rem",
+                                      fontWeight: 600,
+                                      cursor: "pointer",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                    }}
+                                    title={`Withdraw available: ${formatWithdrawCountdown(remainingMs)} remaining`}
+                                  >
+                                    <Trash2 size={13} />
+                                    <span>Withdraw ({formatWithdrawCountdown(remainingMs)})</span>
+                                  </button>
+                                );
+                              }
+                              return (
+                                <span
+                                  style={{
+                                    fontSize: "0.72rem",
+                                    color: "rgba(255, 255, 255, 0.4)",
+                                    background: "rgba(255, 255, 255, 0.04)",
+                                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                                    borderRadius: "4px",
+                                    padding: "3px 7px",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "3px",
+                                  }}
+                                  title="Locked for review (10m grace window expired)"
+                                >
+                                  <Lock size={11} />
+                                  <span>Locked</span>
+                                </span>
+                              );
+                            })()}
 
                             {(letter.status || "").toLowerCase() === "pending" && (
                               <button
@@ -3512,140 +3664,179 @@ Sai Vidya Institute of Technology`;
               </div>
             </div>
 
-            <div
-              style={{
-                          background: "#121a24",
-                          border: "1px solid #2b3d4e",
-                borderRadius: "10px",
-                padding: "14px",
-                marginBottom: "18px",
-              }}
-            >
-              <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#ffffff", marginBottom: "4px" }}>
-                {deleteTargetLetter.letterType || deleteTargetLetter.title || "Letter Application"}
-              </div>
-              <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.5)", marginBottom: "8px" }}>
-                {deleteTargetLetter.letterCategory} • Submitted on{" "}
-                {deleteTargetLetter.createdAt
-                  ? new Date(deleteTargetLetter.createdAt).toLocaleDateString("en-IN", {
-                      dateStyle: "medium",
-                    })
-                  : "Recently"}
-              </div>
+            {(() => {
+              const remainingMs = getWithdrawRemainingMs(deleteTargetLetter.createdAt, now);
+              const isWithdrawActive = remainingMs > 0;
 
-              <div
-                style={{
-                  fontSize: "0.78rem",
-                  color: "#fbbf24",
-                  background: "rgba(245, 158, 11, 0.1)",
-                  padding: "8px 10px",
-                  borderRadius: "6px",
-                  border: "1px solid rgba(245, 158, 11, 0.25)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <AlertCircle size={14} />
-                <span>This action permanently withdraws the application and removes it from the review queue.</span>
-              </div>
-            </div>
+              return (
+                <>
+                  <div
+                    style={{
+                      background: "#121a24",
+                      border: "1px solid #2b3d4e",
+                      borderRadius: "10px",
+                      padding: "14px",
+                      marginBottom: "18px",
+                    }}
+                  >
+                    <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#ffffff", marginBottom: "4px" }}>
+                      {deleteTargetLetter.letterType || deleteTargetLetter.title || "Letter Application"}
+                    </div>
+                    <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.5)", marginBottom: "8px" }}>
+                      {deleteTargetLetter.letterCategory} • Submitted on{" "}
+                      {deleteTargetLetter.createdAt
+                        ? new Date(deleteTargetLetter.createdAt).toLocaleDateString("en-IN", {
+                            dateStyle: "medium",
+                          })
+                        : "Recently"}
+                    </div>
 
-            {deleteError && (
-              <div
-                style={{
-                  background: "rgba(239, 68, 68, 0.15)",
-                  border: "1px solid rgba(239, 68, 68, 0.3)",
-                  color: "#fca5a5",
-                  padding: "10px 14px",
-                  borderRadius: "8px",
-                  fontSize: "0.85rem",
-                  marginBottom: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <AlertCircle size={16} />
-                <span>{deleteError}</span>
-              </div>
-            )}
+                    {isWithdrawActive ? (
+                      <div
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "#f87171",
+                          background: "rgba(239, 68, 68, 0.1)",
+                          padding: "8px 10px",
+                          borderRadius: "6px",
+                          border: "1px solid rgba(239, 68, 68, 0.25)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <Clock size={14} />
+                        <span>
+                          Active grace window: <strong>{formatWithdrawCountdown(remainingMs)}</strong> remaining to withdraw.
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "#fca5a5",
+                          background: "rgba(239, 68, 68, 0.15)",
+                          padding: "10px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid rgba(239, 68, 68, 0.3)",
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: "8px",
+                        }}
+                      >
+                        <AlertCircle size={16} style={{ marginTop: "1px", flexShrink: 0 }} />
+                        <div>
+                          <strong style={{ display: "block", marginBottom: "2px", color: "#f87171" }}>
+                            Delete window expired
+                          </strong>
+                          <span>
+                            Letters can only be deleted within 10 minutes of creation. This application is locked in the proctor review queue. Please contact Academic Affairs or your Proctor to cancel.
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-            {deleteSuccess && (
-              <div
-                style={{
-                  background: "rgba(16, 185, 129, 0.15)",
-                  border: "1px solid rgba(16, 185, 129, 0.3)",
-                  color: "#6ee7b7",
-                  padding: "10px 14px",
-                  borderRadius: "8px",
-                  fontSize: "0.85rem",
-                  marginBottom: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <CheckCircle2 size={16} />
-                <span>{deleteSuccess}</span>
-              </div>
-            )}
+                  {deleteError && (
+                    <div
+                      style={{
+                        background: "rgba(239, 68, 68, 0.15)",
+                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                        color: "#fca5a5",
+                        padding: "10px 14px",
+                        borderRadius: "8px",
+                        fontSize: "0.85rem",
+                        marginBottom: "16px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <AlertCircle size={16} />
+                      <span>{deleteError}</span>
+                    </div>
+                  )}
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-              <button
-                type="button"
-                disabled={deletingLetter}
-                onClick={() => {
-                  setDeleteTargetLetter(null);
-                  setDeleteError("");
-                  setDeleteSuccess("");
-                }}
-                style={{
-                  background: "rgba(255, 255, 255, 0.08)",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  color: "#ffffff",
-                  padding: "9px 16px",
-                  borderRadius: "8px",
-                  fontSize: "0.88rem",
-                  fontWeight: 600,
-                  cursor: deletingLetter ? "not-allowed" : "pointer",
-                }}
-              >
-                Keep Application
-              </button>
+                  {deleteSuccess && (
+                    <div
+                      style={{
+                        background: "rgba(16, 185, 129, 0.15)",
+                        border: "1px solid rgba(16, 185, 129, 0.3)",
+                        color: "#6ee7b7",
+                        padding: "10px 14px",
+                        borderRadius: "8px",
+                        fontSize: "0.85rem",
+                        marginBottom: "16px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <CheckCircle2 size={16} />
+                      <span>{deleteSuccess}</span>
+                    </div>
+                  )}
 
-              <button
-                type="button"
-                disabled={deletingLetter}
-                onClick={() => handleCancelLetter(deleteTargetLetter)}
-                style={{
-                  background: "#ef4444",
-                  border: "none",
-                  color: "#ffffff",
-                  padding: "9px 18px",
-                  borderRadius: "8px",
-                  fontSize: "0.88rem",
-                  fontWeight: 700,
-                  cursor: deletingLetter ? "not-allowed" : "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  boxShadow: "0 2px 10px rgba(239, 68, 68, 0.35)",
-                }}
-              >
-                {deletingLetter ? (
-                  <>
-                    <RefreshCw size={15} className="animate-spin" />
-                    <span>Withdrawing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 size={15} />
-                    <span>Yes, Withdraw Letter</span>
-                  </>
-                )}
-              </button>
-            </div>
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                    <button
+                      type="button"
+                      disabled={deletingLetter}
+                      onClick={() => {
+                        setDeleteTargetLetter(null);
+                        setDeleteError("");
+                        setDeleteSuccess("");
+                      }}
+                      style={{
+                        background: "rgba(255, 255, 255, 0.08)",
+                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        color: "#ffffff",
+                        padding: "9px 16px",
+                        borderRadius: "8px",
+                        fontSize: "0.88rem",
+                        fontWeight: 600,
+                        cursor: deletingLetter ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {isWithdrawActive ? "Keep Application" : "Close"}
+                    </button>
+
+                    {isWithdrawActive && (
+                      <button
+                        type="button"
+                        disabled={deletingLetter}
+                        onClick={() => handleCancelLetter(deleteTargetLetter)}
+                        style={{
+                          background: "#ef4444",
+                          border: "none",
+                          color: "#ffffff",
+                          padding: "9px 18px",
+                          borderRadius: "8px",
+                          fontSize: "0.88rem",
+                          fontWeight: 700,
+                          cursor: deletingLetter ? "not-allowed" : "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          boxShadow: "0 2px 10px rgba(239, 68, 68, 0.35)",
+                        }}
+                      >
+                        {deletingLetter ? (
+                          <>
+                            <RefreshCw size={15} className="animate-spin" />
+                            <span>Withdrawing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 size={15} />
+                            <span>Yes, Withdraw Letter ({formatWithdrawCountdown(remainingMs)})</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
