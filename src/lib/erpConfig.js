@@ -2,7 +2,16 @@ import https from 'https';
 import http from 'http';
 import { egressManager } from './egressManager';
 
-const RAW_ROOT_ORIGIN = (process.env.ERP_GATEWAY_URL || 'https://svit-students.accredia.in:8084').replace(/\/+$/, '');
+export const DIRECT_ORIGIN = 'https://svit-students.accredia.in:8084';
+
+// Check if a gateway URL is configured.
+// Avoid known broken worker domains unless explicitly forced with ERP_FORCE_GATEWAY.
+const configuredGateway = (process.env.ERP_GATEWAY_URL || '').replace(/\/+$/, '');
+const isBrokenGateway = configuredGateway.includes('creepmodder185.workers.dev') && !process.env.ERP_FORCE_GATEWAY;
+
+const RAW_ROOT_ORIGIN = (configuredGateway && !isBrokenGateway)
+  ? configuredGateway
+  : DIRECT_ORIGIN;
 
 export const ERP_ROOT_ORIGIN = RAW_ROOT_ORIGIN;
 export const ERP_PARENTS_ORIGIN = `${RAW_ROOT_ORIGIN}/parents`;

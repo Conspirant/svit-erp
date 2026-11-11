@@ -92,9 +92,47 @@ export async function fetchWithRetry(fn, options = {}) {
         err.message?.includes('timeout');
 
       if ((isNetworkTransient || (status && status >= 500)) && attempt < retries) {
+        // If request failed through an external gateway, failover directly to canonical Accredia upstream
+        if (err.config?.url && !err.config.url.includes('svit-students.accredia.in:8084')) {
+          try {
+            const directUrl = err.config.url.replace(/^https?:\/\/[^\/]+/, 'https://svit-students.accredia.in:8084');
+            console.warn(`[fetchRetry] Gateway failed (${status || err.message}). Failing over directly to Accredia: ${directUrl}`);
+            const fallbackRes = await axios({
+              ...err.config,
+              url: directUrl,
+              headers: {
+                ...err.config.headers,
+                Host: 'svit-students.accredia.in:8084',
+              },
+            });
+            reportOutcomeFromConfig(fallbackRes.config, fallbackRes.status);
+            return fallbackRes;
+          } catch (failoverErr) {
+            console.warn(`[fetchRetry] Direct failover attempt failed: ${failoverErr.message}`);
+          }
+        }
+
         const delay = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt) + Math.random() * 200);
         await new Promise((r) => setTimeout(r, delay));
         continue;
+      }
+
+      // Final attempt failover if still targeting gateway
+      if (err.config?.url && !err.config.url.includes('svit-students.accredia.in:8084')) {
+        try {
+          const directUrl = err.config.url.replace(/^https?:\/\/[^\/]+/, 'https://svit-students.accredia.in:8084');
+          console.warn(`[fetchRetry] Final attempt gateway failover to Accredia: ${directUrl}`);
+          const fallbackRes = await axios({
+            ...err.config,
+            url: directUrl,
+            headers: {
+              ...err.config.headers,
+              Host: 'svit-students.accredia.in:8084',
+            },
+          });
+          reportOutcomeFromConfig(fallbackRes.config, fallbackRes.status);
+          return fallbackRes;
+        } catch (_) {}
       }
 
       throw err;

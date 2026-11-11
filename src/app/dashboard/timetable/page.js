@@ -105,6 +105,13 @@ export default function Timetable() {
         setNav(json.navigation || { prevWeek: null, nextWeek: null });
         cache.current[cacheKey] = { data: sorted, nav: json.navigation || {} };
 
+        // Save active schedule to client storage for offline/resilient fallback
+        try {
+          if (!params.type) {
+            localStorage.setItem('cached_timetable_schedule', JSON.stringify({ data: sorted, nav: json.navigation || {} }));
+          }
+        } catch (_) {}
+
         // Prefetch adjacent weeks logic...
         if (json.navigation?.prevWeek) {
           const prevParams = { type: 'prev', ...json.navigation.prevWeek };
@@ -133,9 +140,34 @@ export default function Timetable() {
           }
         }
       } else {
+        // Fallback to client localStorage if API returned an error
+        try {
+          const stored = localStorage.getItem('cached_timetable_schedule');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.data && parsed.data.length > 0) {
+              setData(parsed.data);
+              setNav(parsed.nav || { prevWeek: null, nextWeek: null });
+              setError("");
+              return;
+            }
+          }
+        } catch (_) {}
         setError(json.error || "Failed to load timetable.");
       }
     } catch (err) {
+      try {
+        const stored = localStorage.getItem('cached_timetable_schedule');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.data && parsed.data.length > 0) {
+            setData(parsed.data);
+            setNav(parsed.nav || { prevWeek: null, nextWeek: null });
+            setError("");
+            return;
+          }
+        }
+      } catch (_) {}
       setError("Could not connect to the ERP server.");
     } finally {
       setLoading(false);

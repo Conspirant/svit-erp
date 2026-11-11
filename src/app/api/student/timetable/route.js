@@ -248,6 +248,33 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error('Timetable Scraper Error:', error.message);
+
+    // Fallback: If upstream times out or is busy, serve cached timetable
+    try {
+      const cookieStore = await cookies();
+      const knownUsn = getSessionUsn(cookieStore);
+      if (knownUsn) {
+        const fallbackKeys = [
+          `tt_${knownUsn}_curr__`,
+          `tt_${knownUsn}_anon__`,
+        ];
+        for (const k of fallbackKeys) {
+          const entry = erpCache.get(k);
+          if (entry) {
+            const dataArr = Array.isArray(entry) ? entry : (entry.timetable || []);
+            const navObj = entry.navigation || { prevWeek: null, nextWeek: null };
+            return NextResponse.json({
+              success: true,
+              data: dataArr,
+              navigation: navObj,
+              fromCache: true,
+              fallback: true,
+            });
+          }
+        }
+      }
+    } catch (_) {}
+
     return NextResponse.json({ error: 'Failed to fetch timetable' }, { status: 500 });
   }
 }

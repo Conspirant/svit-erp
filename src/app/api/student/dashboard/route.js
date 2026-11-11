@@ -665,6 +665,29 @@ export async function GET(request) {
         if (error.message.includes('Session expired') || error.message.includes('Not authenticated')) {
             return NextResponse.json({ error: 'Session expired or not logged in' }, { status: 401 });
         }
+
+        // Graceful fallback to cached student dashboard if upstream Accredia is busy/timing out
+        try {
+            const knownUsn = getSessionUsn(cookieStore);
+            if (knownUsn) {
+                const cached = erpCache.get(`dash_full_${knownUsn}`) || erpCache.get(`dash_fast_${knownUsn}`);
+                if (cached) {
+                    console.log(`[dashboard] Upstream error, serving cached dashboard for ${knownUsn}`);
+                    const hasDetails = Array.isArray(cached.attendance) && cached.attendance.some((a) => a.dates && a.dates.length > 0);
+                    const response = NextResponse.json({
+                        success: true,
+                        data: cached,
+                        fromCache: true,
+                        fallback: true,
+                        hasDetails,
+                        isPartial: !hasDetails,
+                    });
+                    setSessionIdentity(response, { usn: cached.usn || knownUsn, name: cached.profileName });
+                    return response;
+                }
+            }
+        } catch (_) {}
+
         return NextResponse.json({ error: 'Failed to fetch dashboard data' }, { status: 500 });
     }
 }

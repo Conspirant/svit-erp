@@ -50,11 +50,13 @@ async function tryFetchCaptcha(baseOrigin) {
   const loginUrl = `${baseOrigin}/parents/index.php`;
   const captchaUrl = `${baseOrigin}/parents/templates/contineoReg/captcha/get_captcha.php`;
 
+  const connectTimeout = process.env.NODE_ENV !== 'production' && baseOrigin.includes(':8084') ? 3500 : 8000;
+
   // 1. Fetch login page for session cookie & CSRF tokens
   const initialRes = await fetchWithRetry(() =>
     axios.get(loginUrl, {
       httpsAgent,
-      timeout: 8000,
+      timeout: connectTimeout,
       headers: commonHeaders,
       validateStatus: () => true,
     })
@@ -119,8 +121,12 @@ async function tryFetchCaptcha(baseOrigin) {
 }
 
 export async function GET() {
-  const registeredNodes = egressManager.getAllNodes().map(n => n.url);
-  const candidateOrigins = registeredNodes.length > 0 ? registeredNodes : [DIRECT_ORIGIN];
+  const allNodes = egressManager.getAllNodes();
+  const healthyNodes = allNodes.filter(n => n.healthy).map(n => n.url);
+  const candidateOrigins = healthyNodes.length > 0 ? healthyNodes : allNodes.map(n => n.url);
+  if (!candidateOrigins.includes(DIRECT_ORIGIN)) {
+    candidateOrigins.push(DIRECT_ORIGIN);
+  }
 
   let lastError = null;
 
