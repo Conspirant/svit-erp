@@ -54,7 +54,7 @@ async function axiosRequestWithRetry(config, maxRetries = 3) {
         ...config,
         httpsAgent: agent,
         headers: mergedHeaders,
-        timeout: 12000,
+        timeout: config.timeout || 25000,
         validateStatus: () => true,
       });
 
@@ -451,6 +451,23 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const knownUsn = getSessionUsn(cookieStore);
+
+    // Fast-path: Check memory cache for instant response
+    if (!feedbackId && knownUsn && !searchParams.get('refresh')) {
+      const cachedTypes = erpCache.get(`fb_types_${knownUsn}`);
+      if (cachedTypes && Array.isArray(cachedTypes) && cachedTypes.length > 0) {
+        return NextResponse.json({ success: true, data: { feedbackTypes: cachedTypes }, fromCache: true });
+      }
+    }
+
+    if (feedbackId && !action && knownUsn && !searchParams.get('refresh')) {
+      const cachedDetail = erpCache.get(`fb_detail_${knownUsn}_${feedbackId}`);
+      if (cachedDetail) {
+        return NextResponse.json({ success: true, data: cachedDetail, fromCache: true });
+      }
+    }
+
     // 1. Fetch raw print acknowledgement
     if (feedbackId && action === 'acknowledgement') {
       let detailUrl = '';
@@ -655,7 +672,6 @@ export async function GET(request) {
         hasAcknowledgement: hasAck,
       };
 
-      const knownUsn = getSessionUsn(cookieStore);
       if (knownUsn) {
         erpCache.set(`fb_detail_${knownUsn}_${feedbackId}`, payload, 1800);
       }
@@ -786,7 +802,6 @@ export async function GET(request) {
       });
     }
 
-    const knownUsn = getSessionUsn(cookieStore);
     if (knownUsn && feedbackTypes.length > 0) {
       erpCache.set(`fb_types_${knownUsn}`, feedbackTypes, 1800);
     }

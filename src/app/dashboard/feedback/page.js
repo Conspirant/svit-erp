@@ -21,13 +21,27 @@ export default function FeedbackPage() {
   const [ratingIndex, setRatingIndex] = useState(0); // 0 = Excellent, 1 = Very Good, 2 = Good
   const [error, setError] = useState("");
 
-  // Fetch available feedback forms on mount
+  // Fetch available feedback forms on mount with instant client cache
   useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem('feedback_types');
+      if (cached) {
+        const types = JSON.parse(cached);
+        if (Array.isArray(types) && types.length > 0) {
+          setFeedbackTypes(types);
+          setSelectedId(types[0].id);
+          const cachedDetail = sessionStorage.getItem(`feedback_detail_${types[0].id}`);
+          if (cachedDetail) {
+            setFeedbackData(JSON.parse(cachedDetail));
+            setLoading(false);
+          }
+        }
+      }
+    } catch (_) {}
     fetchFeedbackTypes();
   }, []);
 
   async function fetchFeedbackTypes() {
-    setLoading(true);
     setError("");
     try {
       const res = await fetch("/api/student/feedback", { cache: "no-store" });
@@ -44,18 +58,33 @@ export default function FeedbackPage() {
         throw new Error(json.error || "Failed to load feedbacks");
       }
 
-      setFeedbackTypes(json.data.feedbackTypes || []);
+      const types = json.data.feedbackTypes || [];
+      setFeedbackTypes(types);
+      try { sessionStorage.setItem('feedback_types', JSON.stringify(types)); } catch (_) {}
       
       // Auto-select first feedback if available
-      if (json.data.feedbackTypes?.length > 0) {
-        const firstFb = json.data.feedbackTypes[0];
+      if (types.length > 0) {
+        const firstFb = types[0];
         setSelectedId(firstFb.id);
         fetchFeedbackDetails(firstFb.id, firstFb.url);
       } else {
         setLoading(false);
       }
     } catch (err) {
+      const cached = sessionStorage.getItem('feedback_types');
+      if (cached) {
+        try {
+          const types = JSON.parse(cached);
+          if (Array.isArray(types) && types.length > 0) {
+            setFeedbackTypes(types);
+            setSelectedId(types[0].id);
+            setError("");
+            return;
+          }
+        } catch (_) {}
+      }
       setError(err.message);
+    } finally {
       setLoading(false);
     }
   }
@@ -85,7 +114,16 @@ export default function FeedbackPage() {
       }
 
       setFeedbackData(json.data);
+      try { sessionStorage.setItem(`feedback_detail_${id}`, JSON.stringify(json.data)); } catch (_) {}
     } catch (err) {
+      const cachedDetail = sessionStorage.getItem(`feedback_detail_${id}`);
+      if (cachedDetail) {
+        try {
+          setFeedbackData(JSON.parse(cachedDetail));
+          setError("");
+          return;
+        } catch (_) {}
+      }
       setError(err.message);
     } finally {
       setDetailsLoading(false);
