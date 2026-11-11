@@ -11,6 +11,7 @@ import {
   Calendar as CalendarIcon,
   BarChart3,
   Clock,
+  RefreshCw,
   Calculator,
   FileText,
   FileCheck,
@@ -112,7 +113,28 @@ export default function Dashboard() {
   const [studentId, setStudentId] = useState("");
   const [profileExtra, setProfileExtra] = useState(null);
   const [copiedUsn, setCopiedUsn] = useState(false);
+  const [isFetchingActual, setIsFetchingActual] = useState(true);
+  const [fetchCountdown, setFetchCountdown] = useState(4);
+  const [nextFetchCountdown, setNextFetchCountdown] = useState(300);
   const router = useRouter();
+
+  // Live ticker for actual ERP data fetch and background auto-sync
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (isFetchingActual) {
+        setFetchCountdown((prev) => Math.max(0, prev - 1));
+      } else {
+        setNextFetchCountdown((prev) => {
+          if (prev <= 1) {
+            setRefreshKey((k) => k + 1);
+            return 300;
+          }
+          return prev - 1;
+        });
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isFetchingActual]);
 
   useEffect(() => {
     const handleUpdate = () => setRefreshKey(prev => prev + 1);
@@ -144,6 +166,8 @@ export default function Dashboard() {
     });
 
     const fetchAll = async () => {
+      setIsFetchingActual(true);
+      setFetchCountdown(4);
       try {
         // Step 1: Fetch main dashboard first in a single ultra-fast GET request (identical to CAPTCHA)
         const dashRes = await fetch("/api/student/dashboard");
@@ -290,12 +314,14 @@ export default function Dashboard() {
           setError("Could not connect to server.");
         }
       } finally {
+        setIsFetchingActual(false);
         setLoading(false);
+        setNextFetchCountdown(300);
       }
     };
 
     fetchAll();
-  }, [router]);
+  }, [router, refreshKey]);
 
   const attendance = useMemo(() => {
     if (!data) return [];
@@ -464,16 +490,80 @@ export default function Dashboard() {
   const quotaStr = profileExtra?.quota || profileExtra?.categoryalloted || defaultScheme;
   const activeStudentId = studentId || (activeUsn ? activeUsn.slice(-5) : "25CD092");
 
+  const formatTimer = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s < 10 ? "0" : ""}${s}`;
+  };
+
   return (
     <div className="dashboard-home-view native-home fade-in">
       {/* Executive Student Profile Card */}
       <section className="home-profile-card" style={{ marginTop: 12 }}>
         <div className="home-profile-header-row">
-          <div className="home-profile-badge-verified">
-            <span className="home-profile-pulse-dot" />
-            <ShieldCheck size={13} strokeWidth={2.6} />
-            <span>Verified Student</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <div className="home-profile-badge-verified">
+              <span className="home-profile-pulse-dot" />
+              <ShieldCheck size={13} strokeWidth={2.6} />
+              <span>Verified Student</span>
+            </div>
+
+            {/* Small Minimalist Timer for Actual Data Fetch */}
+            {isFetchingActual ? (
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  padding: "3px 8px",
+                  background: "rgba(59, 130, 246, 0.12)",
+                  border: "1px solid rgba(59, 130, 246, 0.28)",
+                  borderRadius: "6px",
+                  fontSize: "0.68rem",
+                  fontWeight: 600,
+                  color: "#93c5fd",
+                }}
+                title="Fetching fresh data directly from Accredia ERP server"
+              >
+                <RefreshCw size={10} className="animate-spin" />
+                <span>Actual data in ~{fetchCountdown > 0 ? `${fetchCountdown}s` : "1s"}</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setRefreshKey((k) => k + 1)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  padding: "3px 8px",
+                  background: "rgba(255, 255, 255, 0.04)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: "6px",
+                  fontSize: "0.68rem",
+                  fontWeight: 600,
+                  color: "rgba(255, 255, 255, 0.65)",
+                  cursor: "pointer",
+                  transition: "all 150ms ease",
+                }}
+                title="Actual ERP data live. Click to fetch fresh data now."
+              >
+                <span
+                  style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: "50%",
+                    background: "#34d399",
+                    display: "inline-block",
+                    boxShadow: "0 0 6px #34d399",
+                  }}
+                />
+                <Clock size={10} style={{ opacity: 0.8 }} />
+                <span>Actual data synced · next in {formatTimer(nextFetchCountdown)}</span>
+              </button>
+            )}
           </div>
+
           <Link href="/dashboard/idcard" className="home-profile-id-link">
             <span>Digital ID</span>
             <ChevronRight size={13} strokeWidth={2.4} />
