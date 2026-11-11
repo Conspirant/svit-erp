@@ -79,8 +79,8 @@ export default function Dashboard() {
           fetch("/api/student/timetable")
         ]);
 
-        // Only redirect to login if explicitly unauthorized (401)
-        if (dashRes.status === 401 && ttRes.status === 401) {
+        // Redirect to login if unauthorized or session expired
+        if (dashRes.status === 401 || ttRes.status === 401) {
           router.push("/");
           return;
         }
@@ -88,8 +88,20 @@ export default function Dashboard() {
         let dashJson = null;
         let ttJson = null;
         try {
-          if (dashRes.ok) dashJson = await dashRes.json();
-        } catch { }
+          if (dashRes.ok) {
+            dashJson = await dashRes.json();
+          } else {
+            const errData = await dashRes.json().catch(() => ({}));
+            if (errData?.error?.toLowerCase().includes("session expired") || errData?.error?.toLowerCase().includes("not authenticated")) {
+              router.push("/");
+              return;
+            }
+            throw new Error(errData?.error || "ERP server is busy. Retrying in background...");
+          }
+        } catch (e) {
+          console.warn("Dashboard fetch error:", e.message);
+        }
+
         try {
           if (ttRes.ok) ttJson = await ttRes.json();
         } catch { }
@@ -150,8 +162,8 @@ export default function Dashboard() {
               }
             });
           }
-        } else if (dashRes.status !== 401) {
-          // If 500 occurred but we have cached data, keep showing cached data with a warning
+        } else {
+          // If 500 occurred or fetch failed, fallback gracefully to cached data
           const cached = sessionStorage.getItem('dashboard_data');
           if (cached) {
             setData(JSON.parse(cached));
@@ -191,7 +203,13 @@ export default function Dashboard() {
           }
         } catch { }
       } catch (err) {
-        setError("Could not connect to server.");
+        console.warn("Dashboard fetch error:", err);
+        const cached = sessionStorage.getItem('dashboard_data');
+        if (cached) {
+          setData(JSON.parse(cached));
+        } else {
+          setError("Could not connect to server.");
+        }
       } finally {
         setLoading(false);
       }

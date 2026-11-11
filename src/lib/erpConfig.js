@@ -50,8 +50,18 @@ export function resolveErpUrl(path, preferredOrigin = null) {
   const origin = preferredOrigin || ERP_ROOT_ORIGIN;
   if (!path) return `${origin}/parents/index.php`;
 
+  // If path is already a full URL from any host, proxy, or legacy worker, extract pathname + search
   if (/^https?:\/\//i.test(path)) {
-    return path.replace(/^https?:\/\/svit-students\.accredia\.in:8084/i, origin);
+    try {
+      const u = new URL(path);
+      let cleanPath = u.pathname.replace(/^\/api\/erp-proxy\/?/, '/');
+      if (!cleanPath.startsWith('/parents') && !cleanPath.startsWith('/sims')) {
+        cleanPath = `/parents${cleanPath}`;
+      }
+      return `${origin}${cleanPath}${u.search}`;
+    } catch {
+      return path.replace(/^https?:\/\/[^\/]+/i, origin);
+    }
   }
 
   const clean = path.replace(/^\.?\//, '');

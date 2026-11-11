@@ -25,13 +25,15 @@ class EgressManager {
       .map((u) => u.trim().replace(/\/+$/, ''))
       .filter((u) => u && /^https?:\/\//i.test(u));
 
-    // Direct origin is always the canonical upstream
+    // Direct origin is always the canonical primary upstream
     if (!parsed.includes(DIRECT_ORIGIN)) {
-      if (parsed.length === 0) {
-        parsed.push(DIRECT_ORIGIN);
-      } else {
-        parsed.push(DIRECT_ORIGIN);
-      }
+      parsed.unshift(DIRECT_ORIGIN);
+    }
+
+    // In local development ONLY, allow Vercel cloud proxy as a resilient fallback if local ISP blocks port 8084
+    const VERCEL_FALLBACK = 'https://svit-erp.vercel.app/api/erp-proxy';
+    if (process.env.NODE_ENV !== 'production' && !parsed.includes(VERCEL_FALLBACK)) {
+      parsed.push(VERCEL_FALLBACK);
     }
 
     this.nodes = parsed.map((url) => ({
