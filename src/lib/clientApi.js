@@ -67,10 +67,14 @@ export async function apiJson(path, data, options = {}) {
 
 export function clearClientSession() {
   try {
-    sessionStorage.removeItem("dashboard_data");
-    sessionStorage.removeItem("events_data");
-    sessionStorage.removeItem("profile_data");
-    sessionStorage.removeItem("marketplace_dev_profile");
+    sessionStorage.clear();
+    localStorage.removeItem("svit_idcard_photo");
+    localStorage.removeItem("svit_idcard_student_id");
+    localStorage.removeItem("cached_timetable_schedule");
+    localStorage.removeItem("dashboard_data");
+    localStorage.removeItem("events_data");
+    localStorage.removeItem("profile_data");
+    localStorage.removeItem("marketplace_dev_profile");
   } catch { }
 }
 

@@ -197,12 +197,16 @@ export async function POST(request) {
     }
 
     // Set the cookie in Next.js response so the user's browser holds the ERP session
-    const response = NextResponse.json({ success: true, message: 'Logged in successfully' });
+    const response = NextResponse.json({ success: true, message: 'Logged in successfully', usn: username });
 
-    // Clear the temporary captcha session cookie
+    // Purge any lingering cookies from previous student session
+    response.cookies.delete('dashboard_url');
+    response.cookies.delete('erp_usn');
+    response.cookies.delete('erp_name');
+    response.cookies.delete('PHPSESSID');
     response.cookies.delete('erp_login_session');
 
-    // Store the redirect location if provided
+    // Store the redirect location if provided and valid
     if (redirectLocation) {
       const fullRedirectUrl = resolveErpUrl(redirectLocation);
       response.cookies.set({
@@ -214,9 +218,20 @@ export async function POST(request) {
         path: '/',
         maxAge: 60 * 60 * 24,
       });
+    } else {
+      // Default to canonical ERP base URL if no redirect was returned
+      response.cookies.set({
+        name: 'dashboard_url',
+        value: ERP_BASE_URL,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: 60 * 60 * 24,
+      });
     }
 
-    // Save all merged cookies into client response cookies
+    // Save all merged fresh cookies into client response cookies
     cookieMap.forEach((val, key) => {
       response.cookies.set({
         name: key,
@@ -228,11 +243,6 @@ export async function POST(request) {
         maxAge: 60 * 60 * 24, // 1 day
       });
     });
-
-    const cookieString = Array.from(cookieMap.entries())
-      .map(([k, v]) => `${k}=${v}`)
-      .join('; ');
-    const initialTargetUrl = resolveErpUrl(redirectLocation || ERP_BASE_URL);
 
     setSessionIdentity(response, { usn: username });
     return response;

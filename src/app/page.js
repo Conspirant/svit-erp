@@ -194,11 +194,17 @@ export default function Home() {
     setError("");
 
     try {
+      // Purge any existing student data before logging in with a new account
+      clearClientSession();
+
       await apiJson(
         "/api/auth/login",
         { username: usn, dob, captcha: captchaCode.trim() },
         { retries: 0, redirectOnUnauthorized: false }
       );
+
+      // Re-purge on success to guarantee zero cross-account leakage
+      clearClientSession();
 
       if (rememberMe) {
         try {

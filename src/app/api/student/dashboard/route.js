@@ -205,7 +205,7 @@ export async function scrapeStudentDashboard({
             }
         }
 
-        const res = await fetchWithRetry(() =>
+        let res = await fetchWithRetry(() =>
             axios.get(targetUrl, {
                 httpsAgent,
                 timeout: 12000,
@@ -218,10 +218,32 @@ export async function scrapeStudentDashboard({
             { retries: 2, baseDelayMs: 400 }
         );
 
-        const $ = cheerio.load(res.data);
+        let $ = cheerio.load(res.data);
+        let resText = typeof res.data === 'string' ? res.data : (typeof res.data === 'object' && res.data !== null ? JSON.stringify(res.data) : String(res.data || ''));
 
-        // Check if we are actually logged in
-        const resText = typeof res.data === 'string' ? res.data : (typeof res.data === 'object' && res.data !== null ? JSON.stringify(res.data) : String(res.data || ''));
+        // If targetUrl (e.g. carrying an old ksign from a previous session) returned login form,
+        // retry immediately with clean canonical BASE_URL
+        if ($('form#login-form').length > 0 || resText.includes('Login to Your Account')) {
+            if (targetUrl !== BASE_URL) {
+                console.log(`[dashboard] targetUrl with ksign failed, retrying clean BASE_URL...`);
+                res = await fetchWithRetry(() =>
+                    axios.get(BASE_URL, {
+                        httpsAgent,
+                        timeout: 12000,
+                        headers: {
+                            ...COMMON_BROWSER_HEADERS,
+                            Cookie: sessionCookie,
+                            Referer: ERP_BASE_URL,
+                        },
+                    }),
+                    { retries: 1, baseDelayMs: 400 }
+                );
+                $ = cheerio.load(res.data);
+                resText = typeof res.data === 'string' ? res.data : (typeof res.data === 'object' && res.data !== null ? JSON.stringify(res.data) : String(res.data || ''));
+            }
+        }
+
+        // Check if we are still not logged in
         if ($('form#login-form').length > 0 || resText.includes('Login to Your Account')) {
             throw new Error('Session expired or not logged in');
         }
@@ -671,7 +693,7 @@ export async function GET(request) {
             const knownUsn = getSessionUsn(cookieStore);
             if (knownUsn) {
                 const cached = erpCache.get(`dash_full_${knownUsn}`) || erpCache.get(`dash_fast_${knownUsn}`);
-                if (cached) {
+                if (cached && (!cached.usn || cached.usn.toUpperCase() === knownUsn.toUpperCase())) {
                     console.log(`[dashboard] Upstream error, serving cached dashboard for ${knownUsn}`);
                     const hasDetails = Array.isArray(cached.attendance) && cached.attendance.some((a) => a.dates && a.dates.length > 0);
                     const response = NextResponse.json({

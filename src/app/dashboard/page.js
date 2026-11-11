@@ -35,6 +35,11 @@ function mergeDashboardData(prev, incoming) {
   if (!prev) return incoming;
   if (!incoming) return prev;
 
+  // Account identity boundary: never merge data across different students
+  if (prev?.usn && incoming?.usn && prev.usn.toUpperCase().trim() !== incoming.usn.toUpperCase().trim()) {
+    return incoming;
+  }
+
   const merged = { ...prev, ...incoming };
 
   // 1. Preserve detailed attendance logs & exact counts
@@ -162,8 +167,24 @@ export default function Dashboard() {
 
         if (dashJson?.success) {
           setData(prev => {
+            // Identity boundary: If account switched, clean all old caches
+            if (prev?.usn && dashJson.data?.usn && prev.usn.toUpperCase().trim() !== dashJson.data.usn.toUpperCase().trim()) {
+              setTimetable(null);
+              setPhoto(dashJson.data.photoUrl || "");
+              setStudentId(dashJson.data.usn || "");
+              setProfileExtra(null);
+              try {
+                sessionStorage.clear();
+                localStorage.removeItem('svit_idcard_photo');
+                localStorage.removeItem('svit_idcard_student_id');
+                localStorage.removeItem('cached_timetable_schedule');
+              } catch (_) {}
+              try { sessionStorage.setItem('dashboard_data', JSON.stringify(dashJson.data)); } catch (_) {}
+              return dashJson.data;
+            }
+
             const merged = mergeDashboardData(prev, dashJson.data);
-            try { sessionStorage.setItem('dashboard_data', JSON.stringify(merged)); } catch { }
+            try { sessionStorage.setItem('dashboard_data', JSON.stringify(merged)); } catch (_) {}
             return merged;
           });
 
