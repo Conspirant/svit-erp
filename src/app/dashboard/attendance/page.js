@@ -306,7 +306,7 @@ export default function AttendancePage() {
     });
 
     Promise.all([
-      apiFetch("/api/student/dashboard"),
+      apiFetch("/api/student/dashboard?mode=details"),
       apiFetch("/api/student/timetable").catch(() => ({ data: [] })),
       apiFetch("/api/student/events").catch(() => ({ data: [] }))
     ])
@@ -319,8 +319,11 @@ export default function AttendancePage() {
         try { if (ttJson.data) sessionStorage.setItem("dashboard_timetable", JSON.stringify(ttJson.data)); } catch { }
         try { if (evJson.data) sessionStorage.setItem("events_data", JSON.stringify(evJson.data)); } catch { }
 
-        if (dashJson.isPartial) {
-          apiFetch("/api/student/dashboard?mode=details")
+        const hasMissingCounts = Array.isArray(dashJson.data?.attendance) &&
+          dashJson.data.attendance.some(a => Number(a.total || 0) === 0 && (!a.dates || a.dates.length === 0));
+
+        if (dashJson.isPartial || hasMissingCounts) {
+          apiFetch("/api/student/dashboard?mode=details&refresh=1")
             .then((detJson) => {
               if (alive && detJson?.data) {
                 setData(detJson.data);

@@ -175,8 +175,8 @@ const hasDetailedCounts = (cached) => {
         cached &&
         Array.isArray(cached.attendance) &&
         cached.attendance.length > 0 &&
-        cached.attendance.some(
-            (a) => (Number(a.present || 0) + Number(a.absent || 0)) > 0 || (a.dates && a.dates.length > 0)
+        cached.attendance.every(
+            (a) => (Number(a.total || 0) > 0 || (a.dates && a.dates.length > 0))
         )
     );
 };
@@ -191,7 +191,7 @@ export async function scrapeStudentDashboard({
 }) {
     if (knownUsn && !forceRefresh) {
         const cachedFull = erpCache.get(`dash_full_${knownUsn}`);
-        if (cachedFull && (hasDetailedCounts(cachedFull) || mode === 'fast')) {
+        if (cachedFull && (mode !== 'details' && (hasDetailedCounts(cachedFull) || mode === 'fast'))) {
             return { data: cachedFull, fromCache: true };
         }
     }
@@ -200,7 +200,7 @@ export async function scrapeStudentDashboard({
     return await erpCache.coalesce(flightKey, async () => {
         if (knownUsn && !forceRefresh) {
             const cachedFull = erpCache.get(`dash_full_${knownUsn}`);
-            if (cachedFull && (hasDetailedCounts(cachedFull) || mode === 'fast')) {
+            if (cachedFull && (mode !== 'details' && (hasDetailedCounts(cachedFull) || mode === 'fast'))) {
                 return { data: cachedFull, fromCache: true };
             }
         }
@@ -361,24 +361,24 @@ export async function scrapeStudentDashboard({
             stats.metrics.push($(el).text().replace(/\s+/g, ' ').trim());
         });
 
-        // 3. Scrape Attendance Sub-Pages with High-Speed Parallel Pool
-        // Only fetch sub-pages when detailed date breakdown is specifically requested (mode === 'details')
-        // Initial dashboard renders lightning fast in a single request, identical to CAPTCHA fetching!
-        if (mode === 'details' && attendanceLinks.length > 0) {
+        // 3. Scrape Attendance Sub-Pages with Controlled Concurrency Pool
+        // Fetch all sub-pages so exact present, absent, total counts and dates are complete for every subject!
+        // Uses concurrency of 2 with HTTP keep-alive so Accredia's session file locks never collide or drop.
+        if (mode !== 'fast' && attendanceLinks.length > 0) {
             try {
-                const detailedResultsSettled = await pLimitPool(attendanceLinks, 4, (linkObj) =>
+                const detailedResultsSettled = await pLimitPool(attendanceLinks, 2, (linkObj) =>
                     fetchWithRetry(
                         () =>
                             axios.get(linkObj.url, {
                                 httpsAgent,
-                                timeout: 7000,
+                                timeout: 9000,
                                 headers: {
                                     ...COMMON_BROWSER_HEADERS,
                                     Cookie: sessionCookie,
                                     Referer: ERP_BASE_URL,
                                 },
                             }),
-                        { retries: 2, baseDelayMs: 300 }
+                        { retries: 2, baseDelayMs: 250 }
                     ).then((detailRes) => {
                         const _$ = cheerio.load(detailRes.data);
                         const pageText = _$('body').text().replace(/\s+/g, ' ');

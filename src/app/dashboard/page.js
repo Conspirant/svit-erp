@@ -129,6 +129,32 @@ export default function Dashboard() {
             })
             .catch(() => {});
 
+          // Step 3: Background enrich detailed attendance records so clicking Attendance tab has full logs
+          const hasMissingCounts = Array.isArray(dashJson.data?.attendance) &&
+            dashJson.data.attendance.some(a => Number(a.total || 0) === 0 && (!a.dates || a.dates.length === 0));
+
+          if (dashJson.isPartial || hasMissingCounts) {
+            setTimeout(() => {
+              fetch("/api/student/dashboard?mode=details")
+                .then(r => r.ok ? r.json() : null)
+                .then(detJson => {
+                  if (detJson?.success && detJson.data) {
+                    setData(prev => {
+                      if (!prev) return detJson.data;
+                      return {
+                        ...prev,
+                        ...detJson.data,
+                        cie: (Array.isArray(detJson.data.cie) && detJson.data.cie.length > 0) ? detJson.data.cie : prev.cie,
+                      };
+                    });
+                    try { sessionStorage.setItem('dashboard_data', JSON.stringify(detJson.data)); } catch { }
+                    window.dispatchEvent(new Event("attendanceChanged"));
+                  }
+                })
+                .catch(() => {});
+            }, 600);
+          }
+
           // Sentinel SWR check
           if (dashJson.data?.usn) {
             checkAndSyncSentinelAttendance({
